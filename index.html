@@ -32,8 +32,11 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
-            height: 100vh;
+            height: 100vh; /* fallback for older browsers */
+            height: 100dvh;
             overflow: hidden;
+            position: fixed;
+            width: 100%;
         }
 
         #header {
@@ -129,7 +132,8 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         #map {
-            height: calc(100vh - 52px);
+            height: calc(100vh - 52px); /* fallback */
+            height: calc(100dvh - 52px);
             width: 100%;
         }
 
@@ -537,7 +541,8 @@
             }
 
             #map {
-                height: calc(100vh - 46px);
+                height: calc(100vh - 46px); /* fallback */
+                height: calc(100dvh - 46px);
             }
 
             /* Popups: fill more of the viewport */
@@ -649,7 +654,8 @@
             }
 
             #map {
-                height: calc(100vh - 52px);
+                height: calc(100vh - 52px); /* fallback */
+                height: calc(100dvh - 52px);
             }
 
             /* Popups: near full-width */
