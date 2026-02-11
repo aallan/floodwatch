@@ -560,12 +560,13 @@
                 height: 160px;
             }
 
-            /* Legend: more compact */
+            /* Legend: more compact, pushed above mobile browser toolbar */
             .legend {
                 padding: 8px 12px;
                 font-size: 11px;
                 max-height: 50vh;
                 overflow-y: auto;
+                margin-bottom: 70px !important;
             }
 
             .legend h4 {
@@ -594,8 +595,9 @@
         /* Phone screens */
         @media (max-width: 480px) {
             #header {
-                padding: 6px 10px;
-                height: 42px;
+                padding: 4px 10px;
+                min-height: 42px;
+                height: auto;
             }
 
             #header h1 {
@@ -608,8 +610,15 @@
                 display: none;
             }
 
+            .header-right {
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 2px;
+            }
+
             .header-right .last-updated {
-                display: none;
+                font-size: 9px;
+                order: 2;
             }
 
             #refresh-btn {
@@ -619,7 +628,7 @@
             }
 
             #map {
-                height: calc(100vh - 42px);
+                height: calc(100vh - 52px);
             }
 
             /* Popups: near full-width */
