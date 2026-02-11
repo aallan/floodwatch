@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Floodwatch - River Taw Monitoring</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #2c3345;
+            --bg-secondary: #343b50;
+            --bg-card: #2c3345;
+            --text-primary: #e8ecf4;
+            --text-secondary: #9098b0;
+            --accent-blue: #4a8fd9;
+            --accent-teal: #1a8a7d;
+            --accent-rain: #5574b8;
+            --accent-river: #1a8a7d;
+            --accent-tidal: #c47a2a;
+            --border: #404860;
+            --danger: #d94a4a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            height: 52px;
+            z-index: 1000;
+            position: relative;
+        }
+
+        #header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #header h1 .logo-icon {
+            width: 24px;
+            height: 24px;
+            background: var(--accent-teal);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-right .last-updated {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        #refresh-btn {
+            padding: 6px 14px;
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        #refresh-btn:hover { background: #5a9ee9; }
+        #refresh-btn:disabled { background: #4a5070; cursor: not-allowed; }
+
+        #refresh-btn .spinner {
+            display: none;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        #refresh-btn.loading .spinner { display: block; }
+        #refresh-btn.loading .btn-text { display: none; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        #map {
+            height: calc(100vh - 52px);
+            width: 100%;
+        }
+
+        /* Legend */
+        .legend {
+            background: rgba(255,255,255,0.92);
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid #d8dce6;
+            font-size: 12px;
+            line-height: 1.8;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            color: #444;
+        }
+
+        .legend h4 {
+            margin-bottom: 6px;
+            color: #333;
+            font-size: 13px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #555;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend-line {
+            width: 20px;
+            height: 3px;
+            flex-shrink: 0;
+            border-radius: 2px;
+        }
+
+        /* Legend toggle: hidden on desktop, shown on mobile */
+        .legend .legend-toggle {
+            display: none;
+        }
+
+        .legend .legend-body {
+            display: block;
+        }
+
+        /* Popup styling */
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-card) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 10px !important;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important;
+            padding: 0 !important;
+        }
+
+        .leaflet-popup-tip {
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border) !important;
+        }
+
+        .leaflet-popup-content {
+            margin: 0 !important;
+            width: 380px !important;
+            max-width: 90vw !important;
+        }
+
+        .leaflet-popup-close-button {
+            color: var(--text-secondary) !important;
+            font-size: 20px !important;
+            right: 6px !important;
+            top: 4px !important;
+            width: 32px !important;
+            height: 32px !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            padding: 0 !important;
+            z-index: 10;
+        }
+
+        .leaflet-popup-close-button:hover {
+            color: var(--text-primary) !important;
+        }
+
+        .popup-header {
+            padding: 14px 40px 10px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .popup-header h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .popup-header .station-type {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        .popup-header .station-type.level { color: var(--accent-river); }
+        .popup-header .station-type.rainfall { color: var(--accent-rain); }
+        .popup-header .station-type.tidal { color: var(--accent-tidal); }
+
+        .popup-current {
+            padding: 12px 16px;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .popup-current .value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .popup-current .unit {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .popup-current .timestamp {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+
+        .popup-timerange {
+            display: flex;
+            padding: 8px 16px;
+            gap: 4px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .popup-timerange button {
+            flex: 1;
+            padding: 5px 8px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .popup-timerange button:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .popup-timerange button.active {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+        }
+
+        .popup-chart {
+            padding: 10px 12px 12px;
+            height: 180px;
+        }
+
+        .popup-chart canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .popup-nodata {
+            padding: 30px 16px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        /* Custom marker styling */
+        .station-marker {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 10px;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            border: 2px solid rgba(255,255,255,0.8);
+            transition: transform 0.15s;
+            cursor: pointer;
+        }
+
+        .station-marker:hover {
+            transform: scale(1.2);
+            z-index: 1000 !important;
+        }
+
+        .station-marker.level {
+            background: var(--accent-river);
+        }
+
+        .station-marker.level.high-level {
+            background: #e05555;
+        }
+
+        .station-marker.rainfall {
+            background: var(--accent-rain);
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+        }
+
+        .station-marker.rainfall:hover {
+            transform: rotate(-45deg) scale(1.2);
+        }
+
+        .station-marker.rainfall .marker-value {
+            transform: rotate(45deg);
+        }
+
+        .station-marker.tidal {
+            background: var(--accent-tidal);
+            border-radius: 4px;
+            transform: rotate(45deg);
+        }
+
+        .station-marker.tidal:hover {
+            transform: rotate(45deg) scale(1.2);
+        }
+
+        .station-marker.tidal .marker-value {
+            transform: rotate(-45deg);
+        }
+
+        .marker-value {
+            line-height: 1;
+        }
+
+        /* Trend arrow indicator — small badge tucked against bottom-right of marker */
+        .trend-badge {
+            position: absolute;
+            bottom: -4px;
+            right: -4px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+            border: 1.5px solid rgba(255,255,255,0.9);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+            pointer-events: none;
+        }
+
+        .trend-badge.rising { background: #e05555; color: white; }
+        .trend-badge.falling { background: #4aad4a; color: white; }
+        .trend-badge.steady { background: #7a8099; color: white; }
+
+        /* Counter-rotate badge inside rotated markers so arrows stay upright */
+        .station-marker.tidal .trend-badge {
+            transform: rotate(-45deg);
+            bottom: -2px;
+            right: -6px;
+        }
+
+        .station-marker.rainfall .trend-badge {
+            transform: rotate(45deg);
+            bottom: 1px;
+            right: -6px;
+        }
+
+        /* Refresh activity log */
+        .refresh-log {
+            position: absolute;
+            bottom: 30px;
+            right: 16px;
+            z-index: 1000;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 3px;
+            transition: opacity 0.6s ease;
+        }
+
+        .refresh-log.hidden {
+            opacity: 0;
+        }
+
+        .refresh-log-entry {
+            background: rgba(44, 51, 69, 0.92);
+            color: #c0c8e0;
+            font-size: 11px;
+            font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border-left: 3px solid var(--accent-blue);
+            max-width: 340px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            animation: logSlideIn 0.2s ease;
+        }
+
+        .refresh-log-entry.success {
+            border-left-color: var(--accent-teal);
+            color: #8fd4c8;
+        }
+
+        .refresh-log-entry.warn {
+            border-left-color: #c4a42a;
+            color: #d4c888;
+        }
+
+        .refresh-log-entry.error {
+            border-left-color: var(--danger);
+            color: #e0a0a0;
+        }
+
+        .refresh-log-entry.info {
+            border-left-color: var(--accent-blue);
+        }
+
+        .refresh-log-progress {
+            background: rgba(44, 51, 69, 0.92);
+            padding: 5px 12px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: #c0c8e0;
+            font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+        }
+
+        .refresh-log-progress .bar-bg {
+            width: 80px;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .refresh-log-progress .bar-fill {
+            height: 100%;
+            background: var(--accent-blue);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        @keyframes logSlideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* ======================================================
+           Mobile Responsive Styles
+           ====================================================== */
+
+        /* Tablet and smaller */
+        @media (max-width: 768px) {
+            #header {
+                padding: 8px 12px;
+                height: 46px;
+            }
+
+            #header h1 {
+                font-size: 15px;
+                gap: 6px;
+            }
+
+            #header h1 .logo-icon {
+                width: 20px;
+                height: 20px;
+                font-size: 12px;
+                border-radius: 5px;
+            }
+
+            .header-right {
+                gap: 8px;
+            }
+
+            .header-right .last-updated {
+                font-size: 10px;
+                max-width: 120px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            #refresh-btn {
+                padding: 5px 10px;
+                font-size: 12px;
+            }
+
+            #map {
+                height: calc(100vh - 46px);
+            }
+
+            /* Popups: fill more of the viewport */
+            .leaflet-popup-content {
+                width: 320px !important;
+                max-width: 88vw !important;
+            }
+
+            .popup-header {
+                padding: 10px 36px 8px 12px;
+            }
+
+            .popup-header h3 {
+                font-size: 14px;
+            }
+
+            .popup-current {
+                padding: 10px 12px;
+            }
+
+            .popup-current .value {
+                font-size: 24px;
+            }
+
+            .popup-timerange {
+                padding: 6px 12px;
+                gap: 3px;
+            }
+
+            .popup-timerange button {
+                padding: 5px 4px;
+                font-size: 11px;
+            }
+
+            .popup-chart {
+                padding: 8px 8px 10px;
+                height: 160px;
+            }
+
+            /* Legend: more compact */
+            .legend {
+                padding: 8px 12px;
+                font-size: 11px;
+                max-height: 50vh;
+                overflow-y: auto;
+            }
+
+            .legend h4 {
+                font-size: 11px;
+                margin-bottom: 3px;
+            }
+
+            .legend-item {
+                gap: 6px;
+            }
+
+            /* Refresh log: don't overlap legend */
+            .refresh-log {
+                bottom: 20px;
+                right: 10px;
+                left: 60px;
+            }
+
+            .refresh-log-entry {
+                max-width: 100%;
+                font-size: 10px;
+                padding: 3px 8px;
+            }
+        }
+
+        /* Phone screens */
+        @media (max-width: 480px) {
+            #header {
+                padding: 6px 10px;
+                height: 42px;
+            }
+
+            #header h1 {
+                font-size: 13px;
+                gap: 5px;
+            }
+
+            /* Hide the em-dash and "River Taw" part on very small screens */
+            #header h1 .subtitle {
+                display: none;
+            }
+
+            .header-right .last-updated {
+                display: none;
+            }
+
+            #refresh-btn {
+                padding: 5px 10px;
+                font-size: 11px;
+                gap: 4px;
+            }
+
+            #map {
+                height: calc(100vh - 42px);
+            }
+
+            /* Popups: near full-width */
+            .leaflet-popup-content {
+                width: 280px !important;
+                max-width: 92vw !important;
+            }
+
+            .popup-header {
+                padding: 8px 40px 6px 10px;
+            }
+
+            .popup-header h3 {
+                font-size: 13px;
+                line-height: 1.3;
+            }
+
+            .popup-header .station-type {
+                font-size: 10px;
+            }
+
+            .popup-current {
+                padding: 8px 10px;
+                gap: 4px;
+            }
+
+            .popup-current .value {
+                font-size: 22px;
+            }
+
+            .popup-current .unit {
+                font-size: 12px;
+            }
+
+            .popup-current .timestamp {
+                font-size: 10px;
+            }
+
+            .popup-timerange {
+                padding: 5px 10px;
+                gap: 2px;
+            }
+
+            .popup-timerange button {
+                padding: 6px 2px;
+                font-size: 10px;
+                border-radius: 3px;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            .popup-chart {
+                padding: 6px 6px 8px;
+                height: 140px;
+            }
+
+            .popup-nodata {
+                padding: 20px 10px;
+                font-size: 12px;
+            }
+
+            .leaflet-popup-close-button {
+                font-size: 20px !important;
+                right: 2px !important;
+                top: 2px !important;
+                width: 40px !important;
+                height: 40px !important;
+            }
+
+            /* Legend: collapsible on phone */
+            .legend {
+                padding: 6px 10px;
+                font-size: 10px;
+                line-height: 1.6;
+                max-width: 150px;
+            }
+
+            .legend .legend-body {
+                display: none;
+            }
+
+            .legend.expanded .legend-body {
+                display: block;
+            }
+
+            .legend .legend-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                cursor: pointer;
+                font-size: 11px;
+                font-weight: 600;
+                color: #333;
+                padding: 2px 0;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            .legend .legend-toggle::after {
+                content: '▸';
+                font-size: 10px;
+                margin-left: 6px;
+                transition: transform 0.2s;
+            }
+
+            .legend.expanded .legend-toggle::after {
+                transform: rotate(90deg);
+            }
+
+            .legend h4 {
+                font-size: 10px;
+                margin-bottom: 2px;
+            }
+
+            .legend-item {
+                gap: 5px;
+            }
+
+            .legend-dot {
+                width: 10px;
+                height: 10px;
+            }
+
+            .legend-line {
+                width: 16px;
+            }
+
+            /* Markers: slightly larger for touch */
+            .station-marker {
+                font-size: 9px;
+            }
+
+            /* Refresh log: bottom-center on phone */
+            .refresh-log {
+                bottom: 14px;
+                right: 8px;
+                left: 8px;
+                align-items: stretch;
+            }
+
+            .refresh-log-entry {
+                max-width: 100%;
+                font-size: 9px;
+                padding: 3px 6px;
+                white-space: normal;
+                word-break: break-word;
+            }
+
+            .refresh-log-progress {
+                font-size: 10px;
+                padding: 4px 8px;
+            }
+
+            .refresh-log-progress .bar-bg {
+                width: 60px;
+            }
+
+            /* Leaflet zoom controls: make touch-friendly */
+            .leaflet-control-zoom a {
+                width: 36px !important;
+                height: 36px !important;
+                line-height: 36px !important;
+                font-size: 18px !important;
+            }
+        }
+
+        /* Attribution */
+        .leaflet-control-attribution {
+            background: rgba(255, 255, 255, 0.85) !important;
+            color: #666 !important;
+            font-size: 10px !important;
+        }
+
+        .leaflet-control-attribution a {
+            color: var(--accent-blue) !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>
+            <span class="logo-icon">~</span>
+            Floodwatch<span class="subtitle"> &mdash; River Taw</span>
+        </h1>
+        <div class="header-right">
+            <span class="last-updated" id="last-updated"></span>
+            <button id="refresh-btn" onclick="refreshData()">
+                <span class="spinner"></span>
+                <span class="btn-text">Refresh Data</span>
+            </button>
+        </div>
+    </div>
+    <div id="map"></div>
+    <div class="refresh-log hidden" id="refresh-log"></div>
+
+    <script>
+    // ============================================================
+    // Configuration
+    // ============================================================
+    const DATA_BASE = 'data/';
+    const API_BASE = 'https://environment.data.gov.uk/flood-monitoring';
+
+    // Station config matching our CSV data
+    const STATIONS = {
+        level: [
+            { id: '50149', label: 'Sticklepath', lat: 50.737824, lon: -3.917597, file: 'level_50149_sticklepath.csv', measureId: '50149-level-stage-i-15_min-m', river: 'River Taw', order: 1, typicalRangeHigh: 1.8 },
+            { id: '50119', label: 'Taw Bridge', lat: 50.845457, lon: -3.886253, file: 'level_50119_taw_bridge.csv', measureId: '50119-level-stage-i-15_min-m', river: 'River Taw', order: 2, typicalRangeHigh: 1.9 },
+            { id: '50132', label: 'Newnham Bridge', lat: 50.939901, lon: -3.907581, file: 'level_50132_newnham_bridge.csv', measureId: '50132-level-stage-i-15_min-m', river: 'River Taw', order: 3, typicalRangeHigh: 2.5 },
+            { id: '50140', label: 'Umberleigh', lat: 50.99542, lon: -3.985089, file: 'level_50140_umberleigh.csv', measureId: '50140-level-stage-i-15_min-m', river: 'River Taw', order: 4, typicalRangeHigh: 2.8 },
+            // River Mole tributary (upstream to downstream, joins Taw near Newnham Bridge)
+            { id: '50135', label: 'North Molton', lat: 51.055152, lon: -3.795036, file: 'level_50135_north_molton.csv', measureId: '50135-level-stage-i-15_min-m', river: 'River Mole', order: 1, typicalRangeHigh: 1.1 },
+            { id: '50153', label: 'Mole Mills', lat: 51.016893, lon: -3.822486, file: 'level_50153_mole_mills.csv', measureId: '50153-level-stage-i-15_min-m', river: 'River Mole', order: 2, typicalRangeHigh: 1.0 },
+            { id: '50115', label: 'Woodleigh', lat: 50.973061, lon: -3.909695, file: 'level_50115_woodleigh.csv', measureId: '50115-level-stage-i-15_min-m', river: 'River Mole', order: 3, typicalRangeHigh: 1.7 },
+            // Little Dart River tributary (joins Taw upstream of Newnham Bridge)
+            { id: '50125', label: 'Chulmleigh', lat: 50.907767, lon: -3.863651, file: 'level_50125_chulmleigh.csv', measureId: '50125-level-stage-i-15_min-m', river: 'Little Dart River', order: 1, typicalRangeHigh: 1.5 },
+            // River Yeo tributary (upstream to downstream)
+            { id: '50151', label: 'Lapford', lat: 50.857808, lon: -3.810592, file: 'level_50151_lapford.csv', measureId: '50151-level-stage-i-15_min-m', river: 'River Yeo', order: 1, typicalRangeHigh: 2.3 },
+            { id: '50114', label: 'Collard Bridge', lat: 51.099972, lon: -4.010005, file: 'level_50114_collard_bridge.csv', measureId: '50114-level-stage-i-15_min-m', river: 'River Yeo', order: 2, typicalRangeHigh: 1.1 },
+        ],
+        rainfall: [
+            // East of Taw
+            { id: '50199', label: 'Lapford Bowerthy', lat: 50.873373, lon: -3.798545, file: 'rainfall_50199.csv', measureId: '50199-rainfall-tipping_bucket_raingauge-t-15_min-mm' },
+            { id: 'E85220', label: 'Molland Sindercombe', lat: 51.037989, lon: -3.736447, file: 'rainfall_E85220.csv', measureId: 'E85220-rainfall-tipping_bucket_raingauge-t-15_min-mm' },
+            { id: 'E84360', label: 'Crediton Knowle', lat: 50.799653, lon: -3.737529, file: 'rainfall_E84360.csv', measureId: 'E84360-rainfall-tipping_bucket_raingauge-t-15_min-mm' },
+            { id: '45183', label: 'Kinsford Gate', lat: 51.114443, lon: -3.795033, file: 'rainfall_45183.csv', measureId: '45183-rainfall-tipping_bucket_raingauge-t-15_min-mm' },
+            // West of Taw
+            { id: '50103', label: 'Allisland', lat: 50.880864, lon: -4.152815, file: 'rainfall_50103.csv', measureId: '50103-rainfall-tipping_bucket_raingauge-t-15_min-mm' },
+            { id: '50194', label: 'Kenwith Castle', lat: 51.024089, lon: -4.236452, file: 'rainfall_50194.csv', measureId: '50194-rainfall-tipping_bucket_raingauge-t-15_min-mm' },
+            { id: 'E82120', label: 'Bratton Fleming Haxton', lat: 51.116609, lon: -3.940857, file: 'rainfall_E82120.csv', measureId: 'E82120-rainfall-tipping_bucket_raingauge-t-15_min-mm' },
+            { id: '47158', label: 'Halwill', lat: 50.771514, lon: -4.228634, file: 'rainfall_47158.csv', measureId: '47158-rainfall-tipping_bucket_raingauge-t-15_min-mm' },
+        ],
+        tidal: [
+            { id: '50198', label: 'Barnstaple (Tidal)', lat: 51.080046, lon: -4.064537, file: 'level_50198_barnstaple_(tidal).csv', measureId: '50198-level-tidal_level-i-15_min-mAOD', river: 'River Taw' },
+        ]
+    };
+
+    // ============================================================
+    // Globals
+    // ============================================================
+    let map;
+    let stationData = {}; // stationId -> { readings: [...], latest: {...} }
+    let activePopupChart = null;
+    let activePopupStation = null;
+    let hasBackend = false; // detected at startup
+
+    // ============================================================
+    // Map Setup
+    // ============================================================
+    function initMap() {
+        const isMobile = window.innerWidth <= 480;
+        map = L.map('map', {
+            center: [50.9, -3.9],
+            zoom: isMobile ? 10 : 11,
+            zoomControl: true,
+            tap: true
+        });
+
+        // CartoDB Positron (light, muted style as requested)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a> | EA Flood Monitoring API',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+
+        addLegend();
+    }
+
+    // ============================================================
+    // River Overlay
+    // ============================================================
+    const RIVERS = [
+        { file: 'river_taw.geojson', name: 'River Taw', color: '#1a8a7d', weight: 3.5, maxArrows: 25 },
+        { file: 'river_mole.geojson', name: 'River Mole', color: '#2e7dab', weight: 2.8, maxArrows: 12 },
+        { file: 'river_little_dart.geojson', name: 'Little Dart River', color: '#8a6e1a', weight: 2.8, maxArrows: 8 },
+        { file: 'river_yeo.geojson', name: 'River Yeo', color: '#7a4a8a', weight: 2.8, maxArrows: 12 },
+    ];
+
+    function loadRiverOverlay() {
+        for (const river of RIVERS) {
+            fetch(DATA_BASE + river.file)
+                .then(r => r.json())
+                .then(geojson => {
+                    L.geoJSON(geojson, {
+                        style: {
+                            color: river.color,
+                            weight: river.weight,
+                            opacity: 0.55,
+                            lineCap: 'round',
+                            lineJoin: 'round'
+                        }
+                    }).addTo(map);
+                    addFlowArrows(geojson, river.color, river.maxArrows);
+                    addRiverLabels(geojson, river);
+                })
+                .catch(e => console.warn(`Could not load ${river.name} overlay:`, e));
+        }
+    }
+
+    function addFlowArrows(geojson, color, maxArrows) {
+        // OSM waterway ways are digitized in flow direction (source to mouth).
+        const candidates = [];
+        for (const feature of geojson.features) {
+            const coords = feature.geometry.coordinates;
+            if (coords.length < 2) continue;
+            const midIdx = Math.floor(coords.length / 2);
+            const from = coords[Math.max(0, midIdx - 1)];
+            const to = coords[Math.min(midIdx, coords.length - 1)];
+            const midLat = (from[1] + to[1]) / 2;
+            const midLon = (from[0] + to[0]) / 2;
+            const angle = Math.atan2(to[0] - from[0], to[1] - from[1]) * 180 / Math.PI;
+            candidates.push({ lat: midLat, lon: midLon, angle });
+        }
+
+        const step = Math.max(1, Math.floor(candidates.length / maxArrows));
+        for (let i = 0; i < candidates.length; i += step) {
+            const { lat, lon, angle } = candidates[i];
+            const arrowIcon = L.divIcon({
+                html: `<div style="transform: rotate(${-angle}deg); color: ${color}; font-size: 14px; opacity: 0.6; text-shadow: 0 0 4px rgba(0,0,0,0.4); line-height:1;">&#x25B2;</div>`,
+                className: '',
+                iconSize: [14, 14],
+                iconAnchor: [7, 7]
+            });
+            L.marker([lat, lon], { icon: arrowIcon, interactive: false }).addTo(map);
+        }
+    }
+
+    function addRiverLabels(geojson, river) {
+        // Find source (most upstream) and mouth (most downstream) points
+        let minLat = Infinity, maxLat = -Infinity;
+        let minLatCoord = null, maxLatCoord = null;
+        for (const feature of geojson.features) {
+            for (const coord of feature.geometry.coordinates) {
+                if (coord[1] < minLat) { minLat = coord[1]; minLatCoord = coord; }
+                if (coord[1] > maxLat) { maxLat = coord[1]; maxLatCoord = coord; }
+            }
+        }
+
+        // All rivers get a name label near their midpoint
+        const allCoords = geojson.features.flatMap(f => f.geometry.coordinates);
+        if (allCoords.length > 0) {
+            const mid = allCoords[Math.floor(allCoords.length / 2)];
+            addLabel(mid[1] + 0.005, mid[0], river.name, river.color, 140);
+        }
+
+        if (river.name === 'River Taw') {
+            // Also label source and estuary for the main river
+            if (minLatCoord) addLabel(minLatCoord[1] - 0.008, minLatCoord[0], 'UPSTREAM (Source)', river.color);
+            if (maxLatCoord) addLabel(maxLatCoord[1] + 0.008, maxLatCoord[0], 'DOWNSTREAM (Estuary)', river.color);
+        }
+    }
+
+    function addLabel(lat, lon, text, color, width = 120) {
+        const icon = L.divIcon({
+            html: `<div style="background:${color}18; color:${color}; padding:3px 10px; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:0.8px; border:1px solid ${color}33; white-space:nowrap;">${text}</div>`,
+            className: '',
+            iconSize: [width, 22],
+            iconAnchor: [width / 2, 11]
+        });
+        L.marker([lat, lon], { icon, interactive: false }).addTo(map);
+    }
+
+    // ============================================================
+    // Legend
+    // ============================================================
+    function addLegend() {
+        const legend = L.control({ position: 'bottomleft' });
+        legend.onAdd = () => {
+            const div = L.DomUtil.create('div', 'legend');
+            div.innerHTML = `
+                <div class="legend-toggle" onclick="this.parentElement.classList.toggle('expanded')">Legend</div>
+                <div class="legend-body">
+                <h4>Monitoring Stations</h4>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--accent-river)"></div> River Level (m)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--accent-tidal); border-radius:3px; transform:rotate(45deg);"></div> Tidal Level (mAOD)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--accent-rain); border-radius:50% 50% 50% 0; transform:rotate(-45deg);"></div> Rainfall (mm)</div>
+                <h4 style="margin-top:8px;">Rivers</h4>
+                <div class="legend-item"><div class="legend-line" style="background:#1a8a7d; opacity:0.7;"></div> River Taw</div>
+                <div class="legend-item"><div class="legend-line" style="background:#2e7dab; opacity:0.7;"></div> River Mole</div>
+                <div class="legend-item"><div class="legend-line" style="background:#8a6e1a; opacity:0.7;"></div> Little Dart River</div>
+                <div class="legend-item"><div class="legend-line" style="background:#7a4a8a; opacity:0.7;"></div> River Yeo</div>
+                <div class="legend-item"><div style="color:#1a8a7d; font-size:12px;">&#x25B2;</div> Flow direction</div>
+                <h4 style="margin-top:8px;">Trend (2h)</h4>
+                <div class="legend-item"><div style="width:14px;height:14px;border-radius:50%;background:#e05555;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:700;">↑</div> Rising</div>
+                <div class="legend-item"><div style="width:14px;height:14px;border-radius:50%;background:#4aad4a;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:700;">↓</div> Falling</div>
+                <div class="legend-item"><div style="width:14px;height:14px;border-radius:50%;background:#7a8099;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:700;">→</div> Steady</div>
+                </div>
+            `;
+            // Prevent map interaction when interacting with the legend
+            L.DomEvent.disableClickPropagation(div);
+            return div;
+        };
+        legend.addTo(map);
+    }
+
+    // ============================================================
+    // Data Loading
+    // ============================================================
+    function loadCSV(file) {
+        return new Promise((resolve, reject) => {
+            // Cache-bust: append timestamp so the browser always fetches fresh CSVs
+            const url = DATA_BASE + file + '?t=' + Date.now();
+            Papa.parse(url, {
+                download: true,
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: result => resolve(result.data),
+                error: err => reject(err)
+            });
+        });
+    }
+
+    async function loadAllData() {
+        const allStations = [...STATIONS.level, ...STATIONS.rainfall, ...STATIONS.tidal];
+
+        const promises = allStations.map(async station => {
+            try {
+                const data = await loadCSV(station.file);
+                const readings = data
+                    .filter(r => r.dateTime && r.value !== null && r.value !== '')
+                    .map(r => ({
+                        dateTime: new Date(r.dateTime),
+                        value: parseFloat(r.value)
+                    }))
+                    .filter(r => !isNaN(r.value))
+                    .sort((a, b) => a.dateTime - b.dateTime);
+
+                stationData[station.id] = {
+                    readings,
+                    latest: readings.length > 0 ? readings[readings.length - 1] : null
+                };
+            } catch (e) {
+                console.warn(`Could not load data for ${station.label}:`, e);
+                stationData[station.id] = { readings: [], latest: null };
+            }
+        });
+
+        await Promise.all(promises);
+    }
+
+    // ============================================================
+    // Station Markers
+    // ============================================================
+    function createMarkers() {
+        // Level stations
+        for (const station of STATIONS.level) {
+            createStationMarker(station, 'level');
+        }
+
+        // Rainfall stations
+        for (const station of STATIONS.rainfall) {
+            createStationMarker(station, 'rainfall');
+        }
+
+        // Tidal stations
+        for (const station of STATIONS.tidal) {
+            createStationMarker(station, 'tidal');
+        }
+    }
+
+    function createStationMarker(station, type) {
+        const data = stationData[station.id];
+        const latestValue = data?.latest ? data.latest.value : '?';
+        const displayValue = typeof latestValue === 'number' ? latestValue.toFixed(type === 'rainfall' ? 1 : 2) : '?';
+
+        const trend = getTrend(station.id, type);
+        let trendHtml = '';
+        if (trend) {
+            trendHtml = `<span class="trend-badge ${trend.direction}">${trend.symbol}</span>`;
+        }
+
+        const isHighLevel = type === 'level' && station.typicalRangeHigh && typeof latestValue === 'number' && latestValue >= 0.7 * station.typicalRangeHigh;
+        const highClass = isHighLevel ? ' high-level' : '';
+
+        const size = 36;
+        const icon = L.divIcon({
+            html: `<div class="station-marker ${type}${highClass}" style="width:${size}px;height:${size}px;"><span class="marker-value">${displayValue}</span>${trendHtml}</div>`,
+            className: '',
+            iconSize: [size, size],
+            iconAnchor: [size / 2, size / 2],
+            popupAnchor: [0, -size / 2]
+        });
+
+        const marker = L.marker([station.lat, station.lon], { icon, zIndexOffset: 500 }).addTo(map);
+
+        marker.on('click', () => openPopup(marker, station, type));
+    }
+
+    // ============================================================
+    // Popup
+    // ============================================================
+    function openPopup(marker, station, type) {
+        const data = stationData[station.id];
+        const latest = data?.latest;
+        const unit = type === 'tidal' ? 'mAOD' : (type === 'level' ? 'm' : 'mm');
+        const latestStr = latest ? latest.value.toFixed(type === 'rainfall' ? 1 : 2) : '--';
+        const timeStr = latest ? formatTime(latest.dateTime) : '--';
+        const hasData = data?.readings?.length > 0;
+
+        const upstreamNote = type === 'level' && station.order
+            ? `<span style="font-size:10px; color:var(--text-secondary); margin-left:8px;">#${station.order} ${station.order === 1 ? '(most upstream)' : station.order === 4 ? '(most downstream)' : ''}</span>`
+            : '';
+
+        const trend = getTrend(station.id, type);
+        const trendColors = { rising: '#e05555', falling: '#4aad4a', steady: '#b0b8d0' };
+        const trendLabels = { rising: 'Rising', falling: 'Falling', steady: 'Steady' };
+        const trendHtml = trend
+            ? `<span style="font-size:16px; color:${trendColors[trend.direction]}; margin-left:4px;" title="${trendLabels[trend.direction]}">${trend.symbol}</span>`
+            : '';
+
+        const typeLabels = { level: 'River Level', rainfall: 'Rainfall', tidal: 'Tidal Level' };
+        const chartId = `chart-${station.id}`;
+
+        const html = `
+            <div class="popup-header">
+                <h3>${station.label}${upstreamNote}</h3>
+                <div class="station-type ${type}">${typeLabels[type]}${station.river ? ' &mdash; ' + station.river : ''}</div>
+            </div>
+            <div class="popup-current">
+                <span class="value">${latestStr}</span>
+                <span class="unit">${unit}</span>${trendHtml}
+                <span class="timestamp">${timeStr}</span>
+            </div>
+            ${hasData ? `
+            <div class="popup-timerange" id="timerange-${station.id}">
+                <button data-hours="24" onclick="setTimeRange('${station.id}', 24, '${type}', this)">24h</button>
+                <button data-hours="48" onclick="setTimeRange('${station.id}', 48, '${type}', this)">48h</button>
+                <button class="active" data-hours="${7*24}" onclick="setTimeRange('${station.id}', ${7*24}, '${type}', this)">7d</button>
+                <button data-hours="${30*24}" onclick="setTimeRange('${station.id}', ${30*24}, '${type}', this)">30d</button>
+                <button data-hours="0" onclick="setTimeRange('${station.id}', 0, '${type}', this)">All</button>
+            </div>
+            <div class="popup-chart">
+                <canvas id="${chartId}"></canvas>
+            </div>
+            ` : `
+            <div class="popup-nodata">No data available for this station</div>
+            `}
+        `;
+
+        const isMobile = window.innerWidth <= 480;
+        const isTablet = window.innerWidth <= 768;
+        const popupMinWidth = isMobile ? 260 : isTablet ? 300 : 380;
+        const popupMaxWidth = isMobile ? 320 : isTablet ? 360 : 400;
+        marker.unbindPopup();
+        marker.bindPopup(html, { maxWidth: popupMaxWidth, minWidth: popupMinWidth, className: '' }).openPopup();
+
+        if (hasData) {
+            activePopupStation = station.id;
+            // Wait for popup DOM to render
+            setTimeout(() => renderChart(station.id, 7 * 24, type), 50);
+        }
+    }
+
+    function setTimeRange(stationId, hours, type, btn) {
+        // Update active button
+        const container = document.getElementById(`timerange-${stationId}`);
+        if (container) {
+            container.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+        renderChart(stationId, hours, type);
+    }
+
+    function getStation(stationId) {
+        const all = [...STATIONS.level, ...STATIONS.rainfall, ...STATIONS.tidal];
+        return all.find(s => s.id === stationId);
+    }
+
+    function renderChart(stationId, hours, type) {
+        if (activePopupChart) {
+            activePopupChart.destroy();
+            activePopupChart = null;
+        }
+
+        const canvas = document.getElementById(`chart-${stationId}`);
+        if (!canvas) return;
+
+        const data = stationData[stationId];
+        if (!data?.readings?.length) return;
+
+        let readings = data.readings;
+        if (hours > 0) {
+            const cutoff = new Date(Date.now() - hours * 3600 * 1000);
+            readings = readings.filter(r => r.dateTime >= cutoff);
+        }
+
+        // Downsample large datasets to keep charts responsive.
+        // Target ~3000 points — plenty of visual detail for a 400px-wide chart.
+        const MAX_CHART_POINTS = 3000;
+        if (readings.length > MAX_CHART_POINTS) {
+            const step = readings.length / (MAX_CHART_POINTS - 1);
+            const sampled = [readings[0]];
+            for (let i = 1; i < MAX_CHART_POINTS - 1; i++) {
+                sampled.push(readings[Math.round(i * step)]);
+            }
+            sampled.push(readings[readings.length - 1]);
+            readings = sampled;
+        }
+
+        if (readings.length === 0) {
+            // Show message
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#8890a8';
+            ctx.font = '13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('No data for this time range', canvas.width / 2, canvas.height / 2);
+            return;
+        }
+
+        const unit = type === 'tidal' ? 'mAOD' : (type === 'level' ? 'm' : 'mm');
+        const colors = { level: '#1a8a7d', rainfall: '#5574b8', tidal: '#c47a2a' };
+        const bgColors = { level: 'rgba(26, 138, 125, 0.15)', rainfall: 'rgba(85, 116, 184, 0.15)', tidal: 'rgba(196, 122, 42, 0.15)' };
+        const color = colors[type];
+        const bgColor = bgColors[type];
+
+        // Look up station for typicalRangeHigh (level stations only)
+        const station = getStation(stationId);
+        const rangeHigh = station?.typicalRangeHigh;
+
+        // Build datasets — main readings line + optional "top of normal range" reference line
+        const datasets = [{
+            data: readings.map(r => r.value),
+            borderColor: color,
+            backgroundColor: bgColor,
+            borderWidth: 1.5,
+            pointRadius: readings.length > 200 ? 0 : 1,
+            pointHoverRadius: 3,
+            fill: true,
+            tension: 0.3
+        }];
+
+        if (rangeHigh) {
+            datasets.push({
+                label: 'Top of normal range',
+                data: readings.map(() => rangeHigh),
+                borderColor: 'rgba(224, 85, 85, 0.6)',
+                borderWidth: 1,
+                borderDash: [6, 4],
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                fill: false,
+                tension: 0
+            });
+        }
+
+        // Y-axis: fixed scale for stations with typicalRangeHigh, auto for others
+        const yScale = {
+            min: 0,
+            ticks: {
+                color: '#8890a8',
+                font: { size: 10 },
+                callback: v => v.toFixed(type === 'rainfall' ? 0 : 1) + ' ' + unit
+            },
+            grid: { color: '#3a406033' }
+        };
+        if (rangeHigh) {
+            yScale.max = rangeHigh * 1.5;
+        }
+
+        activePopupChart = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: readings.map(r => r.dateTime),
+                datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: !!rangeHigh,
+                        labels: {
+                            filter: item => item.text === 'Top of normal range',
+                            color: '#8890a8',
+                            font: { size: 9 },
+                            boxWidth: 20,
+                            boxHeight: 1,
+                            padding: 6,
+                            usePointStyle: false
+                        },
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        backgroundColor: '#2a3050',
+                        titleColor: '#e0e4f0',
+                        bodyColor: '#e0e4f0',
+                        borderColor: '#3a4060',
+                        borderWidth: 1,
+                        filter: item => item.datasetIndex === 0,
+                        callbacks: {
+                            title: items => {
+                                const d = new Date(items[0].parsed.x);
+                                return d.toLocaleString();
+                            },
+                            label: item => `${item.parsed.y.toFixed(type === 'rainfall' ? 1 : 2)} ${unit}`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            tooltipFormat: 'PPpp',
+                            displayFormats: {
+                                hour: 'HH:mm',
+                                day: 'dd MMM',
+                                week: 'dd MMM',
+                                month: 'MMM yyyy'
+                            }
+                        },
+                        ticks: { color: '#8890a8', maxTicksLimit: 6, font: { size: 10 } },
+                        grid: { color: '#3a406033' }
+                    },
+                    y: yScale
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                }
+            }
+        });
+    }
+
+    // ============================================================
+    // Refresh Activity Log
+    // ============================================================
+    const MAX_LOG_ENTRIES = 6;
+
+    function showLog() {
+        const log = document.getElementById('refresh-log');
+        log.classList.remove('hidden');
+        log.innerHTML = '';
+    }
+
+    function hideLog(delay = 3000) {
+        setTimeout(() => {
+            const log = document.getElementById('refresh-log');
+            log.classList.add('hidden');
+            setTimeout(() => { log.innerHTML = ''; }, 600);
+        }, delay);
+    }
+
+    function addLogEntry(text, type = 'info') {
+        const log = document.getElementById('refresh-log');
+        const entry = document.createElement('div');
+        entry.className = `refresh-log-entry ${type}`;
+        entry.textContent = text;
+        log.appendChild(entry);
+
+        // Keep only the last N entries plus the progress bar
+        const entries = log.querySelectorAll('.refresh-log-entry');
+        while (entries.length > MAX_LOG_ENTRIES) {
+            entries[0].remove();
+            break;
+        }
+    }
+
+    function setLogProgress(current, total, label) {
+        const log = document.getElementById('refresh-log');
+        let bar = log.querySelector('.refresh-log-progress');
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.className = 'refresh-log-progress';
+            log.prepend(bar);
+        }
+        const pct = Math.round((current / total) * 100);
+        bar.innerHTML = `<div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div> ${current}/${total} ${label}`;
+    }
+
+    function removeLogProgress() {
+        const bar = document.querySelector('.refresh-log-progress');
+        if (bar) bar.remove();
+    }
+
+    // ============================================================
+    // Data Refresh
+    // ============================================================
+    async function refreshData() {
+        const btn = document.getElementById('refresh-btn');
+        btn.classList.add('loading');
+        btn.disabled = true;
+
+        const statusEl = document.getElementById('last-updated');
+        statusEl.textContent = 'Refreshing...';
+        showLog();
+        addLogEntry('Starting data refresh…', 'info');
+
+        try {
+            const allStations = [...STATIONS.level, ...STATIONS.rainfall, ...STATIONS.tidal];
+            const total = allStations.length;
+            let totalNew = 0;
+            let stationsUpdated = 0;
+            let stationsFailed = 0;
+
+            for (let i = 0; i < allStations.length; i++) {
+                const station = allStations[i];
+                setLogProgress(i + 1, total, 'stations');
+                addLogEntry(`Fetching ${station.label}…`, 'info');
+
+                try {
+                    const existing = stationData[station.id]?.readings || [];
+                    const latestTime = existing.length > 0 ? existing[existing.length - 1].dateTime : null;
+                    const now = new Date();
+                    let allItems = [];
+
+                    if (latestTime) {
+                        const gapMs = now - latestTime;
+                        const gapDays = gapMs / (1000 * 60 * 60 * 24);
+
+                        if (gapDays <= 5) {
+                            const url = `${API_BASE}/id/measures/${station.measureId}/readings?since=${latestTime.toISOString()}&_sorted&_limit=10000`;
+                            const resp = await fetch(url);
+                            const data = await resp.json();
+                            allItems = data.items || [];
+                        } else {
+                            // Large gap: fetch in 28-day chunks
+                            addLogEntry(`  ${Math.round(gapDays)}d gap — chunked fetch`, 'warn');
+                            let chunkEnd = now;
+                            const chunkDays = 28;
+                            const startLimit = latestTime;
+                            let chunkNum = 0;
+
+                            while (chunkEnd > startLimit) {
+                                chunkNum++;
+                                const chunkStart = new Date(chunkEnd - chunkDays * 86400000);
+                                const effectiveStart = chunkStart < startLimit ? startLimit : chunkStart;
+                                const startStr = effectiveStart.toISOString().split('T')[0];
+                                const endStr = chunkEnd.toISOString().split('T')[0];
+
+                                const url = `${API_BASE}/id/measures/${station.measureId}/readings?startdate=${startStr}&enddate=${endStr}&_sorted&_limit=100000`;
+                                try {
+                                    const resp = await fetch(url);
+                                    const data = await resp.json();
+                                    const chunkItems = data.items || [];
+                                    allItems = allItems.concat(chunkItems);
+                                    addLogEntry(`  chunk ${chunkNum}: ${startStr} → ${endStr} (${chunkItems.length})`, 'info');
+                                } catch (e) {
+                                    addLogEntry(`  chunk ${chunkNum} failed`, 'error');
+                                }
+
+                                chunkEnd = new Date(effectiveStart - 86400000);
+                                await new Promise(r => setTimeout(r, 300));
+                            }
+                        }
+                    } else {
+                        addLogEntry(`  No existing data — fetching 28d`, 'warn');
+                        const startDate = new Date(now - 28 * 86400000).toISOString().split('T')[0];
+                        const endDate = now.toISOString().split('T')[0];
+                        const url = `${API_BASE}/id/measures/${station.measureId}/readings?startdate=${startDate}&enddate=${endDate}&_sorted&_limit=100000`;
+                        const resp = await fetch(url);
+                        const data = await resp.json();
+                        allItems = data.items || [];
+                    }
+
+                    if (allItems.length > 0) {
+                        const newReadings = allItems
+                            .map(r => ({ dateTime: new Date(r.dateTime), value: parseFloat(r.value) }))
+                            .filter(r => !isNaN(r.value));
+
+                        const existingTimes = new Set(existing.map(r => r.dateTime.toISOString()));
+                        const merged = [...existing];
+                        let newCount = 0;
+
+                        for (const r of newReadings) {
+                            if (!existingTimes.has(r.dateTime.toISOString())) {
+                                merged.push(r);
+                                newCount++;
+                            }
+                        }
+
+                        merged.sort((a, b) => a.dateTime - b.dateTime);
+                        stationData[station.id] = { readings: merged, latest: merged[merged.length - 1] };
+
+                        if (newCount > 0) {
+                            totalNew += newCount;
+                            stationsUpdated++;
+                            addLogEntry(`${station.label}: +${newCount} readings`, 'success');
+                        } else {
+                            addLogEntry(`${station.label}: up to date`, 'success');
+                        }
+                    } else {
+                        addLogEntry(`${station.label}: no new data`, 'success');
+                    }
+                } catch (e) {
+                    stationsFailed++;
+                    addLogEntry(`${station.label}: failed`, 'error');
+                    console.warn(`Refresh failed for ${station.label}:`, e);
+                }
+            }
+
+            removeLogProgress();
+
+            // Re-create markers with updated values
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker && layer.options.zIndexOffset === 500) {
+                    map.removeLayer(layer);
+                }
+            });
+            createMarkers();
+
+            // Persist updated data
+            // Always cache to localStorage so fresh data survives a reload,
+            // even if the browser serves stale CSVs from its HTTP cache.
+            cacheToLocalStorage();
+
+            if (hasBackend) {
+                addLogEntry('Syncing to backend…', 'info');
+                try {
+                    await fetch('refresh.php', { method: 'POST' });
+                    addLogEntry('Backend sync done', 'success');
+                } catch (e) {
+                    addLogEntry('Backend sync failed — cached locally', 'warn');
+                }
+            } else {
+                addLogEntry('Cached to browser storage', 'success');
+            }
+
+            // Summary
+            const summary = `Done: ${stationsUpdated} updated, +${totalNew} readings` + (stationsFailed > 0 ? `, ${stationsFailed} failed` : '');
+            addLogEntry(summary, stationsFailed > 0 ? 'warn' : 'success');
+            statusEl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
+            hideLog(4000);
+
+        } catch (e) {
+            addLogEntry(`Refresh failed: ${e.message}`, 'error');
+            statusEl.textContent = 'Refresh failed';
+            console.error('Refresh error:', e);
+            hideLog(6000);
+        } finally {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+        }
+    }
+
+    // ============================================================
+    // Helpers
+    // ============================================================
+    function formatTime(date) {
+        const now = new Date();
+        const diff = now - date;
+        if (diff < 3600000) return Math.floor(diff / 60000) + ' min ago';
+        if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+        return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+
+    /**
+     * Calculate trend (rising / falling / steady) from recent readings.
+     * Compares the average of the last ~2 hours to the average of the
+     * 2-hour window before that. Threshold: ±0.01 m for level/tidal.
+     * Returns { direction: 'rising'|'falling'|'steady', symbol: '↑'|'↓'|'→' }
+     * or null if not enough data.
+     */
+    function getTrend(stationId, type) {
+        if (type === 'rainfall') return null; // rainfall doesn't trend the same way
+
+        const data = stationData[stationId];
+        if (!data?.readings?.length || data.readings.length < 4) return null;
+
+        const now = data.readings[data.readings.length - 1].dateTime;
+        const twoHoursAgo = new Date(now - 2 * 3600000);
+        const fourHoursAgo = new Date(now - 4 * 3600000);
+
+        const recent = data.readings.filter(r => r.dateTime >= twoHoursAgo);
+        const previous = data.readings.filter(r => r.dateTime >= fourHoursAgo && r.dateTime < twoHoursAgo);
+
+        if (recent.length < 2 || previous.length < 2) return null;
+
+        const avgRecent = recent.reduce((s, r) => s + r.value, 0) / recent.length;
+        const avgPrevious = previous.reduce((s, r) => s + r.value, 0) / previous.length;
+        const diff = avgRecent - avgPrevious;
+
+        const threshold = 0.01; // 1 cm change
+
+        if (diff > threshold) return { direction: 'rising', symbol: '↑' };
+        if (diff < -threshold) return { direction: 'falling', symbol: '↓' };
+        return { direction: 'steady', symbol: '→' };
+    }
+
+    // ============================================================
+    // LocalStorage Cache (for static deployments without a backend)
+    // ============================================================
+    const CACHE_KEY = 'floodwatch_cache';
+    const CACHE_VERSION = 1;
+
+    function cacheToLocalStorage() {
+        try {
+            const cache = { version: CACHE_VERSION, timestamp: new Date().toISOString(), stations: {} };
+            for (const [id, data] of Object.entries(stationData)) {
+                if (!data.readings?.length) continue;
+                // Only store readings newer than the CSV data would have
+                // to keep localStorage small. Store the last 7 days max.
+                const cutoff = new Date(Date.now() - 7 * 86400000);
+                const recent = data.readings.filter(r => r.dateTime >= cutoff);
+                cache.stations[id] = recent.map(r => ({
+                    t: r.dateTime.toISOString(),
+                    v: r.value
+                }));
+            }
+            localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+        } catch (e) {
+            console.warn('LocalStorage cache write failed:', e);
+        }
+    }
+
+    function loadFromLocalStorage() {
+        try {
+            const raw = localStorage.getItem(CACHE_KEY);
+            if (!raw) return;
+            const cache = JSON.parse(raw);
+            if (cache.version !== CACHE_VERSION) return;
+
+            let merged = 0;
+            for (const [id, entries] of Object.entries(cache.stations)) {
+                if (!entries?.length) continue;
+                const existing = stationData[id];
+                if (!existing) continue;
+
+                const existingTimes = new Set(existing.readings.map(r => r.dateTime.toISOString()));
+                let added = 0;
+
+                for (const entry of entries) {
+                    if (!existingTimes.has(entry.t)) {
+                        existing.readings.push({ dateTime: new Date(entry.t), value: entry.v });
+                        added++;
+                    }
+                }
+
+                if (added > 0) {
+                    existing.readings.sort((a, b) => a.dateTime - b.dateTime);
+                    existing.latest = existing.readings[existing.readings.length - 1];
+                    merged += added;
+                }
+            }
+            if (merged > 0) {
+                console.log(`Merged ${merged} cached readings from localStorage`);
+            }
+        } catch (e) {
+            console.warn('LocalStorage cache read failed:', e);
+        }
+    }
+
+    async function detectBackend() {
+        try {
+            // Quick probe: OPTIONS is lightweight and our backends respond to it.
+            // Static hosts either 404 or return the HTML fallback.
+            const resp = await fetch('refresh', { method: 'OPTIONS' });
+            if (resp.ok && resp.headers.get('access-control-allow-methods')?.includes('POST')) {
+                return true;
+            }
+            return false;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // ============================================================
+    // Init
+    // ============================================================
+    async function init() {
+        initMap();
+        loadRiverOverlay();
+        await loadAllData();
+        loadFromLocalStorage(); // merge any cached data on top of CSVs
+        createMarkers();
+
+        // Detect if we have a backend (LAMP/serve.py) or are running static
+        hasBackend = await detectBackend();
+
+        const latestTimes = Object.values(stationData)
+            .map(d => d.latest?.dateTime)
+            .filter(Boolean)
+            .sort((a, b) => b - a);
+
+        if (latestTimes.length > 0) {
+            document.getElementById('last-updated').textContent =
+                `Data from ${formatTime(latestTimes[0])}`;
+        }
+    }
+
+    init();
+    </script>
+</body>
+</html>
