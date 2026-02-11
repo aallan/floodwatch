@@ -9,7 +9,8 @@ A real-time flood monitoring dashboard for the River Taw and its tributaries in 
 Fetch historical data (first time only — takes a few minutes):
 
 ```bash
-python fetch_data.py
+python fetch_data.py            # Full history
+python fetch_data.py --recent   # Quick update (merges last 2 days)
 ```
 
 Start the local server:
@@ -47,22 +48,29 @@ The server:
 
 Press `Ctrl+C` to stop, or use `python serve.py --stop` from another terminal.
 
-### `fetch_data.py` — Bulk Historical Data Fetcher
+### `fetch_data.py` — Data Fetcher
 
-Downloads up to 2 years of historical readings for all stations. Run this once to seed the data directory, or again to backfill after a long gap.
+Downloads readings for all stations from the EA Flood Monitoring API and saves them as CSV files.
 
 ```bash
-python fetch_data.py
+python fetch_data.py            # Full fetch — up to 2 years of history
+python fetch_data.py --recent   # Quick update — last 2 days, merged with existing data
+python fetch_data.py --recent 5 # Quick update — last 5 days
 ```
+
+Run the full fetch once to seed the data directory, or again to backfill after a long gap. Use `--recent` for lightweight incremental updates — this is what the GitHub Actions workflow uses for hourly refreshes.
+
+In `--recent` mode the script loads each station's existing CSV, fetches only the specified number of days from the API, merges and deduplicates by timestamp, and writes the combined result back. This keeps the full history intact while only making a handful of quick API calls.
 
 This script:
 
-- Fetches readings in 28-day chunks going back up to 730 days
+- Fetches readings in 28-day chunks (full mode) or a single short request (`--recent` mode)
+- Merges new readings with existing CSV data when using `--recent`
 - Saves each station's data as a CSV in `data/`
 - Writes `data/stations.csv` with metadata for all stations
 - Deduplicates readings by timestamp
 - Includes polite 300ms delays between API requests
-- Stops fetching for a station after 3 consecutive empty chunks
+- Stops fetching for a station after 3 consecutive empty chunks (full mode)
 
 ### `refresh.php` — LAMP Stack Backend (Optional)
 
@@ -503,7 +511,7 @@ Add this line to refresh every 15 minutes (matching the EA's measurement interva
 Or if you want to use the Python fetcher for a more thorough periodic sync:
 
 ```cron
-0 */6 * * * cd /var/www/html/floodwatch && python3 fetch_data.py > /dev/null 2>&1 && chown -R www-data:www-data data/
+0 * * * * cd /var/www/html/floodwatch && python3 fetch_data.py --recent > /dev/null 2>&1 && chown -R www-data:www-data data/
 ```
 
 #### 9. Updating the Site
@@ -626,11 +634,11 @@ The app automatically detects whether it's running on a backend (LAMP/serve.py) 
 
 On all deployments, refreshed data is cached to `localStorage` first, so a page reload always shows the latest data you've fetched — even if the browser's HTTP cache serves an older CSV. On App Platform, the initial page load serves the committed CSV data, then merges any cached readings on top.
 
-To keep the committed CSV baseline fresh, periodically run `fetch_data.py` and push:
+To keep the committed CSV baseline fresh, the included GitHub Actions workflow runs `fetch_data.py --recent` every hour, commits any new data, and pushes — triggering an automatic redeploy. You can also update manually:
 
 ```bash
 cd /path/to/floodwatch
-python fetch_data.py
+python fetch_data.py --recent   # Quick: merge last 2 days
 git add data/
 git commit -m "Update station data"
 git push
@@ -640,41 +648,52 @@ App Platform auto-deploys on push, so the site will serve the updated CSVs withi
 
 #### Automating with GitHub Actions (Recommended)
 
-Create `.github/workflows/refresh-data.yml` to update the CSVs on a schedule:
+The workflow file `.github/workflows/update-data.yml` updates the CSVs on a schedule:
 
 ```yaml
-name: Refresh station data
+name: Update Station Data
 
 on:
   schedule:
-    - cron: '30 * * * *'   # Every hour at :30
-  workflow_dispatch:        # Manual trigger
+    - cron: '30 * * * *'   # Every hour at :30 past
+  workflow_dispatch:        # Manual trigger from Actions tab
 
 jobs:
-  refresh:
+  update-data:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    permissions:
+      contents: write
 
-      - uses: actions/setup-python@v5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Fetch latest data
-        run: python fetch_data.py
+      - name: Fetch recent data
+        run: python fetch_data.py --recent
 
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/
-          git diff --staged --quiet || git commit -m "Refresh station data [automated]"
-          git push
+          if git diff --staged --quiet; then
+            echo "No data changes to commit"
+          else
+            git commit -m "Update station data $(date -u +'%Y-%m-%d %H:%M') UTC"
+            git push
+          fi
 ```
 
-This runs at 30 minutes past every hour. EA stations report every 15 minutes but the data takes ~20 minutes to appear on their API, so running at :30 reliably captures each hour's :00 reading. Each run commits the updated CSVs and pushes — triggering an automatic redeploy on App Platform.
+This runs at 30 minutes past every hour. EA stations report every 15 minutes but the data takes ~20 minutes to appear on the API, so running at :30 reliably captures each hour's :00 reading. The `--recent` flag fetches only the last 2 days of data and merges it with the existing CSVs, so each run is fast (~30 seconds for all 19 stations) and only commits if data actually changed. Each push triggers an automatic redeploy on App Platform.
 
-**Free tier fit:** `fetch_data.py` typically completes in under 2 minutes. At 24 runs/day × 31 days × ~2 minutes ≈ **1,488 minutes/month**, comfortably within the 2,000-minute free tier allowance.
+You can also trigger the workflow manually from the **Actions** tab in your GitHub repo.
+
+**Free tier fit:** Each `--recent` run typically completes in under 1 minute. At 24 runs/day × 31 days × ~1 minute ≈ **744 minutes/month**, well within the 2,000-minute free tier allowance.
 
 #### Data Transfer Estimate
 
@@ -720,15 +739,16 @@ If you're deploying to an existing LAMP server rather than a fresh Digital Ocean
 
 ```
 floodwatch/
-  index.html          # Single-page app (HTML + inline CSS + JS)
-  fetch_data.py       # Bulk historical data fetcher
-  serve.py            # Local Python dev server with refresh proxy
-  refresh.php         # PHP refresh endpoint for LAMP deployment
-  README.md           # This file
-  .gitignore          # Excludes .server.pid, __pycache__, .DS_Store
-  .do/app.yaml        # Digital Ocean App Platform spec
-  data/               # CSV data files and GeoJSON river overlays
-  .server.pid         # Auto-managed server PID file (gitignored)
+  index.html                          # Single-page app (HTML + inline CSS + JS)
+  fetch_data.py                       # Data fetcher (full or --recent incremental)
+  serve.py                            # Local Python dev server with refresh proxy
+  refresh.php                         # PHP refresh endpoint for LAMP deployment
+  README.md                           # This file
+  .gitignore                          # Excludes .server.pid, __pycache__, .DS_Store
+  .do/app.yaml                        # Digital Ocean App Platform spec
+  .github/workflows/update-data.yml   # Hourly GitHub Actions data refresh
+  data/                               # CSV data files and GeoJSON river overlays
+  .server.pid                         # Auto-managed server PID file (gitignored)
 ```
 
 ## Technology

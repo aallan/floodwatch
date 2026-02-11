@@ -3,6 +3,7 @@
 Fetch flood monitoring and rainfall data from the Environment Agency API.
 Saves data as CSV files for the static site.
 """
+import argparse
 import csv
 import json
 import os
@@ -167,6 +168,33 @@ def fetch_all_readings(station, going_back_days=365*2):
     return unique
 
 
+def load_existing_csv(filename):
+    """Load existing readings from a CSV file as a list of dicts."""
+    filepath = os.path.join(DATA_DIR, filename)
+    if not os.path.exists(filepath):
+        return []
+    readings = []
+    with open(filepath, "r") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            readings.append({"dateTime": row["dateTime"], "value": row["value"]})
+    return readings
+
+
+def merge_readings(existing, new_readings):
+    """Merge existing and new readings, deduplicate, and sort."""
+    combined = existing + new_readings
+    seen = set()
+    unique = []
+    for r in combined:
+        dt = r.get("dateTime", "")
+        if dt and dt not in seen:
+            seen.add(dt)
+            unique.append(r)
+    unique.sort(key=lambda x: x.get("dateTime", ""))
+    return unique
+
+
 def save_readings_csv(station, readings, filename):
     """Save readings to a CSV file."""
     filepath = os.path.join(DATA_DIR, filename)
@@ -203,26 +231,45 @@ def save_stations_csv():
     print(f"Saved station metadata to {filepath}")
 
 
+def get_station_filename(station):
+    """Get the CSV filename for a station."""
+    if station["type"] == "rainfall":
+        return f"rainfall_{station['id']}.csv"
+    return f"level_{station['id']}_{station['label'].lower().replace(' ', '_')}.csv"
+
+
 def main():
+    parser = argparse.ArgumentParser(description="Fetch EA flood monitoring data")
+    parser.add_argument("--recent", type=int, metavar="DAYS", nargs="?", const=2,
+                        help="Only fetch recent data (default: 2 days) and merge with existing CSVs")
+    args = parser.parse_args()
+
     os.makedirs(DATA_DIR, exist_ok=True)
 
     # Save station metadata
     save_stations_csv()
 
-    # Fetch level station data
-    print("\n=== Fetching River Level Data ===")
-    for station in LEVEL_STATIONS:
-        print(f"\nStation: {station['label']} ({station['id']})")
-        readings = fetch_all_readings(station)
-        filename = f"level_{station['id']}_{station['label'].lower().replace(' ', '_')}.csv"
-        save_readings_csv(station, readings, filename)
+    all_stations = LEVEL_STATIONS + RAINFALL_STATIONS
+    going_back = args.recent if args.recent else 365 * 2
 
-    # Fetch rainfall station data
-    print("\n=== Fetching Rainfall Data ===")
-    for station in RAINFALL_STATIONS:
+    if args.recent:
+        print(f"\n=== Recent mode: fetching last {going_back} days and merging ===")
+    else:
+        print(f"\n=== Full mode: fetching up to {going_back} days of history ===")
+
+    for station in all_stations:
         print(f"\nStation: {station['label']} ({station['id']})")
-        readings = fetch_all_readings(station)
-        filename = f"rainfall_{station['id']}.csv"
+        filename = get_station_filename(station)
+
+        new_readings = fetch_all_readings(station, going_back_days=going_back)
+
+        if args.recent:
+            existing = load_existing_csv(filename)
+            readings = merge_readings(existing, new_readings)
+            print(f"  Merged: {len(existing)} existing + {len(new_readings)} new = {len(readings)} total")
+        else:
+            readings = new_readings
+
         save_readings_csv(station, readings, filename)
 
     print("\n=== Done ===")
