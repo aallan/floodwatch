@@ -560,13 +560,12 @@
                 height: 160px;
             }
 
-            /* Legend: more compact, pushed above mobile browser toolbar */
+            /* Legend: more compact */
             .legend {
                 padding: 8px 12px;
                 font-size: 11px;
                 max-height: 50vh;
                 overflow-y: auto;
-                margin-bottom: 70px !important;
             }
 
             .legend h4 {
@@ -697,13 +696,17 @@
                 height: 40px !important;
             }
 
-            /* Legend: collapsible on phone, pushed above mobile browser toolbar */
+            /* Legend: collapsible on phone, fixed position to avoid Safari toolbar */
             .legend {
+                position: fixed !important;
+                bottom: auto !important;
+                top: 60px;
+                left: 10px;
                 padding: 6px 10px;
                 font-size: 10px;
                 line-height: 1.6;
                 max-width: 150px;
-                margin-bottom: 60px !important;
+                z-index: 1000;
             }
 
             .legend .legend-body {
