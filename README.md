@@ -124,14 +124,16 @@ If there isn't enough recent data (fewer than 2 readings in either time window),
 
 ### River Overlays
 
-Four rivers are displayed as coloured GeoJSON overlays with flow direction arrows:
+Six rivers are displayed as coloured GeoJSON overlays with flow direction arrows:
 
 | River | Colour | Role |
 |-------|--------|------|
 | River Taw | Teal (#1a8a7d) | Main stem — source to estuary |
 | River Mole | Blue (#2e7dab) | Tributary, joins near Newnham Bridge |
 | Little Dart River | Brown (#8a6e1a) | Tributary, joins upstream of Newnham Bridge |
-| River Yeo | Purple (#7a4a8a) | Tributary |
+| River Yeo | Purple (#7a4a8a) | Tributary, joins near Barnstaple |
+| Lapford Yeo | Burnt orange (#ab5e2e) | Tributary, joins the Taw near Lapford |
+| Crooked Oak | Green (#5a8a3a) | Tributary, flows into the River Mole near South Molton |
 
 Flow arrows (triangles) point downstream. The River Taw also has "UPSTREAM (Source)" and "DOWNSTREAM (Estuary)" labels. All rivers have a name label at their midpoint.
 
@@ -148,9 +150,9 @@ The dashboard adapts to smaller screens with two CSS breakpoints:
 | Breakpoint | Target | Key changes |
 |------------|--------|-------------|
 | ≤ 768px | Tablets | Compact header, smaller popups (320px), scrollable legend, compact chart height |
-| ≤ 480px | Phones | Hidden subtitle and "last updated" text, collapsible legend toggle, 280px popups, larger zoom controls, initial zoom level reduced to 10 |
+| ≤ 480px | Phones | Hidden subtitle, compact "last updated" text below refresh button, collapsible legend toggle (top-right), 280px popups, larger zoom controls, initial zoom level 10 |
 
-On phones, the legend collapses to a single "Legend" button to save screen space — tap to expand. The map starts at a wider zoom level to show all stations at a glance.
+On phones, the legend collapses to a single "Legend ▸" button in the top-right corner — tap to expand. The "last updated" timestamp is shown in a smaller font stacked below the Refresh button. The map starts at a wider zoom level to show all stations at a glance.
 
 ## Monitoring Stations
 
@@ -183,12 +185,21 @@ On phones, the legend collapses to a single "Legend" button to save screen space
 |---------|-----|---------|
 | Chulmleigh | 50125 | 50.908, -3.864 |
 
-### River Yeo (tributary)
+### River Yeo (tributary, joins near Barnstaple)
 
-| # | Station | ID | Lat/Lon |
-|---|---------|-----|---------|
-| 1 | Lapford | 50151 | 50.858, -3.811 |
-| 2 | Collard Bridge | 50114 | 51.100, -4.010 |
+| Station | ID | Lat/Lon |
+|---------|-----|---------|
+| Collard Bridge | 50114 | 51.100, -4.010 |
+
+### Lapford Yeo (tributary, joins the Taw near Lapford)
+
+| Station | ID | Lat/Lon |
+|---------|-----|---------|
+| Lapford | 50151 | 50.858, -3.811 |
+
+### Crooked Oak (tributary, flows into the River Mole)
+
+No monitoring stations on this river.
 
 ### Rainfall Stations
 
@@ -302,10 +313,12 @@ data/
   rainfall_50194.csv
   rainfall_E82120.csv
   rainfall_47158.csv
-  river_taw.geojson                     # River geometry (4 files)
+  river_taw.geojson                     # River geometry (6 files)
   river_mole.geojson
   river_little_dart.geojson
   river_yeo.geojson
+  river_lapford_yeo.geojson
+  river_crooked_oak.geojson
 ```
 
 ### CSV Format
@@ -600,7 +613,7 @@ The CSV data files and GeoJSON overlays are committed to the repo — they're sm
 
 **Option B: Via the CLI**
 
-Install [doctl](https://docs.digitalocean.com/reference/doctl/how-to/install/) and authenticate, then edit `.do/app.yaml` to replace `YOUR_GITHUB_USERNAME` with your actual GitHub username:
+Install [doctl](https://docs.digitalocean.com/reference/doctl/how-to/install/) and authenticate, then:
 
 ```bash
 doctl apps create --spec .do/app.yaml
@@ -631,12 +644,12 @@ Each page load serves the HTML, 19 CSV data files, and 4 GeoJSON river overlays.
 |-------|----------|-------------------|
 | `index.html` | 61 KB | ~14 KB |
 | 19 CSV files | 2.7 MB | ~500 KB |
-| 4 GeoJSON files | 233 KB | ~60 KB |
-| **Total per visit** | **~3 MB** | **~575 KB** |
+| 6 GeoJSON files | 240 KB | ~65 KB |
+| **Total per visit** | **~3 MB** | **~580 KB** |
 
-App Platform serves static files with gzip compression, so actual transfer is roughly 575 KB per visit. CSV requests include a cache-busting query parameter (`?t=...`) to ensure the browser always fetches fresh data, which means the CDN may not cache CSVs between visits — but at ~500 KB this has negligible impact on transfer.
+App Platform serves static files with gzip compression, so actual transfer is roughly 580 KB per visit. CSV requests include a cache-busting query parameter (`?t=...`) to ensure the browser always fetches fresh data, which means the CDN may not cache CSVs between visits — but at ~500 KB this has negligible impact on transfer.
 
-**Free tier: 1 GiB/month outbound transfer.** That allows approximately **1,800 page loads/month** — around 60 visits/day. For a personal or small-team dashboard this is plenty. If you share the link more widely and exceed the limit, upgrading to a $3/mo static site plan removes the cap.
+**Free tier: 1 GiB/month outbound transfer.** That allows approximately **1,750 page loads/month** — around 55 visits/day. For a personal or small-team dashboard this is plenty. If you share the link more widely and exceed the limit, upgrading to a $3/mo static site plan removes the cap.
 
 The hourly GitHub Actions deploys trigger rebuilds on App Platform, but build traffic is internal and not counted as outbound transfer.
 
@@ -744,9 +757,13 @@ floodwatch/
   serve.py                            # Local Python dev server with refresh proxy
   refresh.php                         # PHP refresh endpoint for LAMP deployment
   README.md                           # This file
+  LICENSE                             # MIT licence
   .gitignore                          # Excludes .server.pid, __pycache__, .DS_Store
   .do/app.yaml                        # Digital Ocean App Platform spec
   .github/workflows/update-data.yml   # Hourly GitHub Actions data refresh
+  images/                             # Static images
+    screenshot.png                    # README screenshot
+    opengraph.png                     # Social media preview (1200×630)
   data/                               # CSV data files and GeoJSON river overlays
   .server.pid                         # Auto-managed server PID file (gitignored)
 ```
