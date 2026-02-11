@@ -4,7 +4,7 @@ region: lon
 static_sites:
   - name: floodwatch
     github:
-      repo: YOUR_GITHUB_USERNAME/floodwatch
+      repo: aallan/floodwatch
       branch: main
       deploy_on_push: true
     environment_slug: html
