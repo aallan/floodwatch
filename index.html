@@ -688,18 +688,13 @@
                 height: 40px !important;
             }
 
-            /* Push Leaflet bottom-left controls above Safari/Chrome bottom toolbar */
-            .leaflet-bottom.leaflet-left {
-                bottom: env(safe-area-inset-bottom, 20px);
-                padding-bottom: 10px;
-            }
-
-            /* Legend: collapsible on phone */
+            /* Legend: collapsible on phone, pushed above mobile browser toolbar */
             .legend {
                 padding: 6px 10px;
                 font-size: 10px;
                 line-height: 1.6;
                 max-width: 150px;
+                margin-bottom: 60px !important;
             }
 
             .legend .legend-body {
