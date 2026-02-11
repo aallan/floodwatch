@@ -9,7 +9,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -118,7 +118,7 @@ def fetch_all_readings(station, going_back_days=365*2):
     measure_id = get_measure_id(station)
 
     all_readings = []
-    end_date = datetime.utcnow().date()
+    end_date = datetime.now(timezone.utc).date()
 
     # The API provides recent data (up to ~4 weeks) directly
     # For older data, we use date ranges which the API supports
