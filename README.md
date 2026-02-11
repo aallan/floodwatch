@@ -623,7 +623,47 @@ In the App Platform dashboard:
 - Add the CNAME record it gives you to your DNS provider
 - SSL is provisioned automatically
 
-#### Keeping Data Fresh
+#### Data Transfer Estimate
+
+Each page load serves the HTML, 19 CSV data files, and 4 GeoJSON river overlays. CDN libraries (Leaflet, Chart.js, PapaParse) are loaded from external CDNs and don't count towards App Platform transfer.
+
+| Asset | Raw size | Gzipped (approx) |
+|-------|----------|-------------------|
+| `index.html` | 61 KB | ~14 KB |
+| 19 CSV files | 2.7 MB | ~500 KB |
+| 4 GeoJSON files | 233 KB | ~60 KB |
+| **Total per visit** | **~3 MB** | **~575 KB** |
+
+App Platform serves static files with gzip compression, so actual transfer is roughly 575 KB per visit. CSV requests include a cache-busting query parameter (`?t=...`) to ensure the browser always fetches fresh data, which means the CDN may not cache CSVs between visits — but at ~500 KB this has negligible impact on transfer.
+
+**Free tier: 1 GiB/month outbound transfer.** That allows approximately **1,800 page loads/month** — around 60 visits/day. For a personal or small-team dashboard this is plenty. If you share the link more widely and exceed the limit, upgrading to a $3/mo static site plan removes the cap.
+
+The hourly GitHub Actions deploys trigger rebuilds on App Platform, but build traffic is internal and not counted as outbound transfer.
+
+#### Costs
+
+| Resource | Cost |
+|----------|------|
+| App Platform (Static Site) | **Free** (up to 3 apps, 1 GiB outbound/mo, ~1,800 visits) |
+| Custom domain | ~$10/yr |
+| SSL | Free (automatic) |
+| GitHub Actions | Free (2,000 mins/mo on free tier, ~1,500 used) |
+| EA Flood Monitoring API | Free |
+| **Total** | **$0/mo** |
+
+If you exceed the free tier's 1 GiB/month transfer or need more than 3 apps, static site plans start at $3/mo.
+
+### Generic LAMP Stack
+
+If you're deploying to an existing LAMP server rather than a fresh Digital Ocean droplet, the key steps are:
+
+1. Upload all files to your web root
+2. Ensure `data/` is writable by the web server user (`www-data`, `apache`, or `nginx`)
+3. Ensure PHP has `allow_url_fopen = On`
+4. Optionally run `python3 fetch_data.py` to seed historical data
+5. Optionally set up a cron job to call `refresh.php` periodically
+
+## Keeping Data Fresh
 
 The app automatically detects whether it's running on a backend (LAMP/serve.py) or as a static site (App Platform) and adapts the Refresh button accordingly:
 
@@ -646,7 +686,7 @@ git push
 
 App Platform auto-deploys on push, so the site will serve the updated CSVs within a minute or two.
 
-#### Automating with GitHub Actions (Recommended)
+### Automating with GitHub Actions
 
 The workflow file `.github/workflows/update-data.yml` updates the CSVs on a schedule:
 
@@ -694,46 +734,6 @@ This runs at 30 minutes past every hour. EA stations report every 15 minutes but
 You can also trigger the workflow manually from the **Actions** tab in your GitHub repo.
 
 **Free tier fit:** Each `--recent` run typically completes in under 1 minute. At 24 runs/day × 31 days × ~1 minute ≈ **744 minutes/month**, well within the 2,000-minute free tier allowance.
-
-#### Data Transfer Estimate
-
-Each page load serves the HTML, 19 CSV data files, and 4 GeoJSON river overlays. CDN libraries (Leaflet, Chart.js, PapaParse) are loaded from external CDNs and don't count towards App Platform transfer.
-
-| Asset | Raw size | Gzipped (approx) |
-|-------|----------|-------------------|
-| `index.html` | 61 KB | ~14 KB |
-| 19 CSV files | 2.7 MB | ~500 KB |
-| 4 GeoJSON files | 233 KB | ~60 KB |
-| **Total per visit** | **~3 MB** | **~575 KB** |
-
-App Platform serves static files with gzip compression, so actual transfer is roughly 575 KB per visit. CSV requests include a cache-busting query parameter (`?t=...`) to ensure the browser always fetches fresh data, which means the CDN may not cache CSVs between visits — but at ~500 KB this has negligible impact on transfer.
-
-**Free tier: 1 GiB/month outbound transfer.** That allows approximately **1,800 page loads/month** — around 60 visits/day. For a personal or small-team dashboard this is plenty. If you share the link more widely and exceed the limit, upgrading to a $3/mo static site plan removes the cap.
-
-The hourly GitHub Actions deploys trigger rebuilds on App Platform, but build traffic is internal and not counted as outbound transfer.
-
-#### Costs
-
-| Resource | Cost |
-|----------|------|
-| App Platform (Static Site) | **Free** (up to 3 apps, 1 GiB outbound/mo, ~1,800 visits) |
-| Custom domain | ~$10/yr |
-| SSL | Free (automatic) |
-| GitHub Actions | Free (2,000 mins/mo on free tier, ~1,500 used) |
-| EA Flood Monitoring API | Free |
-| **Total** | **$0/mo** |
-
-If you exceed the free tier's 1 GiB/month transfer or need more than 3 apps, static site plans start at $3/mo.
-
-### Generic LAMP Stack
-
-If you're deploying to an existing LAMP server rather than a fresh Digital Ocean droplet, the key steps are:
-
-1. Upload all files to your web root
-2. Ensure `data/` is writable by the web server user (`www-data`, `apache`, or `nginx`)
-3. Ensure PHP has `allow_url_fopen = On`
-4. Optionally run `python3 fetch_data.py` to seed historical data
-5. Optionally set up a cron job to call `refresh.php` periodically
 
 ## Project Structure
 
