@@ -1022,7 +1022,7 @@
         const allCoords = geojson.features.flatMap(f => f.geometry.coordinates);
         if (allCoords.length > 0) {
             const mid = allCoords[Math.floor(allCoords.length / 2)];
-            addLabel(mid[1] + 0.005, mid[0], river.name, river.color, 140);
+            addLabel(mid[1] + 0.005, mid[0], river.name, river.color);
         }
 
         if (river.name === 'River Taw') {
@@ -1032,12 +1032,12 @@
         }
     }
 
-    function addLabel(lat, lon, text, color, width = 120) {
+    function addLabel(lat, lon, text, color) {
         const icon = L.divIcon({
-            html: `<div style="background:${color}18; color:${color}; padding:3px 10px; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:0.8px; border:1px solid ${color}33; white-space:nowrap;">${text}</div>`,
+            html: `<div style="background:${color}18; color:${color}; padding:3px 10px; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:0.8px; border:1px solid ${color}33; white-space:nowrap; width:max-content; transform:translateX(-50%);">${text}</div>`,
             className: '',
-            iconSize: [width, 22],
-            iconAnchor: [width / 2, 11]
+            iconSize: [0, 0],
+            iconAnchor: [0, 11]
         });
         L.marker([lat, lon], { icon, interactive: false }).addTo(map);
     }
