@@ -2,7 +2,7 @@
 
 ![Floodwatch screenshot](images/screenshot.png)
 
-A real-time flood monitoring dashboard for the River Taw and its tributaries in Devon, UK. Displays river levels, tidal levels, and rainfall data from Environment Agency monitoring stations on an interactive map with flow visualisation and time-series charts.
+A real-time flood monitoring dashboard for the River Taw and its tributaries in Devon, UK. Displays river levels, tidal levels, rainfall data, and active flood warnings from Environment Agency monitoring stations on an interactive map with flow visualisation and time-series charts.
 
 ## Quick Start
 
@@ -94,6 +94,8 @@ Each marker displays the latest reading value. Click any marker to open a popup 
 - "Top of normal range" reference line (dashed red) on level station charts
 - Station name, type, and river
 
+Active flood warnings and alerts for the Taw catchment are shown in a banner below the header (see Flood Warnings below).
+
 ### High Water Level Warning
 
 River level station markers turn **red** when the current reading exceeds 70% of the station's typical range high (the EA's 95th-percentile historical value). When the level drops back below the 70% threshold, the marker returns to its normal teal colour on the next data load or refresh.
@@ -121,6 +123,24 @@ The trend is calculated by fitting a linear-regression slope over the last 1 hou
 The trend badge also appears in the popup next to the current value. Rainfall stations do not show a trend indicator.
 
 If there isn't enough recent data (fewer than 3 readings in the last hour), no badge is shown.
+
+### Flood Warnings
+
+The dashboard fetches active flood warnings and alerts from the EA Flood Monitoring API on page load and on each refresh. Only warnings for the Taw catchment are shown (15 flood area IDs covering the River Taw, Okement, Landkey Stream, and the tidal estuary).
+
+When active warnings exist, a coloured banner appears below the header:
+
+| Severity | Label | Banner colour |
+|----------|-------|---------------|
+| 1 | Severe Flood Warning | Red (pulsing icon) |
+| 2 | Flood Warning | Amber |
+| 3 | Flood Alert | Yellow |
+
+Click the banner to expand and see details for each warning, including the EA's situation message, the affected river, and when the warning was raised.
+
+When no warnings are in force, a small green "No warnings" indicator appears in the header alongside the last-updated timestamp. On phones, only the green dot is shown to save space.
+
+Severity level 4 ("Warning no longer in force") is filtered out — only active warnings appear.
 
 ### River Overlays
 
@@ -266,6 +286,7 @@ Examples:
 |---------|----------|
 | Recent readings | `GET /id/measures/{measureId}/readings?since={ISO8601}&_sorted&_limit=10000` |
 | Date range | `GET /id/measures/{measureId}/readings?startdate={YYYY-MM-DD}&enddate={YYYY-MM-DD}&_sorted&_limit=100000` |
+| Flood warnings | `GET /id/floods?county=Devon` |
 | Station lookup | `GET /id/stations?RLOIid={id}` |
 
 ### Refresh Logic
