@@ -42,6 +42,10 @@
             --accent-tidal: #c47a2a;
             --border: #404860;
             --danger: #d94a4a;
+            --warning-severe: #d94a4a;
+            --warning-warning: #e08a3a;
+            --warning-alert: #d4b84a;
+            --warning-clear: #4aad4a;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -149,9 +153,143 @@
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        #map {
-            height: calc(100vh - 52px); /* fallback */
+        /* Flood status (no-warnings indicator in header) */
+        .flood-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: var(--warning-clear);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .flood-status.visible { opacity: 1; }
+        .flood-status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--warning-clear);
+        }
+        .flood-status-label { white-space: nowrap; }
+
+        /* Flood warnings banner */
+        .flood-warnings {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            z-index: 999;
+            position: relative;
+        }
+        .flood-warnings.hidden { display: none; }
+
+        .flood-warnings-summary {
+            display: flex;
+            align-items: center;
+            padding: 8px 20px;
+            cursor: pointer;
+            gap: 10px;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            min-height: 38px;
+        }
+        .flood-warnings-summary:hover { background: rgba(255,255,255,0.03); }
+
+        .flood-warnings-icon { font-size: 16px; flex-shrink: 0; }
+        .flood-warnings-text { flex: 1; font-size: 13px; font-weight: 500; color: var(--text-primary); }
+        .flood-warnings-chevron {
+            font-size: 14px;
+            color: var(--text-secondary);
+            transition: transform 0.2s;
+            flex-shrink: 0;
+        }
+        .flood-warnings.expanded .flood-warnings-chevron { transform: rotate(180deg); }
+
+        /* Severity-specific banner styling */
+        .flood-warnings.severity-1 .flood-warnings-summary {
+            border-left: 4px solid var(--warning-severe);
+            background: rgba(217,74,74,0.12);
+        }
+        .flood-warnings.severity-2 .flood-warnings-summary {
+            border-left: 4px solid var(--warning-warning);
+            background: rgba(224,138,58,0.08);
+        }
+        .flood-warnings.severity-3 .flood-warnings-summary {
+            border-left: 4px solid var(--warning-alert);
+            background: rgba(212,184,74,0.06);
+        }
+
+        /* Pulse animation for severe warnings */
+        .flood-warnings.severity-1 .flood-warnings-icon {
+            animation: warningPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes warningPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Expanded details panel */
+        .flood-warnings-details {
+            display: none;
+            padding: 0 20px 12px;
+            border-top: 1px solid var(--border);
+        }
+        .flood-warnings.expanded .flood-warnings-details { display: block; }
+
+        .flood-warning-item {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(64,72,96,0.5);
+        }
+        .flood-warning-item:last-child { border-bottom: none; }
+
+        .flood-warning-item-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .flood-warning-severity {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2px 8px;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+        .flood-warning-severity.sev-1 { background: var(--warning-severe); color: white; }
+        .flood-warning-severity.sev-2 { background: var(--warning-warning); color: white; }
+        .flood-warning-severity.sev-3 { background: var(--warning-alert); color: #333; }
+
+        .flood-warning-description {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .flood-warning-message {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-top: 4px;
+        }
+        .flood-warning-meta {
+            font-size: 10px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Content area: flex column so map fills remaining space */
+        #content-area {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 52px);
             height: calc(100dvh - 52px);
+        }
+
+        #map {
+            flex: 1;
+            min-height: 0;
             width: 100%;
         }
 
@@ -582,10 +720,15 @@
                 font-size: 12px;
             }
 
-            #map {
+            #content-area {
                 height: calc(100vh - 46px); /* fallback */
                 height: calc(100dvh - 46px);
             }
+
+            .flood-warnings-summary { padding: 6px 12px; min-height: 34px; gap: 8px; }
+            .flood-warnings-text { font-size: 12px; }
+            .flood-warnings-details { padding: 0 12px 10px; }
+            .flood-warning-item { padding: 8px 0; }
 
             /* Popups: fill more of the viewport */
             .leaflet-popup-content {
@@ -698,10 +841,19 @@
                 gap: 4px;
             }
 
-            #map {
+            #content-area {
                 height: calc(100vh - 52px); /* fallback */
                 height: calc(100dvh - 52px);
             }
+
+            .flood-status-label { display: none; }
+            .flood-warnings-summary { padding: 5px 10px; min-height: 30px; gap: 6px; }
+            .flood-warnings-icon { font-size: 14px; }
+            .flood-warnings-text { font-size: 11px; }
+            .flood-warnings-chevron { font-size: 12px; }
+            .flood-warnings-details { padding: 0 10px 8px; max-height: 40vh; overflow-y: auto; }
+            .flood-warning-description { font-size: 12px; }
+            .flood-warning-message { font-size: 11px; }
 
             /* Popups: near full-width */
             .leaflet-popup-content {
@@ -897,6 +1049,10 @@
             <a href="https://github.com/aallan/floodwatch" class="github-link" target="_blank" rel="noopener">View on GitHub</a>
         </div>
         <div class="header-right">
+            <span class="flood-status" id="flood-status">
+                <span class="flood-status-dot"></span>
+                <span class="flood-status-label">No warnings</span>
+            </span>
             <span class="last-updated" id="last-updated"></span>
             <button id="refresh-btn" onclick="refreshData()">
                 <span class="spinner"></span>
@@ -904,7 +1060,17 @@
             </button>
         </div>
     </div>
-    <div id="map"></div>
+    <div id="content-area">
+        <div id="flood-warnings" class="flood-warnings hidden">
+            <div class="flood-warnings-summary" onclick="toggleFloodWarnings()">
+                <span class="flood-warnings-icon"></span>
+                <span class="flood-warnings-text" id="flood-warnings-text"></span>
+                <span class="flood-warnings-chevron">&#x25BE;</span>
+            </div>
+            <div class="flood-warnings-details" id="flood-warnings-details"></div>
+        </div>
+        <div id="map"></div>
+    </div>
     <div class="refresh-log hidden" id="refresh-log"></div>
 
     <script>
@@ -947,6 +1113,33 @@
         tidal: [
             { id: '50198', label: 'Barnstaple (Tidal)', lat: 51.080046, lon: -4.064537, file: 'level_50198_barnstaple_(tidal).csv', measureId: '50198-level-tidal_level-i-15_min-mAOD', river: 'River Taw' },
         ]
+    };
+
+    // Flood warning area IDs for the Taw catchment
+    const TAW_FLOOD_AREAS = [
+        // Flood Warning Areas (River Taw specific)
+        '113FWF2E1A',   // River Taw (Upper) Sticklepath to Taw Bridge
+        '113FWF2E1D',   // River Taw (Upper) at North Tawton
+        '113FWF2E1C',   // River Taw (Middle) Taw Bridge to Newnham Bridge
+        '113FWF2E1B',   // River Taw (Lower) Newnham Bridge to Barnstaple
+        '113FWF2E1E',   // River Taw (Lower) at Bishops Tawton
+        '113FWT2T2A4',  // Tidal River Taw Bishops Tawton to Barnstaple
+        // Flood Alert Areas (broader catchment)
+        '113WAFTW12',   // North Dartmoor Rivers (upper Taw + Okement)
+        '113WAFTW03',   // Lower Taw area
+        // Okement areas
+        '113FWF2D5A', '113FWF2D3A', '113FWF2D4A',
+        // Landkey Stream
+        '113FWFLANDKEY01',
+        // Tidal estuary
+        '113FWC2T2A2', '113FWT2T2A3', '113FWC2T2A1',
+    ];
+
+    const FLOOD_SEVERITY = {
+        1: { label: 'Severe Flood Warning', icon: '\u26A0\uFE0F', cssClass: 'sev-1' },
+        2: { label: 'Flood Warning',        icon: '\u26A0\uFE0F', cssClass: 'sev-2' },
+        3: { label: 'Flood Alert',          icon: '\u26A0',       cssClass: 'sev-3' },
+        4: { label: 'No Longer In Force',   icon: '\u2713',       cssClass: 'sev-4' },
     };
 
     // ============================================================
@@ -1757,6 +1950,11 @@
             }
 
             // Summary
+            // Refresh flood warnings
+            addLogEntry('Checking flood warnings…', 'info');
+            await fetchFloodWarnings();
+            addLogEntry('Flood warnings updated', 'success');
+
             const summary = `Done: ${stationsUpdated} updated, +${totalNew} readings` + (stationsFailed > 0 ? `, ${stationsFailed} failed` : '');
             addLogEntry(summary, stationsFailed > 0 ? 'warn' : 'success');
             statusEl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
@@ -1822,6 +2020,117 @@
         if (slope > threshold) return { direction: 'rising', symbol: '↑' };
         if (slope < -threshold) return { direction: 'falling', symbol: '↓' };
         return { direction: 'steady', symbol: '→' };
+    }
+
+    // ============================================================
+    // Flood Warnings (EA Flood Monitoring API)
+    // ============================================================
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    async function fetchFloodWarnings() {
+        try {
+            const resp = await fetch(API_BASE + '/id/floods?county=Devon');
+            const data = await resp.json();
+            const items = data.items || [];
+
+            // Filter to Taw catchment areas with active severity (1–3)
+            const tawWarnings = items.filter(item => {
+                const areaId = item.floodAreaID || '';
+                return TAW_FLOOD_AREAS.includes(areaId) &&
+                       item.severityLevel >= 1 && item.severityLevel <= 3;
+            });
+
+            // Sort by severity (most severe first)
+            tawWarnings.sort((a, b) => a.severityLevel - b.severityLevel);
+
+            renderFloodWarnings(tawWarnings);
+        } catch (e) {
+            console.warn('Could not fetch flood warnings:', e);
+        }
+    }
+
+    function renderFloodWarnings(warnings) {
+        const banner = document.getElementById('flood-warnings');
+        const textEl = document.getElementById('flood-warnings-text');
+        const detailsEl = document.getElementById('flood-warnings-details');
+        const statusEl = document.getElementById('flood-status');
+
+        if (warnings.length === 0) {
+            banner.classList.add('hidden');
+            banner.classList.remove('expanded', 'severity-1', 'severity-2', 'severity-3');
+            if (statusEl) statusEl.classList.add('visible');
+            if (map) map.invalidateSize();
+            return;
+        }
+
+        // Hide the green "no warnings" status
+        if (statusEl) statusEl.classList.remove('visible');
+
+        // Determine highest severity (lowest number)
+        const highestSeverity = Math.min(...warnings.map(w => w.severityLevel));
+        const sevInfo = FLOOD_SEVERITY[highestSeverity];
+
+        // Update severity class on banner
+        banner.classList.remove('severity-1', 'severity-2', 'severity-3');
+        banner.classList.add(`severity-${highestSeverity}`);
+
+        // Build summary text
+        const iconEl = banner.querySelector('.flood-warnings-icon');
+        iconEl.textContent = sevInfo.icon;
+
+        if (warnings.length === 1) {
+            textEl.textContent = `${sevInfo.label}: ${warnings[0].description}`;
+        } else {
+            const counts = {};
+            for (const w of warnings) {
+                const label = FLOOD_SEVERITY[w.severityLevel].label;
+                counts[label] = (counts[label] || 0) + 1;
+            }
+            const parts = Object.entries(counts).map(([label, count]) =>
+                `${count} ${label}${count > 1 ? 's' : ''}`
+            );
+            textEl.textContent = parts.join(', ') + ' in the Taw catchment';
+        }
+
+        // Build details panel
+        let detailsHtml = '';
+        for (const w of warnings) {
+            const sev = FLOOD_SEVERITY[w.severityLevel];
+            const raised = w.timeRaised ? formatTime(new Date(w.timeRaised)) : '';
+            const changed = w.timeSeverityChanged ? formatTime(new Date(w.timeSeverityChanged)) : '';
+            const river = w.floodArea?.riverOrSea || '';
+
+            detailsHtml += `
+                <div class="flood-warning-item">
+                    <div class="flood-warning-item-header">
+                        <span class="flood-warning-severity ${sev.cssClass}">${sev.label}</span>
+                    </div>
+                    <div class="flood-warning-description">${escapeHtml(w.description || '')}</div>
+                    ${w.message ? `<div class="flood-warning-message">${escapeHtml(w.message)}</div>` : ''}
+                    <div class="flood-warning-meta">
+                        ${river ? `<span>${escapeHtml(river)}</span>` : ''}
+                        ${raised ? `<span>Raised: ${raised}</span>` : ''}
+                        ${changed ? `<span>Updated: ${changed}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        detailsEl.innerHTML = detailsHtml;
+
+        // Show banner
+        banner.classList.remove('hidden');
+        if (map) map.invalidateSize();
+    }
+
+    function toggleFloodWarnings() {
+        const banner = document.getElementById('flood-warnings');
+        banner.classList.toggle('expanded');
+        setTimeout(() => { if (map) map.invalidateSize(); }, 320);
     }
 
     // ============================================================
@@ -1913,8 +2222,12 @@
         loadFromLocalStorage(); // merge any cached data on top of CSVs
         createMarkers();
 
-        // Detect if we have a backend (LAMP/serve.py) or are running static
-        hasBackend = await detectBackend();
+        // Fetch flood warnings and detect backend in parallel
+        const [_, backendResult] = await Promise.all([
+            fetchFloodWarnings(),
+            detectBackend()
+        ]);
+        hasBackend = backendResult;
 
         const latestTimes = Object.values(stationData)
             .map(d => d.latest?.dateTime)
