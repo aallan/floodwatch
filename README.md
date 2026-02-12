@@ -124,11 +124,21 @@ The trend badge also appears in the popup next to the current value. Rainfall st
 
 If there isn't enough recent data (fewer than 3 readings in the last hour), no badge is shown.
 
-### Flood Warnings
+### Flood Warnings and Alerts
 
-The dashboard fetches active flood warnings and alerts from the EA Flood Monitoring API on page load and on each refresh. Only warnings for the Taw catchment are shown (15 flood area IDs covering the River Taw, Okement, Landkey Stream, and the tidal estuary).
+The EA issues two distinct types of notification through the same API endpoint (`/id/floods`):
 
-When active warnings exist, a coloured banner appears below the header:
+- **Flood Warnings** (severity 1–2) are issued for specific locations — e.g. "River Taw (Lower) from Newnham Bridge to Barnstaple, including Umberleigh". These mean flooding is expected or severe.
+- **Flood Alerts** (severity 3) are issued for broader catchment areas — e.g. "North Dartmoor Rivers" or "Lower Taw area". These mean flooding is possible and to be prepared.
+
+The dashboard monitors 15 EA flood area IDs covering both types:
+
+| Type | Areas monitored | Example |
+|------|----------------|---------|
+| Flood Warning Areas | 9 (River Taw upper/middle/lower, tidal, Okement, Landkey) | `113FWF2E1B` — River Taw (Lower) |
+| Flood Alert Areas | 6 (North Dartmoor Rivers, Lower Taw, tidal estuary) | `113WAFTW12` — North Dartmoor Rivers |
+
+Warnings and alerts are fetched from the EA API on page load and on each refresh. When active warnings or alerts exist, a coloured banner appears below the header:
 
 | Severity | Label | Banner colour |
 |----------|-------|---------------|
@@ -136,11 +146,11 @@ When active warnings exist, a coloured banner appears below the header:
 | 2 | Flood Warning | Amber |
 | 3 | Flood Alert | Yellow |
 
-Click the banner to expand and see details for each warning, including the EA's situation message, the affected river, and when the warning was raised.
+Click the banner to expand and see details for each warning or alert, including the EA's situation message, the affected river, and when it was raised.
 
-When no warnings are in force, a small green "No warnings" indicator appears in the header alongside the last-updated timestamp. On phones, only the green dot is shown to save space.
+When no warnings or alerts are in force, a small green "No warnings" indicator appears in the header alongside the last-updated timestamp. On phones, only the green dot is shown to save space.
 
-Severity level 4 ("Warning no longer in force") is filtered out — only active warnings appear.
+Severity level 4 ("Warning no longer in force") is filtered out — only active warnings and alerts appear.
 
 ### River Overlays
 
