@@ -974,6 +974,7 @@
         { file: 'river_yeo.geojson', name: 'River Yeo', color: '#7a4a8a', weight: 2.8, maxArrows: 12 },
         { file: 'river_lapford_yeo.geojson', name: 'Lapford Yeo', color: '#ab5e2e', weight: 2.8, maxArrows: 8 },
         { file: 'river_crooked_oak.geojson', name: 'Crooked Oak', color: '#5a8a3a', weight: 2.8, maxArrows: 8 },
+        { file: 'river_hollacombe_water.geojson', name: 'Hollocombe Water', color: '#6a7a3a', weight: 2.8, maxArrows: 6 },
     ];
 
     function loadRiverOverlay() {
@@ -1118,6 +1119,63 @@
     }
 
     // ============================================================
+    // Dartmoor Line railway overlay
+    // ============================================================
+    function loadDartmoorLine() {
+        // Load track (only the unique section from Coleford Junction to Okehampton)
+        fetch(DATA_BASE + 'dartmoor_line.geojson')
+            .then(r => r.json())
+            .then(geojson => {
+                L.geoJSON(geojson, {
+                    style: {
+                        color: '#888',
+                        weight: 2,
+                        opacity: 0.4,
+                        dashArray: '6,4',
+                        lineCap: 'round'
+                    }
+                }).addTo(map);
+            })
+            .catch(e => console.warn('Could not load Dartmoor Line track:', e));
+
+        // Load station (Okehampton only — shared stations already on Tarka Line)
+        fetch(DATA_BASE + 'dartmoor_stations.geojson')
+            .then(r => r.json())
+            .then(geojson => {
+                L.geoJSON(geojson, {
+                    pointToLayer: (feature, latlng) => {
+                        return L.circleMarker(latlng, {
+                            radius: 4,
+                            fillColor: '#666',
+                            color: '#fff',
+                            weight: 1.5,
+                            opacity: 0.8,
+                            fillOpacity: 0.7
+                        });
+                    },
+                    onEachFeature: (feature, layer) => {
+                        layer.bindTooltip(feature.properties.name, {
+                            permanent: false,
+                            direction: 'top',
+                            offset: [0, -6],
+                            className: 'tarka-tooltip'
+                        });
+                    }
+                }).addTo(map);
+            })
+            .catch(e => console.warn('Could not load Dartmoor Line stations:', e));
+
+        // Label near Okehampton
+        const dartmoorIcon = L.divIcon({
+            html: `<div style="background:rgba(255,255,255,0.85); color:#555; padding:2px 8px; border-radius:3px; font-size:9px; font-weight:600; letter-spacing:0.5px; border:1px solid #ccc; white-space:nowrap; width:max-content; transform:translateX(-50%);">Dartmoor Line</div>`,
+            className: '',
+            iconSize: [0, 0],
+            iconAnchor: [0, 8]
+        });
+        L.marker([50.7324, -3.985], { icon: dartmoorIcon, interactive: false }).addTo(map);
+    }
+
+    // ============================================================
     // Legend
     // ============================================================
     function addLegend() {
@@ -1138,9 +1196,11 @@
                 <div class="legend-item"><div class="legend-line" style="background:#7a4a8a; opacity:0.7;"></div> River Yeo</div>
                 <div class="legend-item"><div class="legend-line" style="background:#ab5e2e; opacity:0.7;"></div> Lapford Yeo</div>
                 <div class="legend-item"><div class="legend-line" style="background:#5a8a3a; opacity:0.7;"></div> Crooked Oak</div>
+                <div class="legend-item"><div class="legend-line" style="background:#6a7a3a; opacity:0.7;"></div> Hollocombe Water</div>
                 <div class="legend-item"><div style="color:#1a8a7d; font-size:12px;">&#x25B2;</div> Flow direction</div>
                 <h4 style="margin-top:8px;">Railway</h4>
-                <div class="legend-item"><div class="legend-line" style="background:#888; opacity:0.5; border-style:dashed;"></div> Tarka Line</div>
+                <div class="legend-item"><div class="legend-line" style="background:none; border-top:2px dashed #888; height:0; opacity:0.5;"></div> Tarka Line</div>
+                <div class="legend-item"><div class="legend-line" style="background:none; border-top:2px dashed #888; height:0; opacity:0.5;"></div> Dartmoor Line</div>
                 <h4 style="margin-top:8px;">Trend (2h)</h4>
                 <div class="legend-item"><div style="width:14px;height:14px;border-radius:50%;background:#e05555;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:700;">↑</div> Rising</div>
                 <div class="legend-item"><div style="width:14px;height:14px;border-radius:50%;background:#4aad4a;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:700;">↓</div> Falling</div>
@@ -1822,6 +1882,7 @@
         initMap();
         loadRiverOverlay();
         loadTarkaLine();
+        loadDartmoorLine();
         await loadAllData();
         loadFromLocalStorage(); // merge any cached data on top of CSVs
         createMarkers();

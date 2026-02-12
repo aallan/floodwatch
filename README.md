@@ -124,7 +124,7 @@ If there isn't enough recent data (fewer than 2 readings in either time window),
 
 ### River Overlays
 
-Six rivers are displayed as coloured GeoJSON overlays with flow direction arrows:
+Seven rivers are displayed as coloured GeoJSON overlays with flow direction arrows:
 
 | River | Colour | Role |
 |-------|--------|------|
@@ -134,10 +134,22 @@ Six rivers are displayed as coloured GeoJSON overlays with flow direction arrows
 | River Yeo | Purple (#7a4a8a) | Tributary, joins near Barnstaple |
 | Lapford Yeo | Burnt orange (#ab5e2e) | Tributary, joins the Taw near Lapford |
 | Crooked Oak | Green (#5a8a3a) | Tributary, flows into the River Mole near South Molton |
+| Hollocombe Water | Olive (#6a7a3a) | Tributary, joins the Taw between Eggesford and Kings Nympton |
 
 Flow arrows (triangles) point downstream. The River Taw also has "UPSTREAM (Source)" and "DOWNSTREAM (Estuary)" labels. All rivers have a name label at their midpoint.
 
 The GeoJSON data comes from OpenStreetMap via the Overpass API. OSM waterway ways are digitised in flow direction (source to mouth), so the arrows follow the natural direction of the data.
+
+### Railway Overlays
+
+Two railway lines are displayed as dashed grey overlays with station markers:
+
+| Line | Route | Stations |
+|------|-------|----------|
+| Tarka Line | Exeter Central to Barnstaple | 14 stations (Exeter Central, Exeter St Davids, Newton St Cyres, Crediton, Yeoford, Copplestone, Morchard Road, Lapford, Eggesford, Kings Nympton, Portsmouth Arms, Umberleigh, Chapelton, Barnstaple) |
+| Dartmoor Line | Coleford Junction to Okehampton | 1 station (Okehampton) — shared stations shown on the Tarka Line |
+
+The Tarka and Dartmoor lines share track from Exeter to Coleford Junction (near Yeoford). Only the unique Dartmoor Line section from the junction to Okehampton is drawn separately to avoid duplication. Station markers show the station name on hover. Track data comes from OpenStreetMap (OSM relations 275887 and 276920).
 
 ### Map Tiles
 
@@ -198,6 +210,10 @@ On phones, the legend collapses to a single "Legend ▸" button in the top-right
 | Lapford | 50151 | 50.858, -3.811 |
 
 ### Crooked Oak (tributary, flows into the River Mole)
+
+No monitoring stations on this river.
+
+### Hollocombe Water (tributary, joins the Taw between Eggesford and Kings Nympton)
 
 No monitoring stations on this river.
 
@@ -313,12 +329,17 @@ data/
   rainfall_50194.csv
   rainfall_E82120.csv
   rainfall_47158.csv
-  river_taw.geojson                     # River geometry (6 files)
+  river_taw.geojson                     # River geometry (7 files)
   river_mole.geojson
   river_little_dart.geojson
   river_yeo.geojson
   river_lapford_yeo.geojson
   river_crooked_oak.geojson
+  river_hollacombe_water.geojson
+  tarka_line.geojson                    # Railway track geometry (2 files)
+  dartmoor_line.geojson
+  tarka_stations.geojson                # Railway station points (2 files)
+  dartmoor_stations.geojson
 ```
 
 ### CSV Format
@@ -638,18 +659,19 @@ In the App Platform dashboard:
 
 #### Data Transfer Estimate
 
-Each page load serves the HTML, 19 CSV data files, and 4 GeoJSON river overlays. CDN libraries (Leaflet, Chart.js, PapaParse) are loaded from external CDNs and don't count towards App Platform transfer.
+Each page load serves the HTML, 19 CSV data files, 7 GeoJSON river overlays, and 4 railway GeoJSON files (2 track + 2 station). CDN libraries (Leaflet, Chart.js, PapaParse) are loaded from external CDNs and don't count towards App Platform transfer.
 
 | Asset | Raw size | Gzipped (approx) |
 |-------|----------|-------------------|
-| `index.html` | 61 KB | ~14 KB |
+| `index.html` | 65 KB | ~15 KB |
 | 19 CSV files | 2.7 MB | ~500 KB |
-| 6 GeoJSON files | 240 KB | ~65 KB |
-| **Total per visit** | **~3 MB** | **~580 KB** |
+| 7 river GeoJSON files | 245 KB | ~65 KB |
+| 4 railway GeoJSON files | 80 KB | ~20 KB |
+| **Total per visit** | **~3.1 MB** | **~600 KB** |
 
-App Platform serves static files with gzip compression, so actual transfer is roughly 580 KB per visit. CSV requests include a cache-busting query parameter (`?t=...`) to ensure the browser always fetches fresh data, which means the CDN may not cache CSVs between visits — but at ~500 KB this has negligible impact on transfer.
+App Platform serves static files with gzip compression, so actual transfer is roughly 600 KB per visit. CSV requests include a cache-busting query parameter (`?t=...`) to ensure the browser always fetches fresh data, which means the CDN may not cache CSVs between visits — but at ~500 KB this has negligible impact on transfer.
 
-**Free tier: 1 GiB/month outbound transfer.** That allows approximately **1,750 page loads/month** — around 55 visits/day. For a personal or small-team dashboard this is plenty. If you share the link more widely and exceed the limit, upgrading to a $3/mo static site plan removes the cap.
+**Free tier: 1 GiB/month outbound transfer.** That allows approximately **1,700 page loads/month** — around 55 visits/day. For a personal or small-team dashboard this is plenty. If you share the link more widely and exceed the limit, upgrading to a $3/mo static site plan removes the cap.
 
 The hourly GitHub Actions deploys trigger rebuilds on App Platform, but build traffic is internal and not counted as outbound transfer.
 

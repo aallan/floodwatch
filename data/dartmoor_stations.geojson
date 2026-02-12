@@ -1,0 +1,1 @@
+{"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"name": "Okehampton", "crs": "OKE", "type": "station"}, "geometry": {"type": "Point", "coordinates": [-3.9967, 50.7324]}}]}
