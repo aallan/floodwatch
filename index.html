@@ -204,6 +204,21 @@
         }
 
         /* Popup styling */
+        .tarka-tooltip {
+            background: rgba(50, 50, 50, 0.85) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 4px !important;
+            padding: 3px 8px !important;
+            font-size: 11px !important;
+            font-weight: 500 !important;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3) !important;
+        }
+
+        .tarka-tooltip .leaflet-tooltip-top::before {
+            border-top-color: rgba(50, 50, 50, 0.85) !important;
+        }
+
         .leaflet-popup-content-wrapper {
             background: var(--bg-card) !important;
             color: var(--text-primary) !important;
@@ -1046,6 +1061,63 @@
     }
 
     // ============================================================
+    // Tarka Line railway overlay
+    // ============================================================
+    function loadTarkaLine() {
+        // Load track
+        fetch(DATA_BASE + 'tarka_line.geojson')
+            .then(r => r.json())
+            .then(geojson => {
+                L.geoJSON(geojson, {
+                    style: {
+                        color: '#888',
+                        weight: 2,
+                        opacity: 0.4,
+                        dashArray: '6,4',
+                        lineCap: 'round'
+                    }
+                }).addTo(map);
+            })
+            .catch(e => console.warn('Could not load Tarka Line track:', e));
+
+        // Load stations
+        fetch(DATA_BASE + 'tarka_stations.geojson')
+            .then(r => r.json())
+            .then(geojson => {
+                L.geoJSON(geojson, {
+                    pointToLayer: (feature, latlng) => {
+                        return L.circleMarker(latlng, {
+                            radius: 4,
+                            fillColor: '#666',
+                            color: '#fff',
+                            weight: 1.5,
+                            opacity: 0.8,
+                            fillOpacity: 0.7
+                        });
+                    },
+                    onEachFeature: (feature, layer) => {
+                        layer.bindTooltip(feature.properties.name, {
+                            permanent: false,
+                            direction: 'top',
+                            offset: [0, -6],
+                            className: 'tarka-tooltip'
+                        });
+                    }
+                }).addTo(map);
+            })
+            .catch(e => console.warn('Could not load Tarka Line stations:', e));
+
+        // Label anchored to the track loop between St Davids and Central
+        const tarkaIcon = L.divIcon({
+            html: `<div style="background:rgba(255,255,255,0.85); color:#555; padding:2px 8px; border-radius:3px; font-size:9px; font-weight:600; letter-spacing:0.5px; border:1px solid #ccc; white-space:nowrap; width:max-content; transform:translateX(-50%);">Tarka Line</div>`,
+            className: '',
+            iconSize: [0, 0],
+            iconAnchor: [0, 8]
+        });
+        L.marker([50.7253, -3.537], { icon: tarkaIcon, interactive: false }).addTo(map);
+    }
+
+    // ============================================================
     // Legend
     // ============================================================
     function addLegend() {
@@ -1067,6 +1139,8 @@
                 <div class="legend-item"><div class="legend-line" style="background:#ab5e2e; opacity:0.7;"></div> Lapford Yeo</div>
                 <div class="legend-item"><div class="legend-line" style="background:#5a8a3a; opacity:0.7;"></div> Crooked Oak</div>
                 <div class="legend-item"><div style="color:#1a8a7d; font-size:12px;">&#x25B2;</div> Flow direction</div>
+                <h4 style="margin-top:8px;">Railway</h4>
+                <div class="legend-item"><div class="legend-line" style="background:#888; opacity:0.5; border-style:dashed;"></div> Tarka Line</div>
                 <h4 style="margin-top:8px;">Trend (2h)</h4>
                 <div class="legend-item"><div style="width:14px;height:14px;border-radius:50%;background:#e05555;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:700;">↑</div> Rising</div>
                 <div class="legend-item"><div style="width:14px;height:14px;border-radius:50%;background:#4aad4a;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:700;">↓</div> Falling</div>
@@ -1747,6 +1821,7 @@
     async function init() {
         initMap();
         loadRiverOverlay();
+        loadTarkaLine();
         await loadAllData();
         loadFromLocalStorage(); // merge any cached data on top of CSVs
         createMarkers();
