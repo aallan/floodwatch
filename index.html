@@ -258,14 +258,14 @@
         }
 
         .popup-header {
-            padding: 14px 40px 10px 16px;
+            padding: 8px 40px 4px 16px;
             border-bottom: 1px solid var(--border);
         }
 
         .popup-header h3 {
             font-size: 15px;
             font-weight: 600;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
 
         .popup-header .station-type {
@@ -280,7 +280,7 @@
         .popup-header .station-type.tidal { color: var(--accent-tidal); }
 
         .popup-current {
-            padding: 12px 16px;
+            padding: 3px 16px 4px;
             display: flex;
             align-items: baseline;
             gap: 6px;
@@ -303,15 +303,31 @@
             margin-left: auto;
         }
 
+        .popup-chart-area {
+            display: flex;
+            height: 220px;
+        }
+
+        .popup-chart {
+            flex: 1;
+            min-width: 0;
+            padding: 10px 0 12px 12px;
+        }
+
+        .popup-chart canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
         .popup-timerange {
             display: flex;
-            padding: 8px 16px;
-            gap: 4px;
-            border-bottom: 1px solid var(--border);
+            flex-direction: column;
+            justify-content: center;
+            gap: 3px;
+            padding: 10px 10px 12px 6px;
         }
 
         .popup-timerange button {
-            flex: 1;
             padding: 5px 8px;
             background: transparent;
             color: var(--text-secondary);
@@ -320,6 +336,9 @@
             font-size: 11px;
             cursor: pointer;
             transition: all 0.2s;
+            white-space: nowrap;
+            min-width: 34px;
+            text-align: center;
             -webkit-tap-highlight-color: transparent;
         }
 
@@ -332,16 +351,6 @@
             background: var(--accent-blue);
             color: white;
             border-color: var(--accent-blue);
-        }
-
-        .popup-chart {
-            padding: 10px 12px 12px;
-            height: 180px;
-        }
-
-        .popup-chart canvas {
-            width: 100% !important;
-            height: 100% !important;
         }
 
         .popup-nodata {
@@ -585,7 +594,7 @@
             }
 
             .popup-header {
-                padding: 10px 36px 8px 12px;
+                padding: 8px 36px 5px 12px;
             }
 
             .popup-header h3 {
@@ -593,26 +602,29 @@
             }
 
             .popup-current {
-                padding: 10px 12px;
+                padding: 5px 12px;
             }
 
             .popup-current .value {
                 font-size: 24px;
             }
 
-            .popup-timerange {
-                padding: 6px 12px;
-                gap: 3px;
-            }
-
-            .popup-timerange button {
-                padding: 5px 4px;
-                font-size: 11px;
+            .popup-chart-area {
+                height: 200px;
             }
 
             .popup-chart {
-                padding: 8px 8px 10px;
-                height: 160px;
+                padding: 8px 0 10px 8px;
+            }
+
+            .popup-timerange {
+                padding: 8px 8px 10px 4px;
+                gap: 2px;
+            }
+
+            .popup-timerange button {
+                padding: 5px 6px;
+                font-size: 11px;
             }
 
             /* Legend: more compact */
@@ -698,7 +710,7 @@
             }
 
             .popup-header {
-                padding: 8px 40px 6px 10px;
+                padding: 6px 40px 4px 10px;
             }
 
             .popup-header h3 {
@@ -711,7 +723,7 @@
             }
 
             .popup-current {
-                padding: 8px 10px;
+                padding: 4px 10px;
                 gap: 4px;
             }
 
@@ -727,21 +739,25 @@
                 font-size: 10px;
             }
 
+            .popup-chart-area {
+                height: 170px;
+            }
+
+            .popup-chart {
+                padding: 6px 0 8px 6px;
+            }
+
             .popup-timerange {
-                padding: 5px 10px;
+                padding: 6px 6px 8px 3px;
                 gap: 2px;
             }
 
             .popup-timerange button {
-                padding: 6px 2px;
+                padding: 4px 5px;
                 font-size: 10px;
                 border-radius: 3px;
+                min-width: 28px;
                 -webkit-tap-highlight-color: transparent;
-            }
-
-            .popup-chart {
-                padding: 6px 6px 8px;
-                height: 140px;
             }
 
             .popup-nodata {
@@ -1344,15 +1360,17 @@
                 <span class="timestamp">${timeStr}</span>
             </div>
             ${hasData ? `
-            <div class="popup-timerange" id="timerange-${station.id}">
-                <button data-hours="24" onclick="setTimeRange('${station.id}', 24, '${type}', this)">24h</button>
-                <button data-hours="48" onclick="setTimeRange('${station.id}', 48, '${type}', this)">48h</button>
-                <button class="active" data-hours="${7*24}" onclick="setTimeRange('${station.id}', ${7*24}, '${type}', this)">7d</button>
-                <button data-hours="${30*24}" onclick="setTimeRange('${station.id}', ${30*24}, '${type}', this)">30d</button>
-                <button data-hours="0" onclick="setTimeRange('${station.id}', 0, '${type}', this)">All</button>
-            </div>
-            <div class="popup-chart">
-                <canvas id="${chartId}"></canvas>
+            <div class="popup-chart-area">
+                <div class="popup-chart">
+                    <canvas id="${chartId}"></canvas>
+                </div>
+                <div class="popup-timerange" id="timerange-${station.id}">
+                    <button data-hours="24" onclick="setTimeRange('${station.id}', 24, '${type}', this)">24h</button>
+                    <button data-hours="48" onclick="setTimeRange('${station.id}', 48, '${type}', this)">48h</button>
+                    <button class="active" data-hours="${5*24}" onclick="setTimeRange('${station.id}', ${5*24}, '${type}', this)">5d</button>
+                    <button data-hours="${30*24}" onclick="setTimeRange('${station.id}', ${30*24}, '${type}', this)">30d</button>
+                    <button data-hours="0" onclick="setTimeRange('${station.id}', 0, '${type}', this)">All</button>
+                </div>
             </div>
             ` : `
             <div class="popup-nodata">No data available for this station</div>
@@ -1369,7 +1387,7 @@
         if (hasData) {
             activePopupStation = station.id;
             // Wait for popup DOM to render
-            setTimeout(() => renderChart(station.id, 7 * 24, type), 50);
+            setTimeout(() => renderChart(station.id, 5 * 24, type), 50);
         }
     }
 
@@ -1471,12 +1489,13 @@
             ticks: {
                 color: '#8890a8',
                 font: { size: 10 },
+                stepSize: type === 'rainfall' ? undefined : 0.5,
                 callback: v => v.toFixed(type === 'rainfall' ? 0 : 1) + ' ' + unit
             },
             grid: { color: '#3a406033' }
         };
         if (rangeHigh) {
-            yScale.max = rangeHigh * 1.5;
+            yScale.max = Math.ceil(rangeHigh * 1.25 * 2) / 2;
         }
 
         activePopupChart = new Chart(canvas, {

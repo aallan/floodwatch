@@ -90,7 +90,7 @@ Each marker displays the latest reading value. Click any marker to open a popup 
 
 - Current value and timestamp
 - Trend indicator (for level and tidal stations — see below)
-- Time-series chart with selectable ranges: **24h, 48h, 7d, 30d, All**
+- Time-series chart with selectable ranges: **24h, 48h, 5d, 30d, All**
 - "Top of normal range" reference line (dashed red) on level station charts
 - Station name, type, and river
 
@@ -102,7 +102,7 @@ Tidal and rainfall stations are not affected — their markers always use their 
 
 ### Chart Reference Line and Fixed Y-Axis
 
-Level station popup charts display a dashed red horizontal line at the "top of normal range" (`typicalRangeHigh` from the EA API — the 95th percentile of historical readings). The Y-axis is fixed from **0** to **typicalRangeHigh × 1.5** so the scale stays consistent when switching between 24h, 48h, 7d, and 30d views.
+Level station popup charts display a dashed red horizontal line at the "top of normal range" (`typicalRangeHigh` from the EA API — the 95th percentile of historical readings). The Y-axis is fixed from **0** to **typicalRangeHigh × 1.25** (rounded up to the next 0.5m) so the scale stays consistent when switching between 24h, 48h, 5d, and 30d views.
 
 Tidal and rainfall station charts start at 0 but auto-scale the Y-axis maximum since they don't have a meaningful typical range value.
 
