@@ -116,11 +116,11 @@ River level and tidal stations display a small coloured badge on the bottom-righ
 | ↓ | Falling | Green |
 | → | Steady | Grey |
 
-The trend is calculated by comparing the average reading over the last 2 hours with the average over the preceding 2 hours (2–4 hours ago). A change of more than ±1 cm (0.01 m) counts as rising or falling; anything within that threshold is steady.
+The trend is calculated by fitting a linear-regression slope over the last 1 hour of readings. A slope steeper than ±1 cm/hour (0.01 m/hr) counts as rising or falling; anything within that threshold is steady. This approach tracks the actual direction of the graph line, so the badge always matches what the user sees on the chart.
 
 The trend badge also appears in the popup next to the current value. Rainfall stations do not show a trend indicator.
 
-If there isn't enough recent data (fewer than 2 readings in either time window), no badge is shown.
+If there isn't enough recent data (fewer than 3 readings in the last hour), no badge is shown.
 
 ### River Overlays
 
