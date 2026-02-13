@@ -535,6 +535,38 @@
             color: var(--accent-forecast);
             border-bottom-color: var(--accent-forecast);
         }
+        .discharge-legend {
+            padding: 4px 0 6px;
+            text-align: center;
+        }
+        .discharge-legend-row {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            line-height: 1.4;
+        }
+        .discharge-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9px;
+            color: #8890a8;
+        }
+        .legend-swatch {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+        .legend-line {
+            display: inline-block;
+            width: 12px;
+            height: 0;
+            border-top: 2px solid;
+        }
+        .legend-line.dashed {
+            border-top-style: dashed;
+        }
 
         .popup-nodata {
             padding: 30px 16px;
@@ -1859,7 +1891,11 @@
         const station = getStation(stationId);
         if (!station) throw new Error('Station not found');
 
-        const url = `https://flood-api.open-meteo.com/v1/flood?latitude=${station.lat}&longitude=${station.lon}&daily=river_discharge_mean,river_discharge_max,river_discharge_min&forecast_days=14&past_days=7&cell_selection=land`;
+        // Use Umberleigh coordinates (NRFA 50001) — the main Taw gauging point.
+        // Barnstaple's own coords resolve to a minor stream in the GloFAS 5km grid.
+        const dischargeLat = 50.99542;
+        const dischargeLon = -3.985089;
+        const url = `https://flood-api.open-meteo.com/v1/flood?latitude=${dischargeLat}&longitude=${dischargeLon}&daily=river_discharge_mean,river_discharge_max,river_discharge_min&forecast_days=14&past_days=7&cell_selection=land`;
         const resp = await fetch(url);
         if (!resp.ok) throw new Error(`Flood API error: ${resp.status}`);
 
@@ -1901,11 +1937,15 @@
             `;
         }
 
-        // Show timerange buttons, remove chart right padding
+        // Show timerange buttons, remove chart right padding, remove discharge legend
         const timerange = document.getElementById(`timerange-${stationId}`);
         if (timerange) timerange.style.display = '';
         const chartDiv = document.getElementById(`chart-${stationId}`)?.parentElement;
-        if (chartDiv) chartDiv.style.paddingRight = '';
+        if (chartDiv) {
+            chartDiv.style.paddingRight = '';
+            const legend = chartDiv.parentElement?.parentElement?.querySelector('.discharge-legend');
+            if (legend) legend.remove();
+        }
 
         // Restore default tidal chart
         renderChart(stationId, 5 * 24, 'tidal');
@@ -2000,8 +2040,14 @@
         const canvas = document.getElementById(`chart-${stationId}`);
         if (!canvas) return;
 
-        // Build datasets: min-max range as filled band, mean as solid line
+        // Build datasets: min-max range as filled band (forecast only), mean as solid line
         const labels = data.time;
+
+        // Only show min-max range from today onward (forecast days)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const forecastMax = data.max.map((v, i) => data.time[i] >= today ? v : null);
+        const forecastMin = data.min.map((v, i) => data.time[i] >= today ? v : null);
 
         activePopupChart = new Chart(canvas, {
             type: 'line',
@@ -2010,21 +2056,23 @@
                 datasets: [
                     {
                         label: 'Forecast range',
-                        data: data.max,
+                        data: forecastMax,
                         borderColor: 'transparent',
                         backgroundColor: 'rgba(212, 160, 55, 0.15)',
                         fill: '+1',
                         pointRadius: 0,
-                        pointHoverRadius: 0
+                        pointHoverRadius: 0,
+                        spanGaps: false
                     },
                     {
                         label: 'Forecast range',
-                        data: data.min,
+                        data: forecastMin,
                         borderColor: 'transparent',
                         backgroundColor: 'rgba(212, 160, 55, 0.15)',
                         fill: false,
                         pointRadius: 0,
-                        pointHoverRadius: 0
+                        pointHoverRadius: 0,
+                        spanGaps: false
                     },
                     {
                         label: 'Mean discharge',
@@ -2036,6 +2084,26 @@
                         pointHoverRadius: 4,
                         fill: false,
                         tension: 0.3
+                    },
+                    {
+                        label: 'Normal flow (Mean)',
+                        data: data.time.map(() => 18.3),
+                        borderColor: 'rgba(74, 173, 74, 0.6)',
+                        borderWidth: 1,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        fill: false
+                    },
+                    {
+                        label: 'High flow (Q10)',
+                        data: data.time.map(() => 48.3),
+                        borderColor: 'rgba(224, 85, 85, 0.6)',
+                        borderWidth: 1,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        fill: false
                     }
                 ]
             },
@@ -2044,16 +2112,7 @@
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: true,
-                        labels: {
-                            filter: item => item.text === 'Mean discharge' || (item.text === 'Forecast range' && item.datasetIndex === 0),
-                            color: '#8890a8',
-                            font: { size: 9 },
-                            boxWidth: 12,
-                            boxHeight: 10,
-                            padding: 6
-                        },
-                        position: 'bottom'
+                        display: false
                     },
                     tooltip: {
                         backgroundColor: '#2a3050',
@@ -2070,9 +2129,13 @@
                             label: item => {
                                 const idx = item.dataIndex;
                                 const mean = data.mean[idx];
-                                const min = data.min[idx];
-                                const max = data.max[idx];
-                                return `${mean?.toFixed(1)} m\u00b3/s (${min?.toFixed(1)}\u2013${max?.toFixed(1)})`;
+                                const isForecast = data.time[idx] >= today;
+                                if (isForecast) {
+                                    const min = data.min[idx];
+                                    const max = data.max[idx];
+                                    return `${mean?.toFixed(1)} m\u00b3/s (${min?.toFixed(1)}\u2013${max?.toFixed(1)})`;
+                                }
+                                return `${mean?.toFixed(1)} m\u00b3/s`;
                             }
                         }
                     },
@@ -2131,6 +2194,24 @@
                 }
             }
         });
+
+        // Add HTML legend below chart area (two rows for clean layout)
+        const chartArea = canvas.closest('.popup-chart-area');
+        let legendEl = chartArea?.parentElement.querySelector('.discharge-legend');
+        if (!legendEl && chartArea) {
+            legendEl = document.createElement('div');
+            legendEl.className = 'discharge-legend';
+            chartArea.after(legendEl);
+        }
+        legendEl.innerHTML = `
+            <div class="discharge-legend-row">
+                <span class="discharge-legend-item"><span class="legend-swatch" style="background:rgba(212,160,55,0.15);border:1px solid rgba(212,160,55,0.4)"></span>Forecast range</span>
+                <span class="discharge-legend-item"><span class="legend-line" style="border-color:#d4a037"></span>Mean discharge</span>
+            </div>
+            <div class="discharge-legend-row">
+                <span class="discharge-legend-item"><span class="legend-line dashed" style="border-color:rgba(74,173,74,0.6)"></span>Normal flow (Mean)</span>
+                <span class="discharge-legend-item"><span class="legend-line dashed" style="border-color:rgba(224,85,85,0.6)"></span>High flow (Q10)</span>
+            </div>`;
     }
 
     function getStation(stationId) {

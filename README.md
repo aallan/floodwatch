@@ -170,8 +170,10 @@ Rainfall station popups include a **Fcst** button that fetches a 48-hour hourly 
 The Barnstaple (Tidal) station popup has a **tab UI** with two views: "Tidal Level" (the default historical chart) and "River Discharge". The discharge tab fetches a river discharge forecast from the [Open-Meteo Flood API](https://open-meteo.com/en/docs/flood-api) powered by the GloFAS v4 model.
 
 - Shows **7 days of hindcast** and **14 days of forecast** — 21 days total
-- The chart displays the **ensemble mean** as a solid amber line with a **min–max range band** showing forecast uncertainty
+- The chart displays the **ensemble mean** as a solid amber line with a **min–max range band** showing forecast uncertainty (forecast days only)
+- Two reference lines from the NRFA 66-year record at Umberleigh (station 50001): **Normal flow (Mean)** at 18.3 m³/s and **High flow (Q10)** at 48.3 m³/s
 - A dashed vertical "Today" line separates observed from predicted data
+- Uses Umberleigh coordinates (NRFA 50001) for the GloFAS API call — Barnstaple's own coordinates resolve to a minor stream in the 5 km grid
 - The current value area updates to show today's mean discharge in **m³/s**
 - Discharge data is cached for 1 hour per station
 - No API call on page load — only fetches when the user clicks the "River Discharge" tab
