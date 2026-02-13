@@ -508,6 +508,34 @@
             border-color: var(--accent-forecast);
         }
 
+        .popup-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+        .popup-tabs button {
+            flex: 1;
+            padding: 6px 8px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-secondary);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .popup-tabs button:hover {
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+        }
+        .popup-tabs button.active {
+            color: var(--accent-tidal);
+            border-bottom-color: var(--accent-tidal);
+        }
+        .popup-tabs button.tab-discharge.active {
+            color: var(--accent-forecast);
+            border-bottom-color: var(--accent-forecast);
+        }
+
         .popup-nodata {
             padding: 30px 16px;
             text-align: center;
@@ -791,6 +819,11 @@
                 font-size: 9px;
             }
 
+            .popup-tabs button {
+                padding: 5px 6px;
+                font-size: 10px;
+            }
+
             /* Legend: more compact */
             .legend {
                 padding: 8px 12px;
@@ -936,6 +969,11 @@
             .popup-timerange button.forecast-btn {
                 font-size: 9px;
                 min-width: unset;
+            }
+
+            .popup-tabs button {
+                padding: 4px 5px;
+                font-size: 9px;
             }
 
             .popup-nodata {
@@ -1163,6 +1201,9 @@
 
     let forecastCache = {}; // stationId -> { data: [...], fetchedAt: Date }
     const FORECAST_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
+    let dischargeCache = {}; // stationId -> { data: {...}, fetchedAt: Date }
+    const DISCHARGE_CACHE_TTL = 60 * 60 * 1000; // 1 hour (daily data)
 
     const FLOOD_SEVERITY = {
         1: { label: 'Severe Flood Warning', icon: '\u26A0\uFE0F', cssClass: 'sev-1' },
@@ -1576,11 +1617,16 @@
                 <h3>${station.label}${upstreamNote}</h3>
                 <div class="station-type ${type}">${typeLabels[type]}${station.river ? ' &mdash; ' + station.river : ''}</div>
             </div>
-            <div class="popup-current">
+            <div class="popup-current" id="current-${station.id}" data-original-value="${latestStr}" data-original-unit="${unit}" data-original-trend="${trendHtml ? trendHtml.replace(/"/g, '&quot;') : ''}">
                 <span class="value">${latestStr}</span>
                 <span class="unit">${unit}</span>${trendHtml}
                 <span class="timestamp" id="timestamp-${station.id}" data-original="${timeStr}">${timeStr}</span>
             </div>
+            ${station.id === '50198' ? `
+            <div class="popup-tabs" id="tabs-${station.id}">
+                <button class="tab-tidal active" onclick="showTidalTab('${station.id}', this)">Tidal Level</button>
+                <button class="tab-discharge" onclick="showDischargeTab('${station.id}', this)">River Discharge</button>
+            </div>` : ''}
             ${hasData ? `
             <div class="popup-chart-area">
                 <div class="popup-chart">
@@ -1795,6 +1841,293 @@
                         },
                         grid: { color: '#3a406033' }
                     }
+                }
+            }
+        });
+    }
+
+    // ============================================================
+    // GloFAS River Discharge Forecast (Barnstaple tidal only)
+    // ============================================================
+
+    async function fetchDischarge(stationId) {
+        const cached = dischargeCache[stationId];
+        if (cached && (Date.now() - cached.fetchedAt) < DISCHARGE_CACHE_TTL) {
+            return cached.data;
+        }
+
+        const station = getStation(stationId);
+        if (!station) throw new Error('Station not found');
+
+        const url = `https://flood-api.open-meteo.com/v1/flood?latitude=${station.lat}&longitude=${station.lon}&daily=river_discharge_mean,river_discharge_max,river_discharge_min&forecast_days=14&past_days=7&cell_selection=land`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`Flood API error: ${resp.status}`);
+
+        const json = await resp.json();
+        const times = json.daily?.time || [];
+        const mean = json.daily?.river_discharge_mean || [];
+        const max = json.daily?.river_discharge_max || [];
+        const min = json.daily?.river_discharge_min || [];
+
+        const data = {
+            time: times.map(t => new Date(t)),
+            mean, max, min
+        };
+
+        dischargeCache[stationId] = { data, fetchedAt: Date.now() };
+        return data;
+    }
+
+    function showTidalTab(stationId, btn) {
+        // Update tab active states
+        const tabs = document.getElementById(`tabs-${stationId}`);
+        if (tabs) {
+            tabs.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // Restore original tidal value/unit/timestamp
+        const currentEl = document.getElementById(`current-${stationId}`);
+        if (currentEl) {
+            const origValue = currentEl.dataset.originalValue;
+            const origUnit = currentEl.dataset.originalUnit;
+            const origTrend = currentEl.dataset.originalTrend || '';
+            const tsEl = document.getElementById(`timestamp-${stationId}`);
+            const origTime = tsEl?.dataset.original || '';
+            currentEl.innerHTML = `
+                <span class="value">${origValue}</span>
+                <span class="unit">${origUnit}</span>${origTrend}
+                <span class="timestamp" id="timestamp-${stationId}" data-original="${origTime}">${origTime}</span>
+            `;
+        }
+
+        // Show timerange buttons, remove chart right padding
+        const timerange = document.getElementById(`timerange-${stationId}`);
+        if (timerange) timerange.style.display = '';
+        const chartDiv = document.getElementById(`chart-${stationId}`)?.parentElement;
+        if (chartDiv) chartDiv.style.paddingRight = '';
+
+        // Restore default tidal chart
+        renderChart(stationId, 5 * 24, 'tidal');
+    }
+
+    async function showDischargeTab(stationId, btn) {
+        // Update tab active states
+        const tabs = document.getElementById(`tabs-${stationId}`);
+        if (tabs) {
+            tabs.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // Hide timerange buttons, add right padding to chart to match left
+        const timerange = document.getElementById(`timerange-${stationId}`);
+        if (timerange) timerange.style.display = 'none';
+        const chartDiv = document.getElementById(`chart-${stationId}`)?.parentElement;
+        if (chartDiv) chartDiv.style.paddingRight = '12px';
+
+        // Destroy existing chart
+        if (activePopupChart) {
+            activePopupChart.destroy();
+            activePopupChart = null;
+        }
+
+        // Show loading on canvas
+        const canvas = document.getElementById(`chart-${stationId}`);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#8890a8';
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Loading discharge data\u2026', canvas.width / 2, canvas.height / 2);
+
+        // Update current value area to show loading
+        const currentEl = document.getElementById(`current-${stationId}`);
+        if (currentEl) {
+            currentEl.innerHTML = `
+                <span class="value">\u2014</span>
+                <span class="unit">m\u00b3/s</span>
+                <span class="timestamp" id="timestamp-${stationId}">Loading\u2026</span>
+            `;
+        }
+
+        try {
+            const data = await fetchDischarge(stationId);
+
+            // Find today's value
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            let todayIdx = data.time.findIndex(t => t >= today);
+            if (todayIdx < 0) todayIdx = data.time.length - 1;
+            const todayMean = data.mean[todayIdx];
+
+            // Update current value area with discharge info
+            if (currentEl) {
+                const from = data.time[0];
+                const to = data.time[data.time.length - 1];
+                const fmt = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                currentEl.innerHTML = `
+                    <span class="value">${todayMean != null ? todayMean.toFixed(1) : '\u2014'}</span>
+                    <span class="unit">m\u00b3/s</span>
+                    <span class="timestamp" id="timestamp-${stationId}">${fmt(from)}\u2013${fmt(to)}</span>
+                `;
+            }
+
+            renderDischargeChart(stationId, data);
+        } catch (e) {
+            console.error('Discharge error:', e);
+            if (currentEl) {
+                currentEl.innerHTML = `
+                    <span class="value">\u2014</span>
+                    <span class="unit">m\u00b3/s</span>
+                    <span class="timestamp" id="timestamp-${stationId}">Unavailable</span>
+                `;
+            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#e05555';
+            ctx.font = '13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Discharge data unavailable', canvas.width / 2, canvas.height / 2);
+        }
+    }
+
+    function renderDischargeChart(stationId, data) {
+        if (activePopupChart) {
+            activePopupChart.destroy();
+            activePopupChart = null;
+        }
+
+        const canvas = document.getElementById(`chart-${stationId}`);
+        if (!canvas) return;
+
+        // Build datasets: min-max range as filled band, mean as solid line
+        const labels = data.time;
+
+        activePopupChart = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Forecast range',
+                        data: data.max,
+                        borderColor: 'transparent',
+                        backgroundColor: 'rgba(212, 160, 55, 0.15)',
+                        fill: '+1',
+                        pointRadius: 0,
+                        pointHoverRadius: 0
+                    },
+                    {
+                        label: 'Forecast range',
+                        data: data.min,
+                        borderColor: 'transparent',
+                        backgroundColor: 'rgba(212, 160, 55, 0.15)',
+                        fill: false,
+                        pointRadius: 0,
+                        pointHoverRadius: 0
+                    },
+                    {
+                        label: 'Mean discharge',
+                        data: data.mean,
+                        borderColor: '#d4a037',
+                        backgroundColor: 'rgba(212, 160, 55, 0.3)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        fill: false,
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        labels: {
+                            filter: item => item.text === 'Mean discharge' || (item.text === 'Forecast range' && item.datasetIndex === 0),
+                            color: '#8890a8',
+                            font: { size: 9 },
+                            boxWidth: 12,
+                            boxHeight: 10,
+                            padding: 6
+                        },
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        backgroundColor: '#2a3050',
+                        titleColor: '#e0e4f0',
+                        bodyColor: '#e0e4f0',
+                        borderColor: '#3a4060',
+                        borderWidth: 1,
+                        filter: item => item.datasetIndex === 2,
+                        callbacks: {
+                            title: items => {
+                                const d = new Date(items[0].parsed.x);
+                                return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+                            },
+                            label: item => {
+                                const idx = item.dataIndex;
+                                const mean = data.mean[idx];
+                                const min = data.min[idx];
+                                const max = data.max[idx];
+                                return `${mean?.toFixed(1)} m\u00b3/s (${min?.toFixed(1)}\u2013${max?.toFixed(1)})`;
+                            }
+                        }
+                    },
+                    todayLine: {
+                        id: 'todayLine',
+                        afterDraw(chart) {
+                            const xScale = chart.scales.x;
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const x = xScale.getPixelForValue(today.getTime());
+                            if (x < xScale.left || x > xScale.right) return;
+                            const ctx = chart.ctx;
+                            ctx.save();
+                            ctx.strokeStyle = '#8890a8';
+                            ctx.lineWidth = 1;
+                            ctx.setLineDash([4, 4]);
+                            ctx.beginPath();
+                            ctx.moveTo(x, chart.chartArea.top);
+                            ctx.lineTo(x, chart.chartArea.bottom);
+                            ctx.stroke();
+                            ctx.setLineDash([]);
+                            ctx.fillStyle = '#8890a8';
+                            ctx.font = '9px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('Today', x, chart.chartArea.top - 3);
+                            ctx.restore();
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day',
+                            tooltipFormat: 'PP',
+                            displayFormats: {
+                                day: 'dd MMM'
+                            }
+                        },
+                        ticks: { color: '#8890a8', maxTicksLimit: 7, font: { size: 10 } },
+                        grid: { color: '#3a406033' }
+                    },
+                    y: {
+                        min: 0,
+                        ticks: {
+                            color: '#8890a8',
+                            font: { size: 10 },
+                            callback: v => v.toFixed(0) + ' m\u00b3/s'
+                        },
+                        grid: { color: '#3a406033' }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
                 }
             }
         });
@@ -2017,6 +2350,7 @@
     // ============================================================
     async function refreshData() {
         forecastCache = {};
+        dischargeCache = {};
 
         const btn = document.getElementById('refresh-btn');
         btn.classList.add('loading');

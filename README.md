@@ -165,6 +165,19 @@ Rainfall station popups include a **Fcst** button that fetches a 48-hour hourly 
 - No API calls are made on page load — the Open-Meteo fetch only fires when the user clicks the Fcst button
 - Level and tidal stations do not show the Forecast button
 
+### River Discharge Forecast
+
+The Barnstaple (Tidal) station popup has a **tab UI** with two views: "Tidal Level" (the default historical chart) and "River Discharge". The discharge tab fetches a river discharge forecast from the [Open-Meteo Flood API](https://open-meteo.com/en/docs/flood-api) powered by the GloFAS v4 model.
+
+- Shows **7 days of hindcast** and **14 days of forecast** — 21 days total
+- The chart displays the **ensemble mean** as a solid amber line with a **min–max range band** showing forecast uncertainty
+- A dashed vertical "Today" line separates observed from predicted data
+- The current value area updates to show today's mean discharge in **m³/s**
+- Discharge data is cached for 1 hour per station
+- No API call on page load — only fetches when the user clicks the "River Discharge" tab
+- Only available on the Barnstaple tidal popup, since it sits at the outlet of the full Taw catchment (1,346 km²) where the GloFAS model is most reliable
+- Uses `cell_selection=land` to ensure the model picks a land-based grid cell near the estuary
+
 ### River Overlays
 
 Seven rivers are displayed as coloured GeoJSON overlays with flow direction arrows:
@@ -311,6 +324,7 @@ Examples:
 | Date range | `GET /id/measures/{measureId}/readings?startdate={YYYY-MM-DD}&enddate={YYYY-MM-DD}&_sorted&_limit=100000` |
 | Flood warnings | `GET /id/floods?county=Devon` |
 | Rainfall forecast | `GET https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=precipitation&forecast_days=2&timezone=Europe/London` |
+| River discharge | `GET https://flood-api.open-meteo.com/v1/flood?latitude={lat}&longitude={lon}&daily=river_discharge_mean,river_discharge_max,river_discharge_min&forecast_days=14&past_days=7&cell_selection=land` |
 | Station lookup | `GET /id/stations?RLOIid={id}` |
 
 ### Refresh Logic
