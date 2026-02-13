@@ -46,6 +46,7 @@
             --warning-warning: #e08a3a;
             --warning-alert: #d4b84a;
             --warning-clear: #4aad4a;
+            --accent-forecast: #d4a037;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -491,6 +492,22 @@
             border-color: var(--accent-blue);
         }
 
+        .popup-timerange button.forecast-btn {
+            border-color: var(--accent-forecast);
+            color: var(--accent-forecast);
+            font-size: 10px;
+            margin-top: 4px;
+        }
+        .popup-timerange button.forecast-btn:hover {
+            background: rgba(212, 160, 55, 0.15);
+            color: #e8b84a;
+        }
+        .popup-timerange button.forecast-btn.active {
+            background: var(--accent-forecast);
+            color: white;
+            border-color: var(--accent-forecast);
+        }
+
         .popup-nodata {
             padding: 30px 16px;
             text-align: center;
@@ -770,6 +787,10 @@
                 font-size: 11px;
             }
 
+            .popup-timerange button.forecast-btn {
+                font-size: 9px;
+            }
+
             /* Legend: more compact */
             .legend {
                 padding: 8px 12px;
@@ -910,6 +931,11 @@
                 border-radius: 3px;
                 min-width: 28px;
                 -webkit-tap-highlight-color: transparent;
+            }
+
+            .popup-timerange button.forecast-btn {
+                font-size: 9px;
+                min-width: unset;
             }
 
             .popup-nodata {
@@ -1135,6 +1161,9 @@
         '113FWC2T2A2', '113FWT2T2A3', '113FWC2T2A1',
     ];
 
+    let forecastCache = {}; // stationId -> { data: [...], fetchedAt: Date }
+    const FORECAST_CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+
     const FLOOD_SEVERITY = {
         1: { label: 'Severe Flood Warning', icon: '\u26A0\uFE0F', cssClass: 'sev-1' },
         2: { label: 'Flood Warning',        icon: '\u26A0\uFE0F', cssClass: 'sev-2' },
@@ -1165,7 +1194,7 @@
 
         // CartoDB Positron (light, muted style as requested)
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a> | EA Flood Monitoring API',
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a> | <a href="https://environment.data.gov.uk/flood-monitoring/doc/reference">EA</a> | <a href="https://open-meteo.com/">Open-Meteo</a>',
             subdomains: 'abcd',
             maxZoom: 19
         }).addTo(map);
@@ -1550,7 +1579,7 @@
             <div class="popup-current">
                 <span class="value">${latestStr}</span>
                 <span class="unit">${unit}</span>${trendHtml}
-                <span class="timestamp">${timeStr}</span>
+                <span class="timestamp" id="timestamp-${station.id}" data-original="${timeStr}">${timeStr}</span>
             </div>
             ${hasData ? `
             <div class="popup-chart-area">
@@ -1563,6 +1592,7 @@
                     <button class="active" data-hours="${5*24}" onclick="setTimeRange('${station.id}', ${5*24}, '${type}', this)">5d</button>
                     <button data-hours="${30*24}" onclick="setTimeRange('${station.id}', ${30*24}, '${type}', this)">30d</button>
                     <button data-hours="0" onclick="setTimeRange('${station.id}', 0, '${type}', this)">All</button>
+                    ${type === 'rainfall' ? `<button class="forecast-btn" onclick="showForecast('${station.id}', this)">&#9729; Fcst</button>` : ''}
                 </div>
             </div>
             ` : `
@@ -1591,7 +1621,183 @@
             container.querySelectorAll('button').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
         }
+        // Restore original timestamp (in case we were in forecast mode)
+        const tsEl = document.getElementById(`timestamp-${stationId}`);
+        if (tsEl) tsEl.textContent = tsEl.dataset.original;
         renderChart(stationId, hours, type);
+    }
+
+    // ============================================================
+    // Open-Meteo Rainfall Forecast
+    // ============================================================
+
+    async function fetchForecast(stationId) {
+        const cached = forecastCache[stationId];
+        if (cached && (Date.now() - cached.fetchedAt) < FORECAST_CACHE_TTL) {
+            return cached.data;
+        }
+
+        const station = getStation(stationId);
+        if (!station) throw new Error('Station not found');
+
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${station.lat}&longitude=${station.lon}&hourly=precipitation&forecast_days=2&timezone=Europe/London`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`Open-Meteo API error: ${resp.status}`);
+
+        const json = await resp.json();
+        const times = json.hourly?.time || [];
+        const precip = json.hourly?.precipitation || [];
+
+        const data = times.map((t, i) => ({
+            dateTime: new Date(t),
+            value: precip[i] ?? 0
+        }));
+
+        forecastCache[stationId] = { data, fetchedAt: Date.now() };
+        return data;
+    }
+
+    async function showForecast(stationId, btn) {
+        const container = document.getElementById(`timerange-${stationId}`);
+
+        // Toggle off: if forecast button is already active, return to default historical view
+        if (btn.classList.contains('active')) {
+            if (container) {
+                container.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                const defaultBtn = container.querySelector('button[data-hours="120"]');
+                if (defaultBtn) defaultBtn.classList.add('active');
+            }
+            // Restore original timestamp
+            const tsEl = document.getElementById(`timestamp-${stationId}`);
+            if (tsEl) tsEl.textContent = tsEl.dataset.original;
+            renderChart(stationId, 5 * 24, 'rainfall');
+            return;
+        }
+
+        // Deactivate all buttons, activate forecast button
+        if (container) {
+            container.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        // Destroy existing chart
+        if (activePopupChart) {
+            activePopupChart.destroy();
+            activePopupChart = null;
+        }
+
+        // Show loading state on canvas
+        const canvas = document.getElementById(`chart-${stationId}`);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#8890a8';
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Loading forecast\u2026', canvas.width / 2, canvas.height / 2);
+
+        // Update timestamp to show forecast range
+        const tsEl = document.getElementById(`timestamp-${stationId}`);
+        if (tsEl) tsEl.textContent = 'Loading\u2026';
+
+        try {
+            const data = await fetchForecast(stationId);
+            // Update timestamp with forecast date range
+            if (tsEl && data.length > 0) {
+                const from = data[0].dateTime;
+                const to = data[data.length - 1].dateTime;
+                const fmt = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                tsEl.textContent = `Forecast: ${fmt(from)}\u2013${fmt(to)}`;
+            }
+            renderForecastChart(stationId, data);
+        } catch (e) {
+            console.error('Forecast error:', e);
+            if (tsEl) tsEl.textContent = tsEl.dataset.original;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#e05555';
+            ctx.font = '13px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Forecast unavailable', canvas.width / 2, canvas.height / 2);
+        }
+    }
+
+    function renderForecastChart(stationId, forecastData) {
+        if (activePopupChart) {
+            activePopupChart.destroy();
+            activePopupChart = null;
+        }
+
+        const canvas = document.getElementById(`chart-${stationId}`);
+        if (!canvas) return;
+
+        activePopupChart = new Chart(canvas, {
+            type: 'bar',
+            data: {
+                labels: forecastData.map(r => r.dateTime),
+                datasets: [{
+                    label: 'Predicted rainfall',
+                    data: forecastData.map(r => r.value),
+                    backgroundColor: 'rgba(212, 160, 55, 0.6)',
+                    borderColor: '#d4a037',
+                    borderWidth: 1,
+                    borderRadius: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        labels: {
+                            color: '#8890a8',
+                            font: { size: 9 },
+                            boxWidth: 12,
+                            boxHeight: 10,
+                            padding: 6
+                        },
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        backgroundColor: '#2a3050',
+                        titleColor: '#e0e4f0',
+                        bodyColor: '#e0e4f0',
+                        borderColor: '#3a4060',
+                        borderWidth: 1,
+                        callbacks: {
+                            title: items => {
+                                const d = new Date(items[0].parsed.x);
+                                return d.toLocaleString();
+                            },
+                            label: item => `${item.parsed.y.toFixed(1)} mm`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            tooltipFormat: 'PPpp',
+                            displayFormats: {
+                                hour: 'HH:mm',
+                                day: 'dd MMM'
+                            }
+                        },
+                        ticks: { color: '#8890a8', maxTicksLimit: 8, font: { size: 10 } },
+                        grid: { color: '#3a406033' }
+                    },
+                    y: {
+                        min: 0,
+                        ticks: {
+                            color: '#8890a8',
+                            font: { size: 10 },
+                            callback: v => v.toFixed(0) + ' mm'
+                        },
+                        grid: { color: '#3a406033' }
+                    }
+                }
+            }
+        });
     }
 
     function getStation(stationId) {
@@ -1810,6 +2016,8 @@
     // Data Refresh
     // ============================================================
     async function refreshData() {
+        forecastCache = {};
+
         const btn = document.getElementById('refresh-btn');
         btn.classList.add('loading');
         btn.disabled = true;

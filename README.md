@@ -91,6 +91,7 @@ Each marker displays the latest reading value. Click any marker to open a popup 
 - Current value and timestamp
 - Trend indicator (for level and tidal stations — see below)
 - Time-series chart with selectable ranges: **24h, 48h, 5d, 30d, All**
+- **Forecast** button on rainfall stations — 48-hour predicted rainfall from Open-Meteo (see Rainfall Forecast below)
 - "Top of normal range" reference line (dashed red) on level station charts
 - Station name, type, and river
 
@@ -151,6 +152,18 @@ Click the banner to expand and see details for each warning or alert, including 
 When no warnings or alerts are in force, a small green "No warnings" indicator appears in the header alongside the last-updated timestamp. On phones, only the green dot is shown to save space.
 
 Severity level 4 ("Warning no longer in force") is filtered out — only active warnings and alerts appear.
+
+### Rainfall Forecast
+
+Rainfall station popups include a **Fcst** button that fetches a 48-hour hourly precipitation forecast from the [Open-Meteo API](https://open-meteo.com/) using each station's own latitude and longitude.
+
+- The forecast is shown as an **amber bar chart** to visually distinguish it from the blue historical line chart
+- The popup timestamp updates to show the forecast date range (e.g. "Forecast: 13 Feb–15 Feb")
+- Clicking the Fcst button again toggles back to the default 5-day historical view
+- Clicking any historical time range button (24h, 48h, etc.) also returns to the historical chart
+- Forecasts are cached in memory for 15 minutes per station to avoid unnecessary API calls
+- No API calls are made on page load — the Open-Meteo fetch only fires when the user clicks the Fcst button
+- Level and tidal stations do not show the Forecast button
 
 ### River Overlays
 
@@ -297,6 +310,7 @@ Examples:
 | Recent readings | `GET /id/measures/{measureId}/readings?since={ISO8601}&_sorted&_limit=10000` |
 | Date range | `GET /id/measures/{measureId}/readings?startdate={YYYY-MM-DD}&enddate={YYYY-MM-DD}&_sorted&_limit=100000` |
 | Flood warnings | `GET /id/floods?county=Devon` |
+| Rainfall forecast | `GET https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=precipitation&forecast_days=2&timezone=Europe/London` |
 | Station lookup | `GET /id/stations?RLOIid={id}` |
 
 ### Refresh Logic
@@ -831,6 +845,7 @@ floodwatch/
 | CSV parsing | [PapaParse](https://www.papaparse.com/) 5.4.1 |
 | River geometry | [OpenStreetMap](https://www.openstreetmap.org/) via [Overpass API](https://overpass-api.de/) |
 | Data source | [EA Flood Monitoring API](https://environment.data.gov.uk/flood-monitoring/doc/reference) |
+| Rainfall forecast | [Open-Meteo API](https://open-meteo.com/) |
 | Dev server | Python 3 standard library (`http.server`) |
 | Production backend | PHP (`refresh.php`) |
 
