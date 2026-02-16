@@ -3345,3 +3345,6 @@ dateTime,value,unit,station_id,station_label
 2026-02-16T19:45:00Z,1.0,mm,50103,Allisland
 2026-02-16T20:00:00Z,0.3,mm,50103,Allisland
 2026-02-16T20:15:00Z,0.0,mm,50103,Allisland
+2026-02-16T20:30:00Z,0.2,mm,50103,Allisland
+2026-02-16T20:45:00Z,1.1,mm,50103,Allisland
+2026-02-16T21:00:00Z,1.7,mm,50103,Allisland
