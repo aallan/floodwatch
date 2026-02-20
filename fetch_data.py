@@ -12,7 +12,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+import re
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
@@ -22,7 +22,7 @@ LEVEL_STATIONS = [
     {"id": "50119", "label": "Taw Bridge", "rloi": "3123", "lat": 50.845457, "lon": -3.886253, "river": "River Taw", "type": "level"},
     {"id": "50132", "label": "Newnham Bridge", "rloi": "3113", "lat": 50.939901, "lon": -3.907581, "river": "River Taw", "type": "level"},
     {"id": "50140", "label": "Umberleigh", "rloi": "3106", "lat": 50.99542, "lon": -3.985089, "river": "River Taw", "type": "level"},
-    {"id": "50198", "label": "Barnstaple (Tidal)", "rloi": "9013", "lat": 51.080046, "lon": -4.064537, "river": "River Taw", "type": "level", "measure_id": "50198-level-tidal_level-i-15_min-mAOD"},
+    {"id": "50198", "label": "Barnstaple (Tidal)", "rloi": "9013", "lat": 51.080046, "lon": -4.064537, "river": "River Taw", "type": "tidal", "measure_id": "50198-level-tidal_level-i-15_min-mAOD"},
     # River Mole tributary stations (upstream to downstream)
     {"id": "50135", "label": "North Molton", "rloi": "3110", "lat": 51.055152, "lon": -3.795036, "river": "River Mole", "type": "level"},
     {"id": "50153", "label": "Mole Mills", "rloi": "3096", "lat": 51.016893, "lon": -3.822486, "river": "River Mole", "type": "level"},
@@ -70,7 +70,7 @@ def get_measure_id(station):
     """Get the measure ID for a station."""
     if "measure_id" in station:
         return station["measure_id"]
-    if station["type"] == "level":
+    if station["type"] in ("level", "tidal"):
         return f"{station['id']}-level-stage-i-15_min-m"
     else:
         return f"{station['id']}-rainfall-tipping_bucket_raingauge-t-15_min-mm"
@@ -84,32 +84,6 @@ def fetch_readings_batch(measure_id, start_date, end_date):
         return data.get("items", [])
     except Exception as e:
         print(f"  Warning: Could not fetch {start_date} to {end_date}: {e}")
-        return []
-
-
-def fetch_archive_day(date_str, station_id, measure_id):
-    """Try to fetch a day's data from the archive CSV."""
-    url = f"{API_BASE}/archive/readings-{date_str}.csv"
-    try:
-        req = Request(url)
-        with urlopen(req, timeout=120) as resp:
-            content = resp.read().decode("utf-8")
-            lines = content.strip().split("\n")
-            if len(lines) < 2:
-                return []
-            header = lines[0].split(",")
-            results = []
-            for line in lines[1:]:
-                fields = line.split(",")
-                if len(fields) >= 3:
-                    row_measure = fields[0] if len(fields) > 0 else ""
-                    if measure_id in row_measure or station_id in row_measure:
-                        results.append({
-                            "dateTime": fields[1] if len(fields) > 1 else "",
-                            "value": fields[2] if len(fields) > 2 else ""
-                        })
-            return results
-    except Exception:
         return []
 
 
@@ -200,7 +174,7 @@ def save_readings_csv(station, readings, filename):
     filepath = os.path.join(DATA_DIR, filename)
     with open(filepath, "w", newline="") as f:
         writer = csv.writer(f)
-        unit = "m" if station["type"] == "level" else "mm"
+        unit = "mm" if station["type"] == "rainfall" else ("mAOD" if station["type"] == "tidal" else "m")
         writer.writerow(["dateTime", "value", "unit", "station_id", "station_label"])
         for r in readings:
             val = r.get("value", "")
@@ -235,7 +209,9 @@ def get_station_filename(station):
     """Get the CSV filename for a station."""
     if station["type"] == "rainfall":
         return f"rainfall_{station['id']}.csv"
-    return f"level_{station['id']}_{station['label'].lower().replace(' ', '_')}.csv"
+    safe_label = re.sub(r'[^a-z0-9_()-]', '_', station['label'].lower().replace(' ', '_'))
+    safe_id = re.sub(r'[^a-zA-Z0-9_-]', '', station['id'])
+    return f"level_{safe_id}_{safe_label}.csv"
 
 
 def main():

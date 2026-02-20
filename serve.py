@@ -3,8 +3,9 @@
 Floodwatch local development server.
 
 Usage:
-    python serve.py              # Start on port 8080
+    python serve.py              # Start on port 8080 (localhost only)
     python serve.py 3000         # Start on custom port
+    python serve.py --bind ::    # Listen on all interfaces
     python serve.py --stop       # Stop running server
 
 Serves the static site and handles refresh.php requests
@@ -24,8 +25,12 @@ from datetime import datetime, timezone, timedelta
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
+import time as _time
+
 PORT = 8080
 PID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.server.pid')
+_last_refresh = 0
+_REFRESH_MIN_INTERVAL = 300  # 5 minutes
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 API_BASE = 'https://environment.data.gov.uk/flood-monitoring'
 
@@ -128,7 +133,7 @@ def refresh_station(station):
             items = data.get('items', [])
 
     # Merge new readings
-    unit = 'mm' if station['type'] == 'rainfall' else 'm'
+    unit = 'mm' if station['type'] == 'rainfall' else ('mAOD' if station['type'] == 'tidal' else 'm')
     new_count = 0
     for item in items:
         dt = item.get('dateTime', '')
@@ -190,7 +195,23 @@ class FloodwatchHandler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_POST(self):
+        global _last_refresh
         if self.path == '/refresh.php' or self.path == '/refresh':
+            now = _time.time()
+            elapsed = now - _last_refresh
+            if _last_refresh and elapsed < _REFRESH_MIN_INTERVAL:
+                self.send_response(429)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                retry_after = int(_REFRESH_MIN_INTERVAL - elapsed)
+                self.wfile.write(json.dumps({
+                    'success': False,
+                    'error': 'Too many requests',
+                    'retry_after': retry_after
+                }).encode())
+                return
+            _last_refresh = now
             print('Refresh requested...')
             result = handle_refresh()
             self.send_response(200)
@@ -259,7 +280,7 @@ class ReusableHTTPServer(HTTPServer):
     allow_reuse_port = True
 
 
-def start_server(port):
+def start_server(port, bind_addr='::1'):
     # Check if already running via PID file
     pid = read_pid()
     if pid:
@@ -276,7 +297,7 @@ def start_server(port):
         except OSError:
             pass
 
-    server = ReusableHTTPServer(('::', port), FloodwatchHandler)
+    server = ReusableHTTPServer((bind_addr, port), FloodwatchHandler)
     write_pid()
 
     def cleanup():
@@ -317,7 +338,15 @@ if __name__ == '__main__':
         stop_server()
     else:
         port = PORT
-        for a in args:
-            if a.isdigit():
-                port = int(a)
-        start_server(port)
+        bind_addr = '::1'
+        i = 0
+        while i < len(args):
+            if args[i] in ('--bind', '-b') and i + 1 < len(args):
+                bind_addr = args[i + 1]
+                i += 2
+            elif args[i].isdigit():
+                port = int(args[i])
+                i += 1
+            else:
+                i += 1
+        start_server(port, bind_addr)
