@@ -4,6 +4,8 @@
 
 A real-time flood monitoring dashboard for the River Taw and its tributaries in Devon, UK. Displays river levels, tidal levels, rainfall data, and active flood warnings from Environment Agency monitoring stations on an interactive map with flow visualisation and time-series charts.
 
+The service is currently deployed as a Digital Ocean App at [tawriver.watch](https://tawriver.watch).
+
 ## Quick Start
 
 Fetch historical data (first time only — takes a few minutes):
