@@ -34,8 +34,9 @@ open http://localhost:8080
 Serves the static site and handles data refresh requests. No PHP, Node, or other runtime needed — just Python 3.
 
 ```bash
-python serve.py              # Start on port 8080
+python serve.py              # Start on port 8080 (localhost only)
 python serve.py 3000         # Start on a custom port
+python serve.py --bind ::    # Listen on all interfaces
 python serve.py --stop       # Stop the running server
 ```
 
@@ -44,9 +45,10 @@ The server:
 - Serves all static files (HTML, CSS, JS, CSV data, GeoJSON overlays)
 - Handles `POST /refresh.php` by proxying to the EA Flood Monitoring API directly in Python
 - Sets `Cache-Control: no-cache` headers on `.csv` and `.geojson` responses to prevent stale data
-- Listens on IPv6 dual-stack (`::`) so both `localhost` (IPv6) and `127.0.0.1` (IPv4) work on macOS
+- Binds to `::1` (localhost) by default — use `--bind ::` to listen on all interfaces
 - Tracks its own PID in `.server.pid` for clean start/stop lifecycle
 - Auto-kills any stale server instance on the same port
+- Rate-limits refresh requests to once per 5 minutes (returns HTTP 429)
 
 Press `Ctrl+C` to stop, or use `python serve.py --stop` from another terminal.
 
@@ -138,8 +140,8 @@ The dashboard monitors 15 EA flood area IDs covering both types:
 
 | Type | Areas monitored | Example |
 |------|----------------|---------|
-| Flood Warning Areas | 9 (River Taw upper/middle/lower, tidal, Okement, Landkey) | `113FWF2E1B` — River Taw (Lower) |
-| Flood Alert Areas | 6 (North Dartmoor Rivers, Lower Taw, tidal estuary) | `113WAFTW12` — North Dartmoor Rivers |
+| Flood Warning Areas | 13 (River Taw upper/middle/lower, tidal, Okement, Landkey, tidal estuary) | `113FWF2E1B` — River Taw (Lower) |
+| Flood Alert Areas | 2 (North Dartmoor Rivers, Lower Taw area) | `113WAFTW12` — North Dartmoor Rivers |
 
 Warnings and alerts are fetched from the EA API on page load and on each refresh. When active warnings or alerts exist, a coloured banner appears below the header:
 
@@ -804,10 +806,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b...  # v4.3.1 (SHA-pinned)
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be...  # v5.6.0 (SHA-pinned)
         with:
           python-version: '3.12'
 
@@ -843,7 +845,7 @@ floodwatch/
   refresh.php                         # PHP refresh endpoint for LAMP deployment
   README.md                           # This file
   LICENSE                             # MIT licence
-  .gitignore                          # Excludes .server.pid, __pycache__, .DS_Store
+  .gitignore                          # Excludes .server.pid, __pycache__, .DS_Store, .claude
   .do/app.yaml                        # Digital Ocean App Platform spec
   .github/workflows/update-data.yml   # Hourly GitHub Actions data refresh
   images/                             # Static images
@@ -864,6 +866,7 @@ floodwatch/
 | River geometry | [OpenStreetMap](https://www.openstreetmap.org/) via [Overpass API](https://overpass-api.de/) |
 | Data source | [EA Flood Monitoring API](https://environment.data.gov.uk/flood-monitoring/doc/reference) |
 | Rainfall forecast | [Open-Meteo API](https://open-meteo.com/) |
+| Discharge forecast | [Open-Meteo Flood API](https://open-meteo.com/en/docs/flood-api) (GloFAS v4) |
 | Dev server | Python 3 standard library (`http.server`) |
 | Production backend | PHP (`refresh.php`) |
 
