@@ -3,7 +3,7 @@ id,label,lat,lon,river,type,rloi,measure_id
 50119,Taw Bridge,50.845457,-3.886253,River Taw,level,3123,50119-level-stage-i-15_min-m
 50132,Newnham Bridge,50.939901,-3.907581,River Taw,level,3113,50132-level-stage-i-15_min-m
 50140,Umberleigh,50.99542,-3.985089,River Taw,level,3106,50140-level-stage-i-15_min-m
-50198,Barnstaple (Tidal),51.080046,-4.064537,River Taw,level,9013,50198-level-tidal_level-i-15_min-mAOD
+50198,Barnstaple (Tidal),51.080046,-4.064537,River Taw,tidal,9013,50198-level-tidal_level-i-15_min-mAOD
 50135,North Molton,51.055152,-3.795036,River Mole,level,3110,50135-level-stage-i-15_min-m
 50153,Mole Mills,51.016893,-3.822486,River Mole,level,3096,50153-level-stage-i-15_min-m
 50115,Woodleigh,50.973061,-3.909695,River Mole,level,3127,50115-level-stage-i-15_min-m
