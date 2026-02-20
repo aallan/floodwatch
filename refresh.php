@@ -5,10 +5,28 @@
  */
 
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Origin: https://tawriver.watch');
 
 $dataDir = __DIR__ . '/data';
 $apiBase = 'https://environment.data.gov.uk/flood-monitoring';
+
+// Rate limiting: minimum 5 minutes between refreshes
+$rateLimitFile = $dataDir . '/.last_refresh';
+$minInterval = 300;
+if (file_exists($rateLimitFile)) {
+    $lastRefresh = (int)file_get_contents($rateLimitFile);
+    $elapsed = time() - $lastRefresh;
+    if ($elapsed < $minInterval) {
+        http_response_code(429);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Too many requests',
+            'retry_after' => $minInterval - $elapsed
+        ]);
+        exit;
+    }
+}
+file_put_contents($rateLimitFile, (string)time());
 
 // Station definitions matching our CSV structure
 $stations = [
@@ -17,7 +35,7 @@ $stations = [
     ['id' => '50119', 'label' => 'Taw Bridge', 'type' => 'level', 'measureId' => '50119-level-stage-i-15_min-m', 'file' => 'level_50119_taw_bridge.csv'],
     ['id' => '50132', 'label' => 'Newnham Bridge', 'type' => 'level', 'measureId' => '50132-level-stage-i-15_min-m', 'file' => 'level_50132_newnham_bridge.csv'],
     ['id' => '50140', 'label' => 'Umberleigh', 'type' => 'level', 'measureId' => '50140-level-stage-i-15_min-m', 'file' => 'level_50140_umberleigh.csv'],
-    ['id' => '50198', 'label' => 'Barnstaple (Tidal)', 'type' => 'level', 'measureId' => '50198-level-tidal_level-i-15_min-mAOD', 'file' => 'level_50198_barnstaple_(tidal).csv'],
+    ['id' => '50198', 'label' => 'Barnstaple (Tidal)', 'type' => 'tidal', 'measureId' => '50198-level-tidal_level-i-15_min-mAOD', 'file' => 'level_50198_barnstaple_(tidal).csv'],
     // River Mole tributary stations
     ['id' => '50135', 'label' => 'North Molton', 'type' => 'level', 'measureId' => '50135-level-stage-i-15_min-m', 'file' => 'level_50135_north_molton.csv'],
     ['id' => '50153', 'label' => 'Mole Mills', 'type' => 'level', 'measureId' => '50153-level-stage-i-15_min-m', 'file' => 'level_50153_mole_mills.csv'],
@@ -79,7 +97,7 @@ foreach ($stations as $station) {
                 // Small gap: single request with since parameter
                 $url = $apiBase . '/id/measures/' . $station['measureId'] . '/readings?since=' . urlencode($latestTime) . '&_sorted&_limit=10000';
                 $ctx = stream_context_create(['http' => ['timeout' => 60, 'header' => "Accept: application/json\r\n"]]);
-                $response = @file_get_contents($url, false, $ctx);
+                $response = file_get_contents($url, false, $ctx);
                 if ($response !== false) {
                     $data = json_decode($response, true);
                     $items = $data['items'] ?? [];
@@ -99,7 +117,7 @@ foreach ($stations as $station) {
 
                     $url = $apiBase . '/id/measures/' . $station['measureId'] . '/readings?startdate=' . $chunkStart->format('Y-m-d') . '&enddate=' . $chunkEnd->format('Y-m-d') . '&_sorted&_limit=100000';
                     $ctx = stream_context_create(['http' => ['timeout' => 60, 'header' => "Accept: application/json\r\n"]]);
-                    $response = @file_get_contents($url, false, $ctx);
+                    $response = file_get_contents($url, false, $ctx);
 
                     if ($response !== false) {
                         $data = json_decode($response, true);
@@ -118,7 +136,7 @@ foreach ($stations as $station) {
             $startDate->modify('-28 days');
             $url = $apiBase . '/id/measures/' . $station['measureId'] . '/readings?startdate=' . $startDate->format('Y-m-d') . '&enddate=' . $now->format('Y-m-d') . '&_sorted&_limit=100000';
             $ctx = stream_context_create(['http' => ['timeout' => 60, 'header' => "Accept: application/json\r\n"]]);
-            $response = @file_get_contents($url, false, $ctx);
+            $response = file_get_contents($url, false, $ctx);
             if ($response !== false) {
                 $data = json_decode($response, true);
                 $items = $data['items'] ?? [];
@@ -132,7 +150,7 @@ foreach ($stations as $station) {
         }
 
         // Add new readings
-        $unit = $station['type'] === 'level' ? 'm' : 'mm';
+        $unit = $station['type'] === 'rainfall' ? 'mm' : ($station['type'] === 'tidal' ? 'mAOD' : 'm');
         $newCount = 0;
 
         foreach ($items as $item) {

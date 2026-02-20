@@ -23,11 +23,16 @@
     <meta name="description" content="Real-time flood monitoring dashboard for the River Taw catchment in Devon, UK. Live river levels, rainfall, and tidal data from Environment Agency stations.">
 
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231a8a7d'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='serif' font-size='22' font-weight='bold' fill='white'%3E~%3C/text%3E%3C/svg%3E">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"
+            integrity="sha384-D/t0ZMqQW31H3az8ktEiNb39wyKnS82iFY52QPACM+IjKW3jDUhyIgh2PApRqJZs" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+            integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"
+            integrity="sha384-cVMg8E3QFwTvGCDuK+ET4PD341jF3W8nO1auiXfuZNQkzbUUiBGLsIQUE+b1mxws" crossorigin="anonymous"></script>
     <style>
         :root {
             --bg-primary: #2c3345;
@@ -1630,6 +1635,12 @@
         const timeStr = latest ? formatTime(latest.dateTime) : '--';
         const hasData = data?.readings?.length > 0;
 
+        // Sanitise dynamic values for safe HTML insertion
+        const safeId = station.id.replace(/[^a-zA-Z0-9_-]/g, '');
+        const safeLabel = escapeHtml(station.label);
+        const safeRiver = station.river ? escapeHtml(station.river) : '';
+        const safeType = type.replace(/[^a-z]/g, '');
+
         const upstreamNote = type === 'level' && station.order
             ? `<span style="font-size:10px; color:var(--text-secondary); margin-left:8px;">#${station.order} ${station.order === 1 ? '(most upstream)' : station.order === 4 ? '(most downstream)' : ''}</span>`
             : '';
@@ -1642,35 +1653,35 @@
             : '';
 
         const typeLabels = { level: 'River Level', rainfall: 'Rainfall', tidal: 'Tidal Level' };
-        const chartId = `chart-${station.id}`;
+        const chartId = `chart-${safeId}`;
 
         const html = `
             <div class="popup-header">
-                <h3>${station.label}${upstreamNote}</h3>
-                <div class="station-type ${type}">${typeLabels[type]}${station.river ? ' &mdash; ' + station.river : ''}</div>
+                <h3>${safeLabel}${upstreamNote}</h3>
+                <div class="station-type ${safeType}">${typeLabels[type]}${safeRiver ? ' &mdash; ' + safeRiver : ''}</div>
             </div>
-            <div class="popup-current" id="current-${station.id}" data-original-value="${latestStr}" data-original-unit="${unit}" data-original-trend="${trendHtml ? trendHtml.replace(/"/g, '&quot;') : ''}">
+            <div class="popup-current" id="current-${safeId}" data-original-value="${latestStr}" data-original-unit="${unit}" data-original-trend="${trendHtml ? trendHtml.replace(/"/g, '&quot;') : ''}">
                 <span class="value">${latestStr}</span>
                 <span class="unit">${unit}</span>${trendHtml}
-                <span class="timestamp" id="timestamp-${station.id}" data-original="${timeStr}">${timeStr}</span>
+                <span class="timestamp" id="timestamp-${safeId}" data-original="${timeStr}">${timeStr}</span>
             </div>
             ${station.id === '50198' ? `
-            <div class="popup-tabs" id="tabs-${station.id}">
-                <button class="tab-tidal active" onclick="showTidalTab('${station.id}', this)">Tidal Level</button>
-                <button class="tab-discharge" onclick="showDischargeTab('${station.id}', this)">River Discharge</button>
+            <div class="popup-tabs" id="tabs-${safeId}">
+                <button class="tab-tidal active" onclick="showTidalTab('${safeId}', this)">Tidal Level</button>
+                <button class="tab-discharge" onclick="showDischargeTab('${safeId}', this)">River Discharge</button>
             </div>` : ''}
             ${hasData ? `
             <div class="popup-chart-area">
                 <div class="popup-chart">
                     <canvas id="${chartId}"></canvas>
                 </div>
-                <div class="popup-timerange" id="timerange-${station.id}">
-                    <button data-hours="24" onclick="setTimeRange('${station.id}', 24, '${type}', this)">24h</button>
-                    <button data-hours="48" onclick="setTimeRange('${station.id}', 48, '${type}', this)">48h</button>
-                    <button class="active" data-hours="${5*24}" onclick="setTimeRange('${station.id}', ${5*24}, '${type}', this)">5d</button>
-                    <button data-hours="${30*24}" onclick="setTimeRange('${station.id}', ${30*24}, '${type}', this)">30d</button>
-                    <button data-hours="0" onclick="setTimeRange('${station.id}', 0, '${type}', this)">All</button>
-                    ${type === 'rainfall' ? `<button class="forecast-btn" onclick="showForecast('${station.id}', this)">&#9729; Fcst</button>` : ''}
+                <div class="popup-timerange" id="timerange-${safeId}">
+                    <button data-hours="24" onclick="setTimeRange('${safeId}', 24, '${safeType}', this)">24h</button>
+                    <button data-hours="48" onclick="setTimeRange('${safeId}', 48, '${safeType}', this)">48h</button>
+                    <button class="active" data-hours="${5*24}" onclick="setTimeRange('${safeId}', ${5*24}, '${safeType}', this)">5d</button>
+                    <button data-hours="${30*24}" onclick="setTimeRange('${safeId}', ${30*24}, '${safeType}', this)">30d</button>
+                    <button data-hours="0" onclick="setTimeRange('${safeId}', 0, '${safeType}', this)">All</button>
+                    ${type === 'rainfall' ? `<button class="forecast-btn" onclick="showForecast('${safeId}', this)">&#9729; Fcst</button>` : ''}
                 </div>
             </div>
             ` : `
@@ -2418,7 +2429,7 @@
             log.prepend(bar);
         }
         const pct = Math.round((current / total) * 100);
-        bar.innerHTML = `<div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div> ${current}/${total} ${label}`;
+        bar.innerHTML = `<div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div> ${current}/${total} ${escapeHtml(label)}`;
     }
 
     function removeLogProgress() {
@@ -2761,10 +2772,12 @@
     // ============================================================
     const CACHE_KEY = 'floodwatch_cache';
     const CACHE_VERSION = 1;
+    const _allStationIds = [...STATIONS.level, ...STATIONS.rainfall, ...STATIONS.tidal].map(s => s.id).sort().join(',');
+    const CACHE_FINGERPRINT = _allStationIds.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0).toString(36);
 
     function cacheToLocalStorage() {
         try {
-            const cache = { version: CACHE_VERSION, timestamp: new Date().toISOString(), stations: {} };
+            const cache = { version: CACHE_VERSION, fingerprint: CACHE_FINGERPRINT, timestamp: new Date().toISOString(), stations: {} };
             for (const [id, data] of Object.entries(stationData)) {
                 if (!data.readings?.length) continue;
                 // Only store readings newer than the CSV data would have
@@ -2787,7 +2800,7 @@
             const raw = localStorage.getItem(CACHE_KEY);
             if (!raw) return;
             const cache = JSON.parse(raw);
-            if (cache.version !== CACHE_VERSION) return;
+            if (cache.version !== CACHE_VERSION || cache.fingerprint !== CACHE_FINGERPRINT) return;
 
             let merged = 0;
             for (const [id, entries] of Object.entries(cache.stations)) {
