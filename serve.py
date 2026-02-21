@@ -302,15 +302,17 @@ class FloodwatchHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=os.path.dirname(os.path.abspath(__file__)), **kwargs)
 
     # Content-Security-Policy — restricts which resources the browser may load.
-    # 'unsafe-inline' is required because index.html uses a large inline <script>
-    # block and inline style= attributes.  The explicit CDN allowlist limits
-    # script/style sources to only the libraries the app actually uses.
+    # All JS is in external files so script-src needs no 'unsafe-inline'.
+    # style-src keeps 'unsafe-inline' because Leaflet divIcon HTML strings
+    # contain dynamic inline styles (rotation angles, colours) that cannot
+    # be expressed as static CSS classes.
     CSP = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; "
+        "script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; "
         "style-src 'self' 'unsafe-inline' https://unpkg.com; "
         "img-src 'self' data: https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org; "
-        "connect-src 'self' https://environment.data.gov.uk https://api.open-meteo.com https://flood-api.open-meteo.com; "
+        "connect-src 'self' https://environment.data.gov.uk https://api.open-meteo.com "
+        "https://flood-api.open-meteo.com https://unpkg.com https://cdn.jsdelivr.net; "
         "font-src 'self'; "
         "object-src 'none'; "
         "base-uri 'self'"
