@@ -463,7 +463,7 @@ All deployments serve the same `index.html` single-page app. The difference is h
 
 ```
 floodwatch/
-  index.html                          # Single-page app (HTML + inline CSS + JS)
+  index.html                          # Single-page app (HTML shell, ~75 lines)
   fetch_data.py                       # Data fetcher (full or --recent incremental)
   serve.py                            # Local Python dev server with refresh proxy
   refresh.php                         # PHP refresh endpoint for LAMP deployment
@@ -484,7 +484,10 @@ floodwatch/
   .github/SECURITY.md                 # Security vulnerability reporting
   .github/ISSUE_TEMPLATE/             # Bug report and feature request templates
   .github/pull_request_template.md    # PR template
+  css/
+    floodwatch.css                    # All application styles
   js/
+    floodwatch.js                     # Main application logic
     floodwatch-core.js                # Extracted utility functions (UMD module)
   js-tests/
     package.json                      # Vitest + jsdom devDependencies

@@ -67,7 +67,7 @@ All tests must pass before a pull request can be merged. See [TESTING.md](TESTIN
 2. Make your changes. Follow the existing code style (enforced by ruff via pre-commit):
    - **Python:** 4-space indentation, type hints on function signatures
    - **JavaScript:** 2-space indentation, single quotes
-   - **HTML/CSS:** inline in `index.html` (single-page app)
+   - **HTML:** minimal shell in `index.html`; styles in `css/floodwatch.css`, logic in `js/floodwatch.js`
 
 3. Add or update tests if your change affects the data pipeline, server logic, or frontend utility functions.
 
