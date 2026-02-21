@@ -1707,17 +1707,17 @@ function loadFromLocalStorage() {
 }
 
 async function detectBackend() {
-    try {
-        // Quick probe: OPTIONS is lightweight and our backends respond to it.
-        // Static hosts either 404 or return the HTML fallback.
-        const resp = await fetch('refresh', { method: 'OPTIONS' });
-        if (resp.ok && resp.headers.get('access-control-allow-methods')?.includes('POST')) {
-            return true;
-        }
-        return false;
-    } catch (e) {
-        return false;
-    }
+    // Check whether a refresh backend (serve.py or refresh.php) is available.
+    // On static hosts this 404s — we test via XHR instead of fetch() because
+    // fetch() logs non-2xx responses as console errors in Chrome, which looks
+    // alarming even though they are handled.  XHR failures are silent.
+    return new Promise(resolve => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('HEAD', 'refresh.php');
+        xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
+        xhr.onerror = () => resolve(false);
+        xhr.send();
+    });
 }
 
 // ============================================================
