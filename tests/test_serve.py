@@ -1,24 +1,23 @@
 """Tests for serve.py — dev server logic (non-HTTP functions)."""
+
 import csv
 import json
 import os
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import MagicMock
 from urllib.error import URLError
-
-import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import serve
 from tests.conftest import make_mock_urlopen
 
-
 # ============================================================
 # api_get (serve.py version — no retry, returns None on error)
 # ============================================================
+
 
 class TestServeApiGet:
     def test_success(self, monkeypatch):
@@ -51,6 +50,7 @@ class TestServeApiGet:
 # refresh_station — filesystem + HTTP mocking
 # ============================================================
 
+
 class TestRefreshStation:
     def _write_csv(self, data_dir, filename, rows):
         """Write a CSV with standard headers."""
@@ -81,9 +81,13 @@ class TestRefreshStation:
         station = serve.STATIONS[0]
         # Write existing CSV with data from 2 days ago
         two_days_ago = (datetime.now(timezone.utc) - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        self._write_csv(data_dir, station["file"], [
-            [two_days_ago, "0.500", "m", station["id"], station["label"]],
-        ])
+        self._write_csv(
+            data_dir,
+            station["file"],
+            [
+                [two_days_ago, "0.500", "m", station["id"], station["label"]],
+            ],
+        )
 
         captured_urls = []
 
@@ -93,7 +97,7 @@ class TestRefreshStation:
 
         monkeypatch.setattr(serve, "api_get", mock_api_get)
 
-        result = serve.refresh_station(station)
+        serve.refresh_station(station)
         # Should have used ?since= (not startdate/enddate)
         assert any("since=" in url for url in captured_urls)
 
@@ -102,9 +106,13 @@ class TestRefreshStation:
         station = serve.STATIONS[0]
         # Write existing CSV with data from 10 days ago
         ten_days_ago = (datetime.now(timezone.utc) - timedelta(days=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        self._write_csv(data_dir, station["file"], [
-            [ten_days_ago, "0.500", "m", station["id"], station["label"]],
-        ])
+        self._write_csv(
+            data_dir,
+            station["file"],
+            [
+                [ten_days_ago, "0.500", "m", station["id"], station["label"]],
+            ],
+        )
 
         def mock_api_get(url):
             return {"items": [{"dateTime": "2026-02-20T10:00:00Z", "value": 0.55}]}
@@ -118,14 +126,16 @@ class TestRefreshStation:
         """New readings with same dateTime as existing are not duplicated."""
         station = serve.STATIONS[0]
         existing_dt = (datetime.now(timezone.utc) - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        self._write_csv(data_dir, station["file"], [
-            [existing_dt, "0.500", "m", station["id"], station["label"]],
-        ])
+        self._write_csv(
+            data_dir,
+            station["file"],
+            [
+                [existing_dt, "0.500", "m", station["id"], station["label"]],
+            ],
+        )
 
         # API returns the same dateTime
-        monkeypatch.setattr(serve, "api_get", lambda url: {
-            "items": [{"dateTime": existing_dt, "value": 0.500}]
-        })
+        monkeypatch.setattr(serve, "api_get", lambda url: {"items": [{"dateTime": existing_dt, "value": 0.500}]})
 
         result = serve.refresh_station(station)
         assert result["new_readings"] == 0
@@ -136,9 +146,7 @@ class TestRefreshStation:
         # Find the tidal station
         tidal = next(s for s in serve.STATIONS if s["type"] == "tidal")
 
-        monkeypatch.setattr(serve, "api_get", lambda url: {
-            "items": [{"dateTime": "2026-02-20T10:00:00Z", "value": 2.5}]
-        })
+        monkeypatch.setattr(serve, "api_get", lambda url: {"items": [{"dateTime": "2026-02-20T10:00:00Z", "value": 2.5}]})
 
         serve.refresh_station(tidal)
 
@@ -152,6 +160,7 @@ class TestRefreshStation:
 # ============================================================
 # write_pid / read_pid — PID file management
 # ============================================================
+
 
 class TestPidFile:
     def test_write_and_read(self, tmp_path, monkeypatch):
@@ -180,12 +189,10 @@ class TestPidFile:
 # handle_refresh — integration test (mocked refresh_station)
 # ============================================================
 
+
 class TestHandleRefresh:
     def test_returns_valid_json(self, monkeypatch):
-        monkeypatch.setattr(
-            serve, "refresh_station",
-            lambda s: {"id": s["id"], "label": s["label"], "new_readings": 0, "total": 100}
-        )
+        monkeypatch.setattr(serve, "refresh_station", lambda s: {"id": s["id"], "label": s["label"], "new_readings": 0, "total": 100})
 
         result_json = serve.handle_refresh()
         result = json.loads(result_json)

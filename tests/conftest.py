@@ -1,12 +1,10 @@
 """Shared fixtures for Floodwatch tests."""
-import io
+
 import json
-import os
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -79,6 +77,7 @@ def data_dir(tmp_path, monkeypatch):
 
     import fetch_data
     import serve
+
     monkeypatch.setattr(fetch_data, "DATA_DIR", str(d))
     monkeypatch.setattr(serve, "DATA_DIR", str(d))
 

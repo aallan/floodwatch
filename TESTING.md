@@ -2,12 +2,16 @@
 
 80 tests cover the data pipeline, server logic, and frontend utility functions. The focus is on areas where bugs are most consequential: data merge/dedup logic (where errors silently corrupt charts), API retry behaviour (where failures lose data), filename sanitisation (where unsanitised input could create path traversal issues), and HTML escaping (where station names could inject scripts). No production dependencies are added — all test tooling is dev-only.
 
+## Prerequisites
+
+- **Python 3.12+** and **pytest** — `brew install python && pip install pytest`
+- **Node.js 22+** — `brew install node` (for JavaScript tests only)
+
 ## Running Tests
 
 **Python** (55 tests via pytest):
 
 ```bash
-pip install pytest
 pytest tests/ -v
 ```
 
@@ -15,7 +19,7 @@ pytest tests/ -v
 
 ```bash
 cd js-tests
-npm install
+npm install          # first time only
 npm test
 ```
 

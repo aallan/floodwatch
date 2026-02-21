@@ -6,6 +6,23 @@ A real-time flood monitoring dashboard for the River Taw and its tributaries in 
 
 The service is currently deployed as a Digital Ocean App at [tawriver.watch](https://tawriver.watch).
 
+## Prerequisites
+
+**Python 3.12+** is the only requirement to run Floodwatch. The app uses only the Python standard library — no pip packages needed.
+
+```bash
+brew install python              # macOS (via Homebrew)
+```
+
+For development (tests, linting), you'll also need:
+
+```bash
+brew install node pre-commit ruff
+pip install pytest
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development setup.
+
 ## Quick Start
 
 Fetch historical data (first time only — takes a few minutes):
@@ -458,6 +475,7 @@ floodwatch/
   CHANGELOG.md                        # Version history
   LICENSE                             # MIT licence
   .editorconfig                       # Consistent formatting across editors
+  .pre-commit-config.yaml             # Pre-commit hooks (ruff lint + format)
   .gitignore                          # Excludes .server.pid, __pycache__, .DS_Store, .claude, node_modules, .pytest_cache
   .do/app.yaml                        # Digital Ocean App Platform spec
   .github/workflows/update-data.yml   # Hourly GitHub Actions data refresh

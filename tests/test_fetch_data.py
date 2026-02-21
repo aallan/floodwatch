@@ -1,12 +1,8 @@
 """Tests for fetch_data.py — data pipeline functions."""
+
 import csv
-import io
-import json
-import os
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
 from urllib.error import URLError
 
 import pytest
@@ -17,10 +13,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import fetch_data
 from tests.conftest import make_mock_urlopen
 
-
 # ============================================================
 # get_measure_id — pure function, no mocking needed
 # ============================================================
+
 
 class TestGetMeasureId:
     def test_level_station(self, sample_station_level):
@@ -54,6 +50,7 @@ class TestGetMeasureId:
 # ============================================================
 # get_station_filename — pure function with regex sanitisation
 # ============================================================
+
 
 class TestGetStationFilename:
     def test_level_station(self):
@@ -94,6 +91,7 @@ class TestGetStationFilename:
 # ============================================================
 # merge_readings — pure function, critical dedup/sort logic
 # ============================================================
+
 
 class TestMergeReadings:
     def test_merge_empty_existing_with_new(self):
@@ -145,6 +143,7 @@ class TestMergeReadings:
 # load_existing_csv — filesystem, uses data_dir fixture
 # ============================================================
 
+
 class TestLoadExistingCsv:
     def test_load_valid_csv(self, data_dir):
         csv_content = "dateTime,value,unit,station_id,station_label\n"
@@ -171,6 +170,7 @@ class TestLoadExistingCsv:
 # ============================================================
 # save_readings_csv — filesystem, uses data_dir fixture
 # ============================================================
+
 
 class TestSaveReadingsCsv:
     def test_save_level_station(self, data_dir, sample_station_level, sample_readings):
@@ -225,6 +225,7 @@ class TestSaveReadingsCsv:
 # save_stations_csv — filesystem, uses data_dir fixture
 # ============================================================
 
+
 class TestSaveStationsCsv:
     def test_writes_all_stations(self, data_dir):
         fetch_data.save_stations_csv()
@@ -249,6 +250,7 @@ class TestSaveStationsCsv:
 # ============================================================
 # api_get — HTTP mocking with monkeypatch
 # ============================================================
+
 
 class TestApiGet:
     def test_success_first_attempt(self, monkeypatch):
@@ -306,6 +308,7 @@ class TestApiGet:
 # fetch_readings_batch — mocked HTTP
 # ============================================================
 
+
 class TestFetchReadingsBatch:
     def test_returns_items_on_success(self, monkeypatch):
         items = [{"dateTime": "2026-01-13T00:00:00Z", "value": 0.5}]
@@ -331,6 +334,7 @@ class TestFetchReadingsBatch:
 # fetch_all_readings — mocked HTTP, tests chunking and dedup
 # ============================================================
 
+
 class TestFetchAllReadings:
     def test_deduplicates_overlapping_chunks(self, monkeypatch):
         """If the same reading appears in multiple chunks, it's only in the result once."""
@@ -339,10 +343,7 @@ class TestFetchAllReadings:
             {"dateTime": "2026-02-01T00:00:00Z", "value": 0.5},  # duplicate
             {"dateTime": "2026-02-01T01:00:00Z", "value": 0.6},
         ]
-        monkeypatch.setattr(
-            fetch_data, "fetch_readings_batch",
-            lambda *a, **kw: chunk_data
-        )
+        monkeypatch.setattr(fetch_data, "fetch_readings_batch", lambda *a, **kw: chunk_data)
         monkeypatch.setattr("fetch_data.time.sleep", lambda _: None)
 
         station = {"id": "50140", "label": "Umberleigh", "type": "level"}

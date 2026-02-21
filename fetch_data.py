@@ -3,18 +3,23 @@
 Fetch flood monitoring and rainfall data from the Environment Agency API.
 Saves data as CSV files for the static site.
 """
+
 import argparse
 import csv
 import json
 import os
-import sys
+import re
 import time
 from datetime import datetime, timedelta, timezone
-from urllib.request import urlopen, Request
+from typing import Any
 from urllib.error import HTTPError, URLError
-import re
+from urllib.request import Request, urlopen
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+DATA_DIR: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+
+# Station dict type — level stations have extra keys (rloi, river, measure_id)
+# but all have at least these.
+type StationInfo = dict[str, Any]
 
 # River Taw level stations (upstream to downstream order by lat)
 LEVEL_STATIONS = [
@@ -22,13 +27,30 @@ LEVEL_STATIONS = [
     {"id": "50119", "label": "Taw Bridge", "rloi": "3123", "lat": 50.845457, "lon": -3.886253, "river": "River Taw", "type": "level"},
     {"id": "50132", "label": "Newnham Bridge", "rloi": "3113", "lat": 50.939901, "lon": -3.907581, "river": "River Taw", "type": "level"},
     {"id": "50140", "label": "Umberleigh", "rloi": "3106", "lat": 50.99542, "lon": -3.985089, "river": "River Taw", "type": "level"},
-    {"id": "50198", "label": "Barnstaple (Tidal)", "rloi": "9013", "lat": 51.080046, "lon": -4.064537, "river": "River Taw", "type": "tidal", "measure_id": "50198-level-tidal_level-i-15_min-mAOD"},
+    {
+        "id": "50198",
+        "label": "Barnstaple (Tidal)",
+        "rloi": "9013",
+        "lat": 51.080046,
+        "lon": -4.064537,
+        "river": "River Taw",
+        "type": "tidal",
+        "measure_id": "50198-level-tidal_level-i-15_min-mAOD",
+    },
     # River Mole tributary stations (upstream to downstream)
     {"id": "50135", "label": "North Molton", "rloi": "3110", "lat": 51.055152, "lon": -3.795036, "river": "River Mole", "type": "level"},
     {"id": "50153", "label": "Mole Mills", "rloi": "3096", "lat": 51.016893, "lon": -3.822486, "river": "River Mole", "type": "level"},
     {"id": "50115", "label": "Woodleigh", "rloi": "3127", "lat": 50.973061, "lon": -3.909695, "river": "River Mole", "type": "level"},
     # Little Dart River tributary station
-    {"id": "50125", "label": "Chulmleigh", "rloi": "3118", "lat": 50.907767, "lon": -3.863651, "river": "Little Dart River", "type": "level"},
+    {
+        "id": "50125",
+        "label": "Chulmleigh",
+        "rloi": "3118",
+        "lat": 50.907767,
+        "lon": -3.863651,
+        "river": "Little Dart River",
+        "type": "level",
+    },
     # River Yeo tributary stations (upstream to downstream)
     {"id": "50151", "label": "Lapford", "rloi": "3098", "lat": 50.857808, "lon": -3.810592, "river": "River Yeo", "type": "level"},
     {"id": "50114", "label": "Collard Bridge", "rloi": "3128", "lat": 51.099972, "lon": -4.010005, "river": "River Yeo", "type": "level"},
@@ -48,10 +70,13 @@ RAINFALL_STATIONS = [
     {"id": "47158", "label": "Halwill", "lat": 50.771514, "lon": -4.228634, "type": "rainfall"},
 ]
 
-API_BASE = "https://environment.data.gov.uk/flood-monitoring"
+API_BASE: str = "https://environment.data.gov.uk/flood-monitoring"
+
+# Reading type — a single measurement from the API or loaded from CSV
+type Reading = dict[str, Any]
 
 
-def api_get(url, retries=3):
+def api_get(url: str, retries: int = 3) -> dict[str, Any]:
     """Fetch JSON from the API with retries."""
     for attempt in range(retries):
         try:
@@ -59,14 +84,14 @@ def api_get(url, retries=3):
             with urlopen(req, timeout=60) as resp:
                 return json.loads(resp.read().decode("utf-8"))
         except (HTTPError, URLError, TimeoutError) as e:
-            print(f"  Attempt {attempt+1}/{retries} failed for {url}: {e}")
+            print(f"  Attempt {attempt + 1}/{retries} failed for {url}: {e}")
             if attempt < retries - 1:
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
             else:
                 raise
 
 
-def get_measure_id(station):
+def get_measure_id(station: StationInfo) -> str:
     """Get the measure ID for a station."""
     if "measure_id" in station:
         return station["measure_id"]
@@ -76,7 +101,7 @@ def get_measure_id(station):
         return f"{station['id']}-rainfall-tipping_bucket_raingauge-t-15_min-mm"
 
 
-def fetch_readings_batch(measure_id, start_date, end_date):
+def fetch_readings_batch(measure_id: str, start_date: str, end_date: str) -> list[Reading]:
     """Fetch readings for a date range (API handles up to ~1 month well)."""
     url = f"{API_BASE}/id/measures/{measure_id}/readings?startdate={start_date}&enddate={end_date}&_sorted&_limit=100000"
     try:
@@ -87,7 +112,7 @@ def fetch_readings_batch(measure_id, start_date, end_date):
         return []
 
 
-def fetch_all_readings(station, going_back_days=365*2):
+def fetch_all_readings(station: StationInfo, going_back_days: int = 365 * 2) -> list[Reading]:
     """Fetch all available readings for a station, going back as far as possible."""
     measure_id = get_measure_id(station)
 
@@ -110,11 +135,7 @@ def fetch_all_readings(station, going_back_days=365*2):
         if current_start < start_limit:
             current_start = start_limit
 
-        readings = fetch_readings_batch(
-            measure_id,
-            current_start.isoformat(),
-            current_end.isoformat()
-        )
+        readings = fetch_readings_batch(measure_id, current_start.isoformat(), current_end.isoformat())
 
         if readings:
             all_readings.extend(readings)
@@ -142,7 +163,7 @@ def fetch_all_readings(station, going_back_days=365*2):
     return unique
 
 
-def load_existing_csv(filename):
+def load_existing_csv(filename: str) -> list[Reading]:
     """Load existing readings from a CSV file as a list of dicts."""
     filepath = os.path.join(DATA_DIR, filename)
     if not os.path.exists(filepath):
@@ -155,7 +176,7 @@ def load_existing_csv(filename):
     return readings
 
 
-def merge_readings(existing, new_readings):
+def merge_readings(existing: list[Reading], new_readings: list[Reading]) -> list[Reading]:
     """Merge existing and new readings, deduplicate, and sort."""
     combined = existing + new_readings
     seen = set()
@@ -169,7 +190,7 @@ def merge_readings(existing, new_readings):
     return unique
 
 
-def save_readings_csv(station, readings, filename):
+def save_readings_csv(station: StationInfo, readings: list[Reading], filename: str) -> None:
     """Save readings to a CSV file."""
     filepath = os.path.join(DATA_DIR, filename)
     with open(filepath, "w", newline="") as f:
@@ -184,28 +205,20 @@ def save_readings_csv(station, readings, filename):
     print(f"  Saved {len(readings)} readings to {filepath}")
 
 
-def save_stations_csv():
+def save_stations_csv() -> None:
     """Save station metadata to CSV."""
     filepath = os.path.join(DATA_DIR, "stations.csv")
     with open(filepath, "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["id", "label", "lat", "lon", "river", "type", "rloi", "measure_id"])
         for s in LEVEL_STATIONS:
-            writer.writerow([
-                s["id"], s["label"], s["lat"], s["lon"],
-                s.get("river", ""), s["type"],
-                s.get("rloi", ""), get_measure_id(s)
-            ])
+            writer.writerow([s["id"], s["label"], s["lat"], s["lon"], s.get("river", ""), s["type"], s.get("rloi", ""), get_measure_id(s)])
         for s in RAINFALL_STATIONS:
-            writer.writerow([
-                s["id"], s["label"], s["lat"], s["lon"],
-                "", s["type"],
-                "", get_measure_id(s)
-            ])
+            writer.writerow([s["id"], s["label"], s["lat"], s["lon"], "", s["type"], "", get_measure_id(s)])
     print(f"Saved station metadata to {filepath}")
 
 
-def get_station_filename(station):
+def get_station_filename(station: StationInfo) -> str:
     """Get the CSV filename for a station."""
     if station["type"] == "rainfall":
         return f"rainfall_{station['id']}.csv"
@@ -214,10 +227,16 @@ def get_station_filename(station):
     return f"level_{safe_id}_{safe_label}.csv"
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch EA flood monitoring data")
-    parser.add_argument("--recent", type=int, metavar="DAYS", nargs="?", const=2,
-                        help="Only fetch recent data (default: 2 days) and merge with existing CSVs")
+    parser.add_argument(
+        "--recent",
+        type=int,
+        metavar="DAYS",
+        nargs="?",
+        const=2,
+        help="Only fetch recent data (default: 2 days) and merge with existing CSVs",
+    )
     args = parser.parse_args()
 
     os.makedirs(DATA_DIR, exist_ok=True)

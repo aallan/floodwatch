@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-02-21
+
+### Added
+- Pre-commit hooks with ruff (linting and formatting on every commit)
+- Content-Security-Policy headers on all `serve.py` responses
+- Python type hints on all function signatures in `fetch_data.py` and `serve.py`
+- Prerequisites section in README, CONTRIBUTING.md, and TESTING.md
+- Governance files: CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, CHANGELOG.md
+- Issue templates (bug report, feature request) and pull request template
+- `.editorconfig` for consistent formatting across editors
+- `.github/dependabot.yml` for automated dependency updates (pip, npm, GitHub Actions)
+- Branch protection on `main` requiring CI to pass before merge
+
+### Changed
+- Python code reformatted by ruff (consistent style across all `.py` files)
+- Removed 19 unused imports across Python source and test files
+- `pyproject.toml` now includes ruff configuration (line length, lint rules, quote style)
+
 ## [0.5.0] — 2026-02-21
 
 ### Added
@@ -72,7 +90,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Text overflow in popup boxes
 - GitHub Actions deprecation warning
 
-[Unreleased]: https://github.com/aallan/floodwatch/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/aallan/floodwatch/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/aallan/floodwatch/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/aallan/floodwatch/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/aallan/floodwatch/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/aallan/floodwatch/compare/v0.2.0...v0.3.0

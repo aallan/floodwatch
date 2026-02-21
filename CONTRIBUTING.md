@@ -18,27 +18,34 @@ Open an issue using the **Feature request** template. Describe the problem you'r
 
 ## Development Setup
 
-1. Clone the repository:
+1. Install prerequisites (macOS with Homebrew):
+   ```bash
+   brew install python node pre-commit ruff
+   ```
+
+2. Clone the repository:
    ```bash
    git clone https://github.com/aallan/floodwatch.git
    cd floodwatch
    ```
 
-2. Fetch historical data:
+3. Install test dependencies and pre-commit hooks:
+   ```bash
+   pip install pytest               # Python tests
+   cd js-tests && npm install       # JavaScript tests
+   cd ..
+   pre-commit install               # Lint + format on every commit
+   ```
+
+4. Fetch historical data:
    ```bash
    python fetch_data.py --recent    # Quick — last 2 days
    ```
 
-3. Start the dev server:
+5. Start the dev server:
    ```bash
    python serve.py
    open http://localhost:8080
-   ```
-
-4. Install test dependencies:
-   ```bash
-   pip install pytest               # Python tests
-   cd js-tests && npm install       # JavaScript tests
    ```
 
 ## Running Tests
@@ -57,8 +64,8 @@ All tests must pass before a pull request can be merged. See [TESTING.md](TESTIN
    git checkout -b my-feature main
    ```
 
-2. Make your changes. Follow the existing code style:
-   - **Python:** 4-space indentation, no type hints required (but welcome)
+2. Make your changes. Follow the existing code style (enforced by ruff via pre-commit):
+   - **Python:** 4-space indentation, type hints on function signatures
    - **JavaScript:** 2-space indentation, single quotes
    - **HTML/CSS:** inline in `index.html` (single-page app)
 

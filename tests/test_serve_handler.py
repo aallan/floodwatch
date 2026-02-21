@@ -1,12 +1,11 @@
 """Tests for serve.py — FloodwatchHandler HTTP behaviour."""
+
 import csv
 import json
-import os
 import sys
 import threading
-import time
-import urllib.request
 import urllib.error
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -32,10 +31,7 @@ def server(tmp_path, monkeypatch):
         writer.writerow(["2026-01-01T00:00:00Z", "0.5"])
 
     # Mock refresh_station to avoid real API calls
-    monkeypatch.setattr(
-        serve, "refresh_station",
-        lambda s: {"id": s["id"], "label": s["label"], "new_readings": 0, "total": 100}
-    )
+    monkeypatch.setattr(serve, "refresh_station", lambda s: {"id": s["id"], "label": s["label"], "new_readings": 0, "total": 100})
 
     httpd = serve.ReusableHTTPServer(("::1", 0), serve.FloodwatchHandler)
     port = httpd.server_address[1]
