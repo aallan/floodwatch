@@ -1221,3 +1221,12 @@ body {
 .legend-line.discharge-mean { border-color: #d4a037; }
 .legend-line.dashed.normal-flow { border-color: rgba(74,173,74,0.6); }
 .legend-line.dashed.high-flow { border-color: rgba(224,85,85,0.6); }
+
+/* ======================================================
+   Reduced Motion
+   ====================================================== */
+@media (prefers-reduced-motion: reduce) {
+    #refresh-btn .spinner { animation: none; }
+    .flood-warnings.severity-1 .flood-warnings-icon { animation: none; }
+    .refresh-log-entry { animation: none; }
+}
