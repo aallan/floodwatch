@@ -1349,6 +1349,7 @@ async function refreshData() {
 
     const btn = document.getElementById('refresh-btn');
     btn.classList.add('loading');
+    btn.setAttribute('aria-busy', 'true');
     btn.disabled = true;
 
     const statusEl = document.getElementById('last-updated');
@@ -1504,6 +1505,7 @@ async function refreshData() {
         hideLog(6000);
     } finally {
         btn.classList.remove('loading');
+        btn.setAttribute('aria-busy', 'false');
         btn.disabled = false;
     }
 }
@@ -1561,6 +1563,8 @@ function renderFloodWarnings(warnings) {
     if (warnings.length === 0) {
         banner.classList.add('hidden');
         banner.classList.remove('expanded', 'severity-1', 'severity-2', 'severity-3');
+        const summary = banner.querySelector('.flood-warnings-summary');
+        if (summary) summary.setAttribute('aria-expanded', 'false');
         if (statusEl) statusEl.classList.add('visible');
         if (map) map.invalidateSize();
         return;
@@ -1628,6 +1632,8 @@ function renderFloodWarnings(warnings) {
 function toggleFloodWarnings() {
     const banner = document.getElementById('flood-warnings');
     banner.classList.toggle('expanded');
+    const summary = banner.querySelector('.flood-warnings-summary');
+    if (summary) summary.setAttribute('aria-expanded', banner.classList.contains('expanded'));
     setTimeout(() => { if (map) map.invalidateSize(); }, 320);
 }
 

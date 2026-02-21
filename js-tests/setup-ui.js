@@ -16,12 +16,12 @@ document.body.innerHTML = `
     <div id="header">
         <div class="header-left"><h1>Floodwatch</h1></div>
         <div class="header-right">
-            <span class="flood-status" id="flood-status">
+            <span class="flood-status" id="flood-status" aria-live="polite">
                 <span class="flood-status-dot"></span>
                 <span class="flood-status-label">No warnings</span>
             </span>
             <span class="last-updated" id="last-updated"></span>
-            <button id="refresh-btn">
+            <button id="refresh-btn" aria-label="Refresh station data" aria-busy="false">
                 <span class="spinner"></span>
                 <span class="btn-text">Refresh Data</span>
             </button>
@@ -29,7 +29,7 @@ document.body.innerHTML = `
     </div>
     <div id="content-area">
         <div id="flood-warnings" class="flood-warnings hidden">
-            <div class="flood-warnings-summary">
+            <div class="flood-warnings-summary" role="button" tabindex="0" aria-expanded="false">
                 <span class="flood-warnings-icon"></span>
                 <span class="flood-warnings-text" id="flood-warnings-text"></span>
                 <span class="flood-warnings-chevron">&#x25BE;</span>
