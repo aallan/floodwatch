@@ -21,7 +21,7 @@ import sys
 import time as _time
 import urllib.error
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from typing import Any, TypedDict
 
@@ -198,7 +198,7 @@ def refresh_station(station: StationDict) -> dict[str, Any]:
 
     # Read existing CSV
     if os.path.exists(csv_path):
-        with open(csv_path, 'r', newline='') as f:
+        with open(csv_path, newline='') as f:
             reader = csv.reader(f)
             next(reader, None)  # skip header
             for row in reader:
@@ -208,7 +208,7 @@ def refresh_station(station: StationDict) -> dict[str, Any]:
                     if latest_time is None or row[0] > latest_time:
                         latest_time = row[0]
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     items = []
 
     if latest_time:
@@ -291,7 +291,7 @@ def handle_refresh() -> str:
             results.append({'id': station['id'], 'label': station['label'], 'error': str(e)})
 
     return json.dumps(
-        {'success': True, 'timestamp': datetime.now(timezone.utc).isoformat(), 'stations_updated': updated, 'details': results}, indent=2
+        {'success': True, 'timestamp': datetime.now(UTC).isoformat(), 'stations_updated': updated, 'details': results}, indent=2
     )
 
 
@@ -374,7 +374,7 @@ def write_pid() -> None:
 
 def read_pid() -> int | None:
     if os.path.exists(PID_FILE):
-        with open(PID_FILE, 'r') as f:
+        with open(PID_FILE) as f:
             try:
                 return int(f.read().strip())
             except ValueError:

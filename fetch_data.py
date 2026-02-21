@@ -10,7 +10,7 @@ import json
 import os
 import re
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -117,7 +117,7 @@ def fetch_all_readings(station: StationInfo, going_back_days: int = 365 * 2) -> 
     measure_id = get_measure_id(station)
 
     all_readings = []
-    end_date = datetime.now(timezone.utc).date()
+    end_date = datetime.now(UTC).date()
 
     # The API provides recent data (up to ~4 weeks) directly
     # For older data, we use date ranges which the API supports
@@ -169,7 +169,7 @@ def load_existing_csv(filename: str) -> list[Reading]:
     if not os.path.exists(filepath):
         return []
     readings = []
-    with open(filepath, "r") as f:
+    with open(filepath) as f:
         reader = csv.DictReader(f)
         for row in reader:
             readings.append({"dateTime": row["dateTime"], "value": row["value"]})

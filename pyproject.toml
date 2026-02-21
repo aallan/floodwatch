@@ -13,7 +13,8 @@ testpaths = ["tests"]
 line-length = 140
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["SIM105"]
 
 [tool.ruff.format]
 quote-style = "preserve"

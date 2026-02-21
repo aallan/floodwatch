@@ -4,7 +4,7 @@ import csv
 import json
 import os
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock
 from urllib.error import URLError
@@ -80,7 +80,7 @@ class TestRefreshStation:
         """When gap <= 5 days, uses ?since= parameter."""
         station = serve.STATIONS[0]
         # Write existing CSV with data from 2 days ago
-        two_days_ago = (datetime.now(timezone.utc) - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        two_days_ago = (datetime.now(UTC) - timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
         self._write_csv(
             data_dir,
             station["file"],
@@ -105,7 +105,7 @@ class TestRefreshStation:
         """When gap > 5 days, uses chunked date-range fetch."""
         station = serve.STATIONS[0]
         # Write existing CSV with data from 10 days ago
-        ten_days_ago = (datetime.now(timezone.utc) - timedelta(days=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        ten_days_ago = (datetime.now(UTC) - timedelta(days=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
         self._write_csv(
             data_dir,
             station["file"],
@@ -125,7 +125,7 @@ class TestRefreshStation:
     def test_deduplicates_readings(self, data_dir, monkeypatch):
         """New readings with same dateTime as existing are not duplicated."""
         station = serve.STATIONS[0]
-        existing_dt = (datetime.now(timezone.utc) - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        existing_dt = (datetime.now(UTC) - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
         self._write_csv(
             data_dir,
             station["file"],
