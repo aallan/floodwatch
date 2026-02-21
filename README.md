@@ -453,11 +453,19 @@ floodwatch/
   README.md                           # This file
   INSTALL.md                          # Deployment guide (4 methods)
   TESTING.md                          # Test suite documentation
+  CONTRIBUTING.md                     # How to contribute
+  CODE_OF_CONDUCT.md                  # Contributor Covenant
+  CHANGELOG.md                        # Version history
   LICENSE                             # MIT licence
+  .editorconfig                       # Consistent formatting across editors
   .gitignore                          # Excludes .server.pid, __pycache__, .DS_Store, .claude, node_modules, .pytest_cache
   .do/app.yaml                        # Digital Ocean App Platform spec
   .github/workflows/update-data.yml   # Hourly GitHub Actions data refresh
   .github/workflows/tests.yml         # CI: Python + JS tests on push/PR
+  .github/dependabot.yml              # Automated dependency update PRs
+  .github/SECURITY.md                 # Security vulnerability reporting
+  .github/ISSUE_TEMPLATE/             # Bug report and feature request templates
+  .github/pull_request_template.md    # PR template
   js/
     floodwatch-core.js                # Extracted utility functions (UMD module)
   js-tests/
