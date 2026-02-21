@@ -457,7 +457,7 @@ All deployments serve the same `index.html` single-page app. The difference is h
 
 ## Tests
 
-80 tests (55 Python + 25 JavaScript) cover the data pipeline, server logic, and frontend utility functions. See **[TESTING.md](TESTING.md)** for full details of what each test covers and why.
+95 tests (55 Python + 40 JavaScript) cover the data pipeline, server logic, frontend utility functions, and UI interactions. See **[TESTING.md](TESTING.md)** for full details of what each test covers and why.
 
 ## Project Structure
 

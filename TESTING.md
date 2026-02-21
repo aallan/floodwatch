@@ -1,6 +1,6 @@
 # Testing
 
-80 tests cover the data pipeline, server logic, and frontend utility functions. The focus is on areas where bugs are most consequential: data merge/dedup logic (where errors silently corrupt charts), API retry behaviour (where failures lose data), filename sanitisation (where unsanitised input could create path traversal issues), and HTML escaping (where station names could inject scripts). No production dependencies are added — all test tooling is dev-only.
+95 tests cover the data pipeline, server logic, frontend utility functions, and UI interactions. The focus is on areas where bugs are most consequential: data merge/dedup logic (where errors silently corrupt charts), API retry behaviour (where failures lose data), filename sanitisation (where unsanitised input could create path traversal issues), HTML escaping (where station names could inject scripts), and DOM event wiring (where refactoring can silently break popup buttons or canvas rendering). No production dependencies are added — all test tooling is dev-only.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@
 pytest tests/ -v
 ```
 
-**JavaScript** (25 tests via Vitest + jsdom):
+**JavaScript** (40 tests via Vitest + jsdom):
 
 ```bash
 cd js-tests
@@ -108,9 +108,11 @@ These tests start a real `FloodwatchHandler` HTTP server on a random port in a d
 - **CSV `Cache-Control: no-cache`** — CSV and GeoJSON responses include `Cache-Control: no-cache` so the browser always fetches fresh data after a refresh. Without this, the browser's HTTP cache serves stale readings.
 - **Unknown path → 404** — POSTing to a path other than `/refresh.php` or `/refresh` returns 404. Ensures the server doesn't accidentally handle arbitrary POST requests.
 
-## JavaScript Tests (25 tests)
+## JavaScript Tests (40 tests)
 
-Five functions are extracted from the inline `<script>` in `index.html` into `js/floodwatch-core.js` — a UMD module that works in both the browser (`window.FloodwatchCore`) and Node (`require`). The originals in `index.html` become thin wrappers that pass globals to the extracted versions. This makes the core logic testable without loading Leaflet, Chart.js, or the full DOM.
+### Core utility tests (25 tests) — `floodwatch-core.test.js`
+
+Five functions are extracted into `js/floodwatch-core.js` — a UMD module that works in both the browser (`window.FloodwatchCore`) and Node (`require`). The originals in `floodwatch.js` become thin wrappers that pass globals to the extracted versions. This makes the core logic testable without loading Leaflet, Chart.js, or the full DOM.
 
 Tests use Vitest with jsdom (needed because `escapeHtml` uses `document.createElement`).
 
@@ -147,8 +149,40 @@ Tests use Vitest with jsdom (needed because `escapeHtml` uses `document.createEl
 - Order-independent — station arrays can be in any order (IDs are sorted internally before hashing)
 - Tolerates missing type arrays — `{level: [...]}` without `rainfall` or `tidal` doesn't throw
 
+### UI integration tests (15 tests) — `floodwatch.test.js`
+
+The main application script (`js/floodwatch.js`) is loaded into jsdom via `eval()` with mocked globals (Leaflet, Chart.js, Papa Parse, `fetch`). A setup harness (`setup-ui.js`) provides the DOM scaffold from `index.html` and lightweight mocks so `init()` runs to completion without real network calls. This tests the script exactly as the browser runs it — no module refactoring needed.
+
+**`sizeCanvasToDisplay`** (3 tests) — Syncs a canvas element's intrinsic pixel dimensions to its CSS display size, accounting for `devicePixelRatio`. Without this, text drawn before Chart.js takes over is stretched/distorted because the default 300×150 canvas bitmap gets CSS-scaled to fill its container.
+- Sets `canvas.width`/`canvas.height` to `displayWidth × DPR` and `displayHeight × DPR`
+- Applies identity transform at DPR 1; 2× transform at DPR 2
+- Idempotent — no-ops if the canvas is already correctly sized
+
+**`openPopup` event delegation** (2 tests) — Popup buttons (time range, forecast, tidal/discharge tabs) use `data-action` attributes and a single delegated click listener on the popup element. The listener must be attached *directly after* `openPopup()`, not via a `popupopen` event that fires too late.
+- Simulates a button click immediately after `openPopup()` and verifies the handler fires
+- Asserts the click listener is on the popup element, not registered via `marker.on('popupopen')`
+
+**`openPopup` HTML correctness** (3 tests) — Verifies the popup markup is generated correctly for different station types.
+- Rainfall popups include `data-action="setTimeRange"` and `data-action="showForecast"` buttons
+- Tidal station `50198` gets tab buttons for Tidal Level and River Discharge
+- Station labels are HTML-escaped (XSS prevention via `escapeHtml`)
+
+**`init` event wiring** (3 tests) — After `init()` runs, event listeners are attached via `addEventListener` (not inline `onclick=` attributes).
+- Clicking `#refresh-btn` triggers `refreshData()` (adds `loading` class)
+- Clicking `.flood-warnings-summary` triggers `toggleFloodWarnings()` (toggles `expanded` class)
+- No element in the entire DOM has an `onclick` attribute
+
+**`createStationMarker`** (2 tests) — Station markers use CSS classes for styling, not inline `style` attributes (which would violate CSP).
+- `L.divIcon` HTML contains `class="station-marker"` with no `style=` attribute
+- The marker receives a click handler via `.on('click', ...)`
+
+**Canvas loading states** (2 tests) — Loading messages ("Loading forecast…", "Loading discharge data…") are drawn on the canvas using coordinates derived from `getBoundingClientRect()`, not the canvas's intrinsic 300×150 default.
+- `showForecast` calls `fillText` at `(190, 110)` for a 380×220 container
+- `showDischargeTab` calls `fillText` at `(190, 110)` for a 380×220 container
+
 ## Test Architecture
 
 - **Python:** pytest with shared fixtures in `conftest.py`. `monkeypatch` replaces `urlopen` and `time.sleep` so HTTP and backoff tests run instantly without network access. `tmp_path` provides an isolated filesystem per test — each test gets its own empty `data/` directory. All 55 tests run in ~2 seconds.
-- **JavaScript:** Vitest with jsdom environment. jsdom is needed because `escapeHtml` uses `document.createElement` — pure Node has no DOM. The extracted functions accept dependencies as parameters (e.g. `getStation(id, stations)` instead of reading a global `STATIONS`) so tests can pass mock data without setting up the full app state.
+- **JavaScript (core):** Vitest with jsdom environment. jsdom is needed because `escapeHtml` uses `document.createElement` — pure Node has no DOM. The extracted functions accept dependencies as parameters (e.g. `getStation(id, stations)` instead of reading a global `STATIONS`) so tests can pass mock data without setting up the full app state.
+- **JavaScript (UI):** The same Vitest + jsdom environment, but `floodwatch.js` is loaded via `eval()` with global mocks for Leaflet, Chart.js, Papa Parse, and `fetch`. A `setup-ui.js` harness provides the minimal DOM scaffold and canvas 2D context stubs. This tests event delegation, DOM wiring, and canvas coordinate logic without refactoring the script to ES modules.
 - **CI:** Two parallel jobs in `.github/workflows/tests.yml` — Python (pytest on 3.12) and JavaScript (Vitest on Node 22). Actions are SHA-pinned to match the project's existing `update-data.yml` workflow. Tests run on push to `main` and on pull requests, with path filters so unrelated changes (like editing GeoJSON files) don't trigger unnecessary test runs.
