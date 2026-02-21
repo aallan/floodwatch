@@ -32,8 +32,14 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install pytest
-        run: pip install pytest
+      - name: Install dependencies
+        run: pip install pytest ruff
+
+      - name: Lint with ruff
+        run: ruff check .
+
+      - name: Check formatting with ruff
+        run: ruff format --check .
 
       - name: Run Python tests
         run: pytest tests/ -v
