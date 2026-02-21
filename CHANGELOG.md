@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-02-21
+
+### Changed
+- Extracted inline `<style>` (1,105 lines) to `css/floodwatch.css`
+- Extracted inline `<script>` (1,662 lines) to `js/floodwatch.js`
+- Replaced all `onclick` handlers with `addEventListener` event delegation
+- Replaced inline `style` attributes with CSS classes or CSSOM
+- Tightened CSP: removed `'unsafe-inline'` from `script-src`
+- Added CDN domains to `connect-src` for source map loading
+- `index.html` reduced from 2,842 lines to 75 lines
+
 ## [0.6.0] — 2026-02-21
 
 ### Added
@@ -90,7 +101,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Text overflow in popup boxes
 - GitHub Actions deprecation warning
 
-[Unreleased]: https://github.com/aallan/floodwatch/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/aallan/floodwatch/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/aallan/floodwatch/compare/v0.6.0...v1.0.0
 [0.6.0]: https://github.com/aallan/floodwatch/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/aallan/floodwatch/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/aallan/floodwatch/compare/v0.3.0...v0.4.0
