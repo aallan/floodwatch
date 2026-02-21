@@ -1174,6 +1174,7 @@
     </div>
     <div class="refresh-log hidden" id="refresh-log"></div>
 
+    <script src="js/floodwatch-core.js"></script>
     <script>
     // ============================================================
     // Configuration
@@ -2226,8 +2227,7 @@
     }
 
     function getStation(stationId) {
-        const all = [...STATIONS.level, ...STATIONS.rainfall, ...STATIONS.tidal];
-        return all.find(s => s.id === stationId);
+        return FloodwatchCore.getStation(stationId, STATIONS);
     }
 
     function renderChart(stationId, hours, type) {
@@ -2609,51 +2609,14 @@
     // Helpers
     // ============================================================
     function formatTime(date) {
-        const now = new Date();
-        const diff = now - date;
-        if (diff < 3600000) return Math.floor(diff / 60000) + ' min ago';
-        if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
-        return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        return FloodwatchCore.formatTime(date);
     }
 
-    /**
-     * Calculate trend (rising / falling / steady) from recent readings.
-     * Fits a linear-regression slope over the last ~1 hour of data so
-     * the indicator matches the visible direction of the graph line.
-     * Threshold: ±0.01 m/hr (1 cm/hr) to filter noise and gentle drift.
-     * Returns { direction: 'rising'|'falling'|'steady', symbol: '↑'|'↓'|'→' }
-     * or null if not enough data.
-     */
     function getTrend(stationId, type) {
-        if (type === 'rainfall') return null; // rainfall doesn't trend the same way
-
+        if (type === 'rainfall') return null;
         const data = stationData[stationId];
-        if (!data?.readings?.length || data.readings.length < 4) return null;
-
-        const now = data.readings[data.readings.length - 1].dateTime;
-        const oneHourAgo = new Date(now - 1 * 3600000);
-
-        // Use readings from the last hour
-        const recent = data.readings.filter(r => r.dateTime >= oneHourAgo);
-        if (recent.length < 3) return null;
-
-        // Simple linear regression: slope of value vs time
-        const n = recent.length;
-        const t0 = recent[0].dateTime.getTime();
-        let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-        for (const r of recent) {
-            const x = (r.dateTime.getTime() - t0) / 3600000; // hours since start
-            const y = r.value;
-            sumX += x; sumY += y; sumXY += x * y; sumX2 += x * x;
-        }
-        const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-
-        // slope is in metres per hour
-        const threshold = 0.01; // 1cm/hour — filters noise and gentle drift
-
-        if (slope > threshold) return { direction: 'rising', symbol: '↑' };
-        if (slope < -threshold) return { direction: 'falling', symbol: '↓' };
-        return { direction: 'steady', symbol: '→' };
+        if (!data?.readings?.length) return null;
+        return FloodwatchCore.getTrend(data.readings, type);
     }
 
     // ============================================================
@@ -2661,9 +2624,7 @@
     // ============================================================
 
     function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
+        return FloodwatchCore.escapeHtml(str);
     }
 
     async function fetchFloodWarnings() {
@@ -2772,8 +2733,7 @@
     // ============================================================
     const CACHE_KEY = 'floodwatch_cache';
     const CACHE_VERSION = 1;
-    const _allStationIds = [...STATIONS.level, ...STATIONS.rainfall, ...STATIONS.tidal].map(s => s.id).sort().join(',');
-    const CACHE_FINGERPRINT = _allStationIds.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0).toString(36);
+    const CACHE_FINGERPRINT = FloodwatchCore.computeCacheFingerprint(STATIONS);
 
     function cacheToLocalStorage() {
         try {
