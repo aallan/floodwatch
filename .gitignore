@@ -5,3 +5,10 @@ __pycache__/
 data/.last_refresh
 node_modules/
 .pytest_cache/
+.env
+.env.*
+venv/
+.venv/
+.idea/
+.vscode/
+*.log
