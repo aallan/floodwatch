@@ -143,7 +143,7 @@ const RIVERS = [
 function loadRiverOverlay() {
     for (const river of RIVERS) {
         fetch(DATA_BASE + river.file)
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
             .then(geojson => {
                 L.geoJSON(geojson, {
                     style: {
@@ -1382,6 +1382,7 @@ async function refreshData() {
                     if (gapDays <= 5) {
                         const url = `${API_BASE}/id/measures/${station.measureId}/readings?since=${latestTime.toISOString()}&_sorted&_limit=10000`;
                         const resp = await fetch(url);
+                        if (!resp.ok) throw new Error(`EA API error: ${resp.status}`);
                         const data = await resp.json();
                         allItems = data.items || [];
                     } else {
@@ -1402,6 +1403,7 @@ async function refreshData() {
                             const url = `${API_BASE}/id/measures/${station.measureId}/readings?startdate=${startStr}&enddate=${endStr}&_sorted&_limit=100000`;
                             try {
                                 const resp = await fetch(url);
+                                if (!resp.ok) throw new Error(`EA API error: ${resp.status}`);
                                 const data = await resp.json();
                                 const chunkItems = data.items || [];
                                 allItems = allItems.concat(chunkItems);
@@ -1420,6 +1422,7 @@ async function refreshData() {
                     const endDate = now.toISOString().split('T')[0];
                     const url = `${API_BASE}/id/measures/${station.measureId}/readings?startdate=${startDate}&enddate=${endDate}&_sorted&_limit=100000`;
                     const resp = await fetch(url);
+                    if (!resp.ok) throw new Error(`EA API error: ${resp.status}`);
                     const data = await resp.json();
                     allItems = data.items || [];
                 }
@@ -1478,7 +1481,8 @@ async function refreshData() {
         if (hasBackend) {
             addLogEntry('Syncing to backend\u2026', 'info');
             try {
-                await fetch('refresh.php', { method: 'POST' });
+                const syncResp = await fetch('refresh.php', { method: 'POST' });
+                if (!syncResp.ok) throw new Error(`Backend sync: ${syncResp.status}`);
                 addLogEntry('Backend sync done', 'success');
             } catch (e) {
                 addLogEntry('Backend sync failed \u2014 cached locally', 'warn');
@@ -1535,6 +1539,7 @@ function escapeHtml(str) {
 async function fetchFloodWarnings() {
     try {
         const resp = await fetch(API_BASE + '/id/floods?county=Devon');
+        if (!resp.ok) throw new Error(`Flood warnings API error: ${resp.status}`);
         const data = await resp.json();
         const items = data.items || [];
 
