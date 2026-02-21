@@ -82,6 +82,30 @@ let activePopupStation = null;
 let hasBackend = false; // detected at startup
 
 // ============================================================
+// Canvas helpers
+// ============================================================
+
+/**
+ * Sync a canvas's intrinsic pixel size with its CSS display size so
+ * fillText / clearRect use the correct coordinate space.  Without
+ * this the default 300×150 bitmap is stretched to fill the container,
+ * distorting any text drawn before Chart.js takes over.
+ */
+function sizeCanvasToDisplay(canvas) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const w = Math.round(rect.width * dpr);
+    const h = Math.round(rect.height * dpr);
+    if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+    }
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return ctx;
+}
+
+// ============================================================
 // Map Setup
 // ============================================================
 function initMap() {
@@ -538,10 +562,12 @@ function openPopup(marker, station, type) {
     marker.unbindPopup();
     marker.bindPopup(html, { maxWidth: popupMaxWidth, minWidth: popupMinWidth, className: '' }).openPopup();
 
-    // Event delegation for popup buttons (replaces inline onclick handlers)
-    marker.on('popupopen', () => {
-        const popupEl = marker.getPopup().getElement();
-        if (!popupEl) return;
+    // Event delegation for popup buttons (replaces inline onclick handlers).
+    // Attach directly to the popup element after openPopup() so the listener
+    // is live immediately — a 'popupopen' handler would fire too late because
+    // the event is emitted during openPopup() above, before we could register.
+    const popupEl = marker.getPopup().getElement();
+    if (popupEl) {
         popupEl.addEventListener('click', function(e) {
             const btn = e.target.closest('button[data-action]');
             if (!btn) return;
@@ -557,7 +583,7 @@ function openPopup(marker, station, type) {
                 showDischargeTab(sid, btn);
             }
         });
-    });
+    }
 
     if (hasData) {
         activePopupStation = station.id;
@@ -641,12 +667,13 @@ async function showForecast(stationId, btn) {
     // Show loading state on canvas
     const canvas = document.getElementById(`chart-${stationId}`);
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const ctx = sizeCanvasToDisplay(canvas);
+    const rect = canvas.getBoundingClientRect();
+    ctx.clearRect(0, 0, rect.width, rect.height);
     ctx.fillStyle = '#8890a8';
     ctx.font = '13px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Loading forecast\u2026', canvas.width / 2, canvas.height / 2);
+    ctx.fillText('Loading forecast\u2026', rect.width / 2, rect.height / 2);
 
     // Update timestamp to show forecast range
     const tsEl = document.getElementById(`timestamp-${stationId}`);
@@ -665,11 +692,13 @@ async function showForecast(stationId, btn) {
     } catch (e) {
         console.error('Forecast error:', e);
         if (tsEl) tsEl.textContent = tsEl.dataset.original;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#e05555';
-        ctx.font = '13px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Forecast unavailable', canvas.width / 2, canvas.height / 2);
+        const errCtx = sizeCanvasToDisplay(canvas);
+        const errRect = canvas.getBoundingClientRect();
+        errCtx.clearRect(0, 0, errRect.width, errRect.height);
+        errCtx.fillStyle = '#e05555';
+        errCtx.font = '13px sans-serif';
+        errCtx.textAlign = 'center';
+        errCtx.fillText('Forecast unavailable', errRect.width / 2, errRect.height / 2);
     }
 }
 
@@ -848,12 +877,13 @@ async function showDischargeTab(stationId, btn) {
     // Show loading on canvas
     const canvas = document.getElementById(`chart-${stationId}`);
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const ctx = sizeCanvasToDisplay(canvas);
+    const rect = canvas.getBoundingClientRect();
+    ctx.clearRect(0, 0, rect.width, rect.height);
     ctx.fillStyle = '#8890a8';
     ctx.font = '13px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Loading discharge data\u2026', canvas.width / 2, canvas.height / 2);
+    ctx.fillText('Loading discharge data\u2026', rect.width / 2, rect.height / 2);
 
     // Update current value area to show loading
     const currentEl = document.getElementById(`current-${stationId}`);
@@ -897,11 +927,13 @@ async function showDischargeTab(stationId, btn) {
                 <span class="timestamp" id="timestamp-${stationId}">Unavailable</span>
             `;
         }
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#e05555';
-        ctx.font = '13px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Discharge data unavailable', canvas.width / 2, canvas.height / 2);
+        const errCtx = sizeCanvasToDisplay(canvas);
+        const errRect = canvas.getBoundingClientRect();
+        errCtx.clearRect(0, 0, errRect.width, errRect.height);
+        errCtx.fillStyle = '#e05555';
+        errCtx.font = '13px sans-serif';
+        errCtx.textAlign = 'center';
+        errCtx.fillText('Discharge data unavailable', errRect.width / 2, errRect.height / 2);
     }
 }
 
@@ -1125,11 +1157,12 @@ function renderChart(stationId, hours, type) {
 
     if (readings.length === 0) {
         // Show message
-        const ctx = canvas.getContext('2d');
+        const ctx = sizeCanvasToDisplay(canvas);
+        const msgRect = canvas.getBoundingClientRect();
         ctx.fillStyle = '#8890a8';
         ctx.font = '13px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('No data for this time range', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('No data for this time range', msgRect.width / 2, msgRect.height / 2);
         return;
     }
 
