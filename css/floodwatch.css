@@ -1,0 +1,1223 @@
+:root {
+    --bg-primary: #2c3345;
+    --bg-secondary: #343b50;
+    --bg-card: #2c3345;
+    --text-primary: #e8ecf4;
+    --text-secondary: #9098b0;
+    --accent-blue: #4a8fd9;
+    --accent-teal: #1a8a7d;
+    --accent-rain: #5574b8;
+    --accent-river: #1a8a7d;
+    --accent-tidal: #c47a2a;
+    --border: #404860;
+    --danger: #d94a4a;
+    --warning-severe: #d94a4a;
+    --warning-warning: #e08a3a;
+    --warning-alert: #d4b84a;
+    --warning-clear: #4aad4a;
+    --accent-forecast: #d4a037;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    height: 100vh; /* fallback for older browsers */
+    height: 100dvh;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+}
+
+#header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    height: 52px;
+    z-index: 1000;
+    position: relative;
+}
+
+#header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#header h1 .logo-icon {
+    width: 24px;
+    height: 24px;
+    background: var(--accent-teal);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.header-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+}
+
+.github-link {
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding-left: 32px;
+}
+
+.github-link:hover {
+    color: var(--text-primary);
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-right .last-updated {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+#refresh-btn {
+    padding: 6px 14px;
+    background: var(--accent-blue);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s;
+}
+
+#refresh-btn:hover { background: #5a9ee9; }
+#refresh-btn:disabled { background: #4a5070; cursor: not-allowed; }
+
+#refresh-btn .spinner {
+    display: none;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+#refresh-btn.loading .spinner { display: block; }
+#refresh-btn.loading .btn-text { display: none; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Flood status (no-warnings indicator in header) */
+.flood-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--warning-clear);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.flood-status.visible { opacity: 1; }
+.flood-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--warning-clear);
+}
+.flood-status-label { white-space: nowrap; }
+
+/* Flood warnings banner */
+.flood-warnings {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    z-index: 999;
+    position: relative;
+}
+.flood-warnings.hidden { display: none; }
+
+.flood-warnings-summary {
+    display: flex;
+    align-items: center;
+    padding: 8px 20px;
+    cursor: pointer;
+    gap: 10px;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 38px;
+}
+.flood-warnings-summary:hover { background: rgba(255,255,255,0.03); }
+
+.flood-warnings-icon { font-size: 16px; flex-shrink: 0; }
+.flood-warnings-text { flex: 1; font-size: 13px; font-weight: 500; color: var(--text-primary); }
+.flood-warnings-chevron {
+    font-size: 14px;
+    color: var(--text-secondary);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+}
+.flood-warnings.expanded .flood-warnings-chevron { transform: rotate(180deg); }
+
+/* Severity-specific banner styling */
+.flood-warnings.severity-1 .flood-warnings-summary {
+    border-left: 4px solid var(--warning-severe);
+    background: rgba(217,74,74,0.12);
+}
+.flood-warnings.severity-2 .flood-warnings-summary {
+    border-left: 4px solid var(--warning-warning);
+    background: rgba(224,138,58,0.08);
+}
+.flood-warnings.severity-3 .flood-warnings-summary {
+    border-left: 4px solid var(--warning-alert);
+    background: rgba(212,184,74,0.06);
+}
+
+/* Pulse animation for severe warnings */
+.flood-warnings.severity-1 .flood-warnings-icon {
+    animation: warningPulse 1.5s ease-in-out infinite;
+}
+@keyframes warningPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Expanded details panel */
+.flood-warnings-details {
+    display: none;
+    padding: 0 20px 12px;
+    border-top: 1px solid var(--border);
+}
+.flood-warnings.expanded .flood-warnings-details { display: block; }
+
+.flood-warning-item {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(64,72,96,0.5);
+}
+.flood-warning-item:last-child { border-bottom: none; }
+
+.flood-warning-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.flood-warning-severity {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.flood-warning-severity.sev-1 { background: var(--warning-severe); color: white; }
+.flood-warning-severity.sev-2 { background: var(--warning-warning); color: white; }
+.flood-warning-severity.sev-3 { background: var(--warning-alert); color: #333; }
+
+.flood-warning-description {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+.flood-warning-message {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-top: 4px;
+}
+.flood-warning-meta {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    display: flex;
+    gap: 12px;
+}
+
+/* Content area: flex column so map fills remaining space */
+#content-area {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 52px);
+    height: calc(100dvh - 52px);
+}
+
+#map {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+}
+
+/* Legend */
+.legend {
+    background: rgba(255,255,255,0.92);
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid #d8dce6;
+    font-size: 12px;
+    line-height: 1.8;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    color: #444;
+}
+
+.legend h4 {
+    margin-bottom: 6px;
+    color: #333;
+    font-size: 13px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #555;
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.legend-line {
+    width: 20px;
+    height: 3px;
+    flex-shrink: 0;
+    border-radius: 2px;
+}
+
+/* Legend toggle: hidden on desktop, shown on mobile */
+.legend .legend-toggle {
+    display: none;
+}
+
+.legend .legend-body {
+    display: block;
+}
+
+/* Popup styling */
+.tarka-tooltip {
+    background: rgba(50, 50, 50, 0.85) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 4px !important;
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3) !important;
+}
+
+.tarka-tooltip .leaflet-tooltip-top::before {
+    border-top-color: rgba(50, 50, 50, 0.85) !important;
+}
+
+.leaflet-popup-content-wrapper {
+    background: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important;
+    padding: 0 !important;
+}
+
+.leaflet-popup-tip {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+}
+
+.leaflet-popup-content {
+    margin: 0 !important;
+    width: 380px !important;
+    max-width: 90vw !important;
+}
+
+.leaflet-popup-close-button {
+    color: var(--text-secondary) !important;
+    font-size: 20px !important;
+    right: 6px !important;
+    top: 4px !important;
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
+    z-index: 10;
+}
+
+.leaflet-popup-close-button:hover {
+    color: var(--text-primary) !important;
+}
+
+.popup-header {
+    padding: 8px 40px 4px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.popup-header h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 1px;
+}
+
+.popup-header .station-type {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+}
+
+.popup-header .station-type.level { color: var(--accent-river); }
+.popup-header .station-type.rainfall { color: var(--accent-rain); }
+.popup-header .station-type.tidal { color: var(--accent-tidal); }
+
+.popup-current {
+    padding: 3px 16px 4px;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    border-bottom: 1px solid var(--border);
+}
+
+.popup-current .value {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.popup-current .unit {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.popup-current .timestamp {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-left: auto;
+}
+
+.popup-chart-area {
+    display: flex;
+    height: 220px;
+}
+
+.popup-chart {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 0 12px 12px;
+}
+
+.popup-chart canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.popup-timerange {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 10px 10px 12px 6px;
+}
+
+.popup-timerange button {
+    padding: 5px 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    min-width: 34px;
+    text-align: center;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.popup-timerange button:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.popup-timerange button.active {
+    background: var(--accent-blue);
+    color: white;
+    border-color: var(--accent-blue);
+}
+
+.popup-timerange button.forecast-btn {
+    border-color: var(--accent-forecast);
+    color: var(--accent-forecast);
+    font-size: 10px;
+    margin-top: 4px;
+}
+.popup-timerange button.forecast-btn:hover {
+    background: rgba(212, 160, 55, 0.15);
+    color: #e8b84a;
+}
+.popup-timerange button.forecast-btn.active {
+    background: var(--accent-forecast);
+    color: white;
+    border-color: var(--accent-forecast);
+}
+
+.popup-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+}
+.popup-tabs button {
+    flex: 1;
+    padding: 6px 8px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.popup-tabs button:hover {
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+}
+.popup-tabs button.active {
+    color: var(--accent-tidal);
+    border-bottom-color: var(--accent-tidal);
+}
+.popup-tabs button.tab-discharge.active {
+    color: var(--accent-forecast);
+    border-bottom-color: var(--accent-forecast);
+}
+.discharge-legend {
+    padding: 4px 0 6px;
+    text-align: center;
+}
+.discharge-legend-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    line-height: 1.4;
+}
+.discharge-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    color: #8890a8;
+}
+.legend-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+}
+.legend-line {
+    display: inline-block;
+    width: 12px;
+    height: 0;
+    border-top: 2px solid;
+}
+.legend-line.dashed {
+    border-top-style: dashed;
+}
+
+.popup-nodata {
+    padding: 30px 16px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+/* Custom marker styling */
+.station-marker {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 10px;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    border: 2px solid rgba(255,255,255,0.8);
+    transition: transform 0.15s;
+    cursor: pointer;
+}
+
+.station-marker:hover {
+    transform: scale(1.2);
+    z-index: 1000 !important;
+}
+
+.station-marker.level {
+    background: var(--accent-river);
+}
+
+.station-marker.level.high-level {
+    background: #e05555;
+}
+
+.station-marker.rainfall {
+    background: var(--accent-rain);
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+}
+
+.station-marker.rainfall:hover {
+    transform: rotate(-45deg) scale(1.2);
+}
+
+.station-marker.rainfall .marker-value {
+    transform: rotate(45deg);
+}
+
+.station-marker.tidal {
+    background: var(--accent-tidal);
+    border-radius: 4px;
+    transform: rotate(45deg);
+}
+
+.station-marker.tidal:hover {
+    transform: rotate(45deg) scale(1.2);
+}
+
+.station-marker.tidal .marker-value {
+    transform: rotate(-45deg);
+}
+
+.marker-value {
+    line-height: 1;
+}
+
+/* Trend arrow indicator -- small badge tucked against bottom-right of marker */
+.trend-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    border: 1.5px solid rgba(255,255,255,0.9);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    pointer-events: none;
+}
+
+.trend-badge.rising { background: #e05555; color: white; }
+.trend-badge.falling { background: #4aad4a; color: white; }
+.trend-badge.steady { background: #7a8099; color: white; }
+
+/* Counter-rotate badge inside rotated markers so arrows stay upright */
+.station-marker.tidal .trend-badge {
+    transform: rotate(-45deg);
+    bottom: -2px;
+    right: -6px;
+}
+
+.station-marker.rainfall .trend-badge {
+    transform: rotate(45deg);
+    bottom: 1px;
+    right: -6px;
+}
+
+/* Refresh activity log */
+.refresh-log {
+    position: absolute;
+    bottom: 30px;
+    right: 16px;
+    z-index: 1000;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    transition: opacity 0.6s ease;
+}
+
+.refresh-log.hidden {
+    opacity: 0;
+}
+
+.refresh-log-entry {
+    background: rgba(44, 51, 69, 0.92);
+    color: #c0c8e0;
+    font-size: 11px;
+    font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border-left: 3px solid var(--accent-blue);
+    max-width: 340px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    animation: logSlideIn 0.2s ease;
+}
+
+.refresh-log-entry.success {
+    border-left-color: var(--accent-teal);
+    color: #8fd4c8;
+}
+
+.refresh-log-entry.warn {
+    border-left-color: #c4a42a;
+    color: #d4c888;
+}
+
+.refresh-log-entry.error {
+    border-left-color: var(--danger);
+    color: #e0a0a0;
+}
+
+.refresh-log-entry.info {
+    border-left-color: var(--accent-blue);
+}
+
+.refresh-log-progress {
+    background: rgba(44, 51, 69, 0.92);
+    padding: 5px 12px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: #c0c8e0;
+    font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+}
+
+.refresh-log-progress .bar-bg {
+    width: 80px;
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.refresh-log-progress .bar-fill {
+    height: 100%;
+    background: var(--accent-blue);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+@keyframes logSlideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* ======================================================
+   Mobile Responsive Styles
+   ====================================================== */
+
+/* Tablet and smaller */
+@media (max-width: 768px) {
+    #header {
+        padding: 8px 12px;
+        height: 46px;
+    }
+
+    #header h1 {
+        font-size: 15px;
+        gap: 6px;
+    }
+
+    #header h1 .logo-icon {
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+        border-radius: 5px;
+    }
+
+    .header-right {
+        gap: 8px;
+    }
+
+    .header-right .last-updated {
+        font-size: 10px;
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #refresh-btn {
+        padding: 5px 10px;
+        font-size: 12px;
+    }
+
+    #content-area {
+        height: calc(100vh - 46px); /* fallback */
+        height: calc(100dvh - 46px);
+    }
+
+    .flood-warnings-summary { padding: 6px 12px; min-height: 34px; gap: 8px; }
+    .flood-warnings-text { font-size: 12px; }
+    .flood-warnings-details { padding: 0 12px 10px; }
+    .flood-warning-item { padding: 8px 0; }
+
+    /* Popups: fill more of the viewport */
+    .leaflet-popup-content {
+        width: 320px !important;
+        max-width: 88vw !important;
+    }
+
+    .popup-header {
+        padding: 8px 36px 5px 12px;
+    }
+
+    .popup-header h3 {
+        font-size: 14px;
+    }
+
+    .popup-current {
+        padding: 5px 12px;
+    }
+
+    .popup-current .value {
+        font-size: 24px;
+    }
+
+    .popup-chart-area {
+        height: 200px;
+    }
+
+    .popup-chart {
+        padding: 8px 0 10px 8px;
+    }
+
+    .popup-timerange {
+        padding: 8px 8px 10px 4px;
+        gap: 2px;
+    }
+
+    .popup-timerange button {
+        padding: 5px 6px;
+        font-size: 11px;
+    }
+
+    .popup-timerange button.forecast-btn {
+        font-size: 9px;
+    }
+
+    .popup-tabs button {
+        padding: 5px 6px;
+        font-size: 10px;
+    }
+
+    /* Legend: more compact */
+    .legend {
+        padding: 8px 12px;
+        font-size: 11px;
+        max-height: 50vh;
+        overflow-y: auto;
+    }
+
+    .legend h4 {
+        font-size: 11px;
+        margin-bottom: 3px;
+    }
+
+    .legend-item {
+        gap: 6px;
+    }
+
+    /* Refresh log: don't overlap legend */
+    .refresh-log {
+        bottom: 20px;
+        right: 10px;
+        left: 60px;
+    }
+
+    .refresh-log-entry {
+        max-width: 100%;
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+}
+
+/* Phone screens */
+@media (max-width: 480px) {
+    #header {
+        padding: 4px 10px;
+        min-height: 42px;
+        height: auto;
+    }
+
+    #header h1 {
+        font-size: 13px;
+        gap: 5px;
+    }
+
+    /* Hide the em-dash and "River Taw" part on very small screens */
+    #header h1 .subtitle {
+        display: none;
+    }
+
+    .github-link {
+        font-size: 9px;
+        padding-left: 24px;
+    }
+
+    .header-right {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 2px;
+    }
+
+    .header-right .last-updated {
+        font-size: 9px;
+        order: 2;
+    }
+
+    #refresh-btn {
+        padding: 5px 10px;
+        font-size: 11px;
+        gap: 4px;
+    }
+
+    #content-area {
+        height: calc(100vh - 52px); /* fallback */
+        height: calc(100dvh - 52px);
+    }
+
+    .flood-status-label { display: none; }
+    .flood-warnings-summary { padding: 5px 10px; min-height: 30px; gap: 6px; }
+    .flood-warnings-icon { font-size: 14px; }
+    .flood-warnings-text { font-size: 11px; }
+    .flood-warnings-chevron { font-size: 12px; }
+    .flood-warnings-details { padding: 0 10px 8px; max-height: 40vh; overflow-y: auto; }
+    .flood-warning-description { font-size: 12px; }
+    .flood-warning-message { font-size: 11px; }
+
+    /* Popups: near full-width */
+    .leaflet-popup-content {
+        width: 280px !important;
+        max-width: 92vw !important;
+    }
+
+    .popup-header {
+        padding: 6px 40px 4px 10px;
+    }
+
+    .popup-header h3 {
+        font-size: 13px;
+        line-height: 1.3;
+    }
+
+    .popup-header .station-type {
+        font-size: 10px;
+    }
+
+    .popup-current {
+        padding: 4px 10px;
+        gap: 4px;
+    }
+
+    .popup-current .value {
+        font-size: 22px;
+    }
+
+    .popup-current .unit {
+        font-size: 12px;
+    }
+
+    .popup-current .timestamp {
+        font-size: 10px;
+    }
+
+    .popup-chart-area {
+        height: 170px;
+    }
+
+    .popup-chart {
+        padding: 6px 0 8px 6px;
+    }
+
+    .popup-timerange {
+        padding: 6px 6px 8px 3px;
+        gap: 2px;
+    }
+
+    .popup-timerange button {
+        padding: 4px 5px;
+        font-size: 10px;
+        border-radius: 3px;
+        min-width: 28px;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .popup-timerange button.forecast-btn {
+        font-size: 9px;
+        min-width: unset;
+    }
+
+    .popup-tabs button {
+        padding: 4px 5px;
+        font-size: 9px;
+    }
+
+    .popup-nodata {
+        padding: 20px 10px;
+        font-size: 12px;
+    }
+
+    .leaflet-popup-close-button {
+        font-size: 20px !important;
+        right: 2px !important;
+        top: 2px !important;
+        width: 40px !important;
+        height: 40px !important;
+    }
+
+    /* Legend: collapsible on phone, fixed position to avoid Safari toolbar */
+    .legend {
+        position: fixed !important;
+        bottom: auto !important;
+        left: auto !important;
+        top: 60px;
+        right: 10px;
+        padding: 6px 10px;
+        font-size: 10px;
+        line-height: 1.6;
+        max-width: 150px;
+        z-index: 1000;
+    }
+
+    .legend .legend-body {
+        display: none;
+    }
+
+    .legend.expanded .legend-body {
+        display: block;
+    }
+
+    .legend .legend-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 600;
+        color: #333;
+        padding: 2px 0;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .legend .legend-toggle::after {
+        content: '\25B8';
+        font-size: 10px;
+        margin-left: 6px;
+        transition: transform 0.2s;
+    }
+
+    .legend.expanded .legend-toggle::after {
+        transform: rotate(90deg);
+    }
+
+    .legend h4 {
+        font-size: 10px;
+        margin-bottom: 2px;
+    }
+
+    .legend-item {
+        gap: 5px;
+    }
+
+    .legend-dot {
+        width: 10px;
+        height: 10px;
+    }
+
+    .legend-line {
+        width: 16px;
+    }
+
+    /* Markers: slightly larger for touch */
+    .station-marker {
+        font-size: 9px;
+    }
+
+    /* Refresh log: bottom-center on phone */
+    .refresh-log {
+        bottom: 14px;
+        right: 8px;
+        left: 8px;
+        align-items: stretch;
+    }
+
+    .refresh-log-entry {
+        max-width: 100%;
+        font-size: 9px;
+        padding: 3px 6px;
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    .refresh-log-progress {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+
+    .refresh-log-progress .bar-bg {
+        width: 60px;
+    }
+
+    /* Leaflet zoom controls: make touch-friendly */
+    .leaflet-control-zoom a {
+        width: 36px !important;
+        height: 36px !important;
+        line-height: 36px !important;
+        font-size: 18px !important;
+    }
+}
+
+/* Attribution */
+.leaflet-control-attribution {
+    background: rgba(255, 255, 255, 0.85) !important;
+    color: #666 !important;
+    font-size: 10px !important;
+}
+
+.leaflet-control-attribution a {
+    color: var(--accent-blue) !important;
+}
+
+/* ======================================================
+   Classes replacing inline styles (CSP compliance)
+   ====================================================== */
+
+/* Flow arrows on river overlays */
+.flow-arrow {
+    font-size: 14px;
+    opacity: 0.6;
+    text-shadow: 0 0 4px rgba(0,0,0,0.4);
+    line-height: 1;
+}
+
+/* River name labels */
+.river-label {
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    border-width: 1px;
+    border-style: solid;
+    white-space: nowrap;
+    width: max-content;
+    transform: translateX(-50%);
+}
+
+/* Railway line labels */
+.railway-label {
+    background: rgba(255,255,255,0.85);
+    color: #555;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border: 1px solid #ccc;
+    white-space: nowrap;
+    width: max-content;
+    transform: translateX(-50%);
+}
+
+/* Legend: station type dots */
+.legend-dot.river { background: var(--accent-river); }
+.legend-dot.tidal { background: var(--accent-tidal); border-radius: 3px; transform: rotate(45deg); }
+.legend-dot.rain { background: var(--accent-rain); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
+
+/* Legend: section spacing */
+.legend h4.legend-section { margin-top: 8px; }
+
+/* Legend: river colour lines */
+.legend-line.river-taw { background: #1a8a7d; opacity: 0.7; }
+.legend-line.river-mole { background: #2e7dab; opacity: 0.7; }
+.legend-line.river-little-dart { background: #8a6e1a; opacity: 0.7; }
+.legend-line.river-yeo { background: #7a4a8a; opacity: 0.7; }
+.legend-line.river-lapford-yeo { background: #ab5e2e; opacity: 0.7; }
+.legend-line.river-crooked-oak { background: #5a8a3a; opacity: 0.7; }
+.legend-line.river-hollocombe { background: #6a7a3a; opacity: 0.7; }
+
+/* Legend: flow direction indicator */
+.legend-flow-arrow {
+    color: #1a8a7d;
+    font-size: 12px;
+}
+
+/* Legend: railway dashed lines */
+.legend-line.railway {
+    background: none;
+    border-top: 2px dashed #888;
+    height: 0;
+    opacity: 0.5;
+}
+
+/* Legend: trend badges */
+.legend-trend {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: white;
+    font-weight: 700;
+}
+.legend-trend.rising { background: #e05555; }
+.legend-trend.falling { background: #4aad4a; }
+.legend-trend.steady { background: #7a8099; }
+
+/* Station marker sizing (set via CSS custom property) */
+.station-marker {
+    width: var(--marker-size, 36px);
+    height: var(--marker-size, 36px);
+}
+
+/* Popup: upstream order note */
+.upstream-note {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-left: 8px;
+}
+
+/* Popup: trend indicator in current value area */
+.popup-trend {
+    font-size: 16px;
+    margin-left: 4px;
+}
+.popup-trend.rising { color: #e05555; }
+.popup-trend.falling { color: #4aad4a; }
+.popup-trend.steady { color: #b0b8d0; }
+
+/* Discharge legend swatches */
+.legend-swatch.forecast-range {
+    background: rgba(212,160,55,0.15);
+    border: 1px solid rgba(212,160,55,0.4);
+}
+.legend-line.discharge-mean { border-color: #d4a037; }
+.legend-line.dashed.normal-flow { border-color: rgba(74,173,74,0.6); }
+.legend-line.dashed.high-flow { border-color: rgba(224,85,85,0.6); }
