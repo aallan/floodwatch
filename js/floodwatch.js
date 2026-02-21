@@ -1732,17 +1732,7 @@ async function init() {
     loadFromLocalStorage(); // merge any cached data on top of CSVs
     createMarkers();
 
-    // Wire up event listeners (replaces inline onclick= in HTML)
-    document.getElementById('refresh-btn').addEventListener('click', refreshData);
-    document.querySelector('.flood-warnings-summary').addEventListener('click', toggleFloodWarnings);
-
-    // Fetch flood warnings and detect backend in parallel
-    const [_, backendResult] = await Promise.all([
-        fetchFloodWarnings(),
-        detectBackend()
-    ]);
-    hasBackend = backendResult;
-
+    // Show data freshness immediately — don't wait for network probes
     const latestTimes = Object.values(stationData)
         .map(d => d.latest?.dateTime)
         .filter(Boolean)
@@ -1752,6 +1742,14 @@ async function init() {
         document.getElementById('last-updated').textContent =
             `Data from ${formatTime(latestTimes[0])}`;
     }
+
+    // Wire up event listeners (replaces inline onclick= in HTML)
+    document.getElementById('refresh-btn').addEventListener('click', refreshData);
+    document.querySelector('.flood-warnings-summary').addEventListener('click', toggleFloodWarnings);
+
+    // Flood warnings, backend detection run in parallel — non-blocking
+    fetchFloodWarnings();
+    detectBackend().then(result => { hasBackend = result; });
 }
 
 init();
