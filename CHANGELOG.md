@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-02-21
+
+### Added
+- Ruff linting and format checks in CI (`ruff check .`, `ruff format --check .`)
+- Expanded ruff lint rules: `UP` (pyupgrade), `B` (bugbear), `SIM` (simplify), `RUF`
+- ARIA attributes: `aria-live="polite"` on flood status, `aria-busy` on refresh button, `role="button"` and `aria-expanded` on flood warnings summary
+- `prefers-reduced-motion` media query — disables spinner, warning pulse, and log slide-in animations
+- Response validation (`if (!resp.ok)`) on all `fetch()` calls (GeoJSON overlays, EA API, flood warnings, backend sync)
+
+### Fixed
+- Red console error (`OPTIONS 405`) on every page load from backend detection — switched to silent `XMLHttpRequest`
+- Data freshness timestamp and flood status delayed ~2s on load — show timestamp immediately after markers, run network probes non-blocking
+
+### Changed
+- Synced `pyproject.toml` version to `1.2.0`
+- Pre-commit hooks now filter to Python files only (skip JS/CSS/JSON/GeoJSON)
+- Expanded `.gitignore` with standard exclusions (`.env`, `venv/`, IDE dirs, `*.log`)
+- Applied ruff auto-fixes: `timezone.utc` → `UTC` alias, removed redundant `"r"` mode args
+
 ## [1.1.0] — 2026-02-21
 
 ### Fixed
@@ -116,7 +135,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Text overflow in popup boxes
 - GitHub Actions deprecation warning
 
-[Unreleased]: https://github.com/aallan/floodwatch/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/aallan/floodwatch/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/aallan/floodwatch/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/aallan/floodwatch/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/aallan/floodwatch/compare/v0.6.0...v1.0.0
 [0.6.0]: https://github.com/aallan/floodwatch/compare/v0.5.0...v0.6.0
