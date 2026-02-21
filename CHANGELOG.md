@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-02-21
+
+### Fixed
+- Popup buttons (time range, forecast, tidal/discharge tabs) not responding to clicks after the v1.0.0 refactor — event delegation listener was registered after the popup had already opened
+- Canvas loading text ("Loading forecast…", "Loading discharge data…") stretched and distorted — intrinsic canvas size was not synced to CSS display size before drawing
+
+### Added
+- 15 UI integration tests for `floodwatch.js` covering event delegation, canvas coordinate handling, popup HTML generation, init() wiring, and marker construction
+- `sizeCanvasToDisplay()` helper that syncs canvas resolution to CSS display size with DPR scaling
+- Test harness (`setup-ui.js`) that loads `floodwatch.js` into jsdom with mocked Leaflet, Chart.js, and Papa Parse
+
+### Changed
+- Test count: 80 → 95 (55 Python + 40 JavaScript)
+- Updated project structure in README.md and CONTRIBUTING.md to reflect external CSS/JS files
+
 ## [1.0.0] — 2026-02-21
 
 ### Changed
@@ -101,7 +116,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Text overflow in popup boxes
 - GitHub Actions deprecation warning
 
-[Unreleased]: https://github.com/aallan/floodwatch/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/aallan/floodwatch/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/aallan/floodwatch/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/aallan/floodwatch/compare/v0.6.0...v1.0.0
 [0.6.0]: https://github.com/aallan/floodwatch/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/aallan/floodwatch/compare/v0.4.0...v0.5.0
