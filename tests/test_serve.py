@@ -213,3 +213,20 @@ class TestHandleRefresh:
         monkeypatch.setattr(serve, "refresh_station", mock_refresh)
         result = json.loads(serve.handle_refresh())
         assert result["stations_updated"] == 3
+
+
+# ============================================================
+# _atomic_write_csv — atomic file write in serve.py
+# ============================================================
+
+
+class TestAtomicWriteServe:
+    def test_no_temp_files_after_refresh(self, data_dir, monkeypatch):
+        """After refresh_station, no .tmp files remain in the data dir."""
+        station = serve.STATIONS[0]
+        monkeypatch.setattr(serve, "api_get", lambda url: {"items": [{"dateTime": "2026-02-20T10:00:00Z", "value": 0.55}]})
+
+        serve.refresh_station(station)
+
+        tmp_files = list(Path(str(data_dir)).glob("*.tmp"))
+        assert tmp_files == []

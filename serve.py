@@ -18,6 +18,7 @@ import os
 import signal
 import socket
 import sys
+import tempfile
 import time as _time
 import urllib.error
 import urllib.request
@@ -178,6 +179,24 @@ STATIONS: list[StationDict] = [
 ]
 
 
+def _atomic_write_csv(filepath: str, write_fn) -> None:
+    """Write a CSV atomically: temp file, fsync, rename over target."""
+    dir_path = os.path.dirname(filepath) or "."
+    fd, tmp_path = tempfile.mkstemp(dir=dir_path, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", newline="") as f:
+            write_fn(f)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, filepath)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
 def api_get(url: str, timeout: int = 60) -> dict[str, Any] | None:
     """Fetch JSON from the EA API."""
     req = urllib.request.Request(url, headers={'Accept': 'application/json'})
@@ -264,10 +283,13 @@ def refresh_station(station: StationDict) -> dict[str, Any]:
 
     if new_count > 0:
         existing_rows.sort(key=lambda r: r[0])
-        with open(csv_path, 'w', newline='') as f:
+
+        def write_fn(f):
             writer = csv.writer(f)
             writer.writerow(['dateTime', 'value', 'unit', 'station_id', 'station_label'])
             writer.writerows(existing_rows)
+
+        _atomic_write_csv(csv_path, write_fn)
 
     return {'id': station['id'], 'label': station['label'], 'new_readings': new_count, 'total': len(existing_rows)}
 

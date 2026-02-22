@@ -389,3 +389,53 @@ class TestFetchAllReadings:
         result = fetch_data.fetch_all_readings(station, going_back_days=60)
         assert len(result) >= 2
         assert result[0]["dateTime"] < result[-1]["dateTime"]
+
+
+# ============================================================
+# _atomic_write_csv — atomic file write helper
+# ============================================================
+
+
+class TestAtomicWrite:
+    def test_produces_correct_file(self, tmp_path):
+        filepath = str(tmp_path / "test.csv")
+
+        def write_fn(f):
+            f.write("header\nrow1\nrow2\n")
+
+        fetch_data._atomic_write_csv(filepath, write_fn)
+        assert Path(filepath).read_text() == "header\nrow1\nrow2\n"
+
+    def test_no_temp_file_left_on_success(self, tmp_path):
+        filepath = str(tmp_path / "test.csv")
+
+        def write_fn(f):
+            f.write("data\n")
+
+        fetch_data._atomic_write_csv(filepath, write_fn)
+        assert list(tmp_path.glob("*.tmp")) == []
+
+    def test_cleans_up_on_error(self, tmp_path):
+        filepath = str(tmp_path / "test.csv")
+
+        def write_fn(f):
+            raise ValueError("simulated write error")
+
+        with pytest.raises(ValueError):
+            fetch_data._atomic_write_csv(filepath, write_fn)
+
+        assert list(tmp_path.glob("*.tmp")) == []
+        assert not Path(filepath).exists()
+
+    def test_preserves_original_on_error(self, tmp_path):
+        filepath = tmp_path / "test.csv"
+        filepath.write_text("original content\n")
+
+        def write_fn(f):
+            f.write("partial")
+            raise ValueError("simulated failure")
+
+        with pytest.raises(ValueError):
+            fetch_data._atomic_write_csv(str(filepath), write_fn)
+
+        assert filepath.read_text() == "original content\n"

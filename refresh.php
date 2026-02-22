@@ -26,7 +26,9 @@ if (file_exists($rateLimitFile)) {
         exit;
     }
 }
-file_put_contents($rateLimitFile, (string)time());
+$tmpRate = tempnam(dirname($rateLimitFile), '.tmp_');
+file_put_contents($tmpRate, (string)time());
+rename($tmpRate, $rateLimitFile);
 
 // Station definitions matching our CSV structure
 $stations = [
@@ -169,13 +171,16 @@ foreach ($stations as $station) {
                 return strcmp($a[0], $b[0]);
             });
 
-            // Write back
-            $handle = fopen($csvFile, 'w');
+            // Write back (atomic: temp file, flush, rename)
+            $tmpFile = tempnam(dirname($csvFile), '.tmp_');
+            $handle = fopen($tmpFile, 'w');
             fputcsv($handle, ['dateTime', 'value', 'unit', 'station_id', 'station_label']);
             foreach ($existingLines as $line) {
                 fputcsv($handle, $line);
             }
+            fflush($handle);
             fclose($handle);
+            rename($tmpFile, $csvFile);
             $updated++;
         }
 
