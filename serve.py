@@ -456,6 +456,9 @@ def start_server(port: int, bind_addr: str = '::1') -> None:
         except OSError:
             pass
 
+    if bind_addr in ('::', '0.0.0.0'):
+        print('Warning: Binding to all interfaces -- server is publicly accessible')
+
     server = ReusableHTTPServer((bind_addr, port), FloodwatchHandler)
     write_pid()
 

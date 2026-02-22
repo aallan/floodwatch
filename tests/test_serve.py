@@ -270,3 +270,30 @@ class TestAtomicWriteServe:
 
         tmp_files = list(Path(str(data_dir)).glob("*.tmp"))
         assert tmp_files == []
+
+
+# ============================================================
+# start_server — bind warning
+# ============================================================
+
+
+class TestBindWarning:
+    def _run_start_server(self, monkeypatch, tmp_path, capsys, bind_addr):
+        mock_server = MagicMock()
+        mock_server.server_address = (bind_addr, 8080)
+        mock_server.serve_forever.side_effect = KeyboardInterrupt
+
+        monkeypatch.setattr(serve, "ReusableHTTPServer", lambda addr, handler: mock_server)
+        monkeypatch.setattr(serve, "PID_FILE", str(tmp_path / ".server.pid"))
+        monkeypatch.setattr(serve, "read_pid", lambda: None)
+
+        serve.start_server(8080, bind_addr)
+        return capsys.readouterr()
+
+    def test_warns_on_all_interfaces(self, monkeypatch, tmp_path, capsys):
+        captured = self._run_start_server(monkeypatch, tmp_path, capsys, '::')
+        assert "publicly accessible" in captured.out
+
+    def test_no_warning_on_localhost(self, monkeypatch, tmp_path, capsys):
+        captured = self._run_start_server(monkeypatch, tmp_path, capsys, '::1')
+        assert "publicly accessible" not in captured.out
