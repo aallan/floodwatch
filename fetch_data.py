@@ -8,6 +8,7 @@ import argparse
 import csv
 import json
 import os
+import random
 import re
 import tempfile
 import time
@@ -105,7 +106,7 @@ def api_get(url: str, retries: int = 3) -> dict[str, Any]:
         except (HTTPError, URLError, TimeoutError) as e:
             print(f"  Attempt {attempt + 1}/{retries} failed for {url}: {e}")
             if attempt < retries - 1:
-                time.sleep(2**attempt)
+                time.sleep(2**attempt + random.uniform(0, 1))
             else:
                 raise
 

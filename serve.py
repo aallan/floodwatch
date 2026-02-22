@@ -15,6 +15,7 @@ by proxying directly to the EA Flood Monitoring API.
 import csv
 import json
 import os
+import random
 import signal
 import socket
 import sys
@@ -197,15 +198,18 @@ def _atomic_write_csv(filepath: str, write_fn) -> None:
         raise
 
 
-def api_get(url: str, timeout: int = 60) -> dict[str, Any] | None:
-    """Fetch JSON from the EA API."""
-    req = urllib.request.Request(url, headers={'Accept': 'application/json'})
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode())
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
-        print(f'  API error: {e}')
-        return None
+def api_get(url: str, timeout: int = 60, retries: int = 3) -> dict[str, Any] | None:
+    """Fetch JSON from the EA API with retries and exponential backoff."""
+    for attempt in range(retries):
+        req = urllib.request.Request(url, headers={'Accept': 'application/json'})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode())
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
+            print(f'  API error (attempt {attempt + 1}/{retries}): {e}')
+            if attempt < retries - 1:
+                _time.sleep(2**attempt + random.uniform(0, 1))
+    return None
 
 
 def refresh_station(station: StationDict) -> dict[str, Any]:

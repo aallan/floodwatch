@@ -15,7 +15,7 @@ import serve
 from tests.conftest import make_mock_urlopen
 
 # ============================================================
-# api_get (serve.py version — no retry, returns None on error)
+# api_get — retries with exponential backoff and jitter
 # ============================================================
 
 
@@ -27,23 +27,63 @@ class TestServeApiGet:
         result = serve.api_get("http://example.com/test")
         assert result == {"items": [{"value": 1}]}
 
-    def test_returns_none_on_url_error(self, monkeypatch):
+    def test_returns_none_after_retries_on_url_error(self, monkeypatch):
+        call_count = 0
+
         def fail(*a, **kw):
+            nonlocal call_count
+            call_count += 1
             raise URLError("connection failed")
 
         monkeypatch.setattr("serve.urllib.request.urlopen", fail)
+        monkeypatch.setattr("serve._time.sleep", lambda _: None)
         result = serve.api_get("http://example.com/test")
         assert result is None
+        assert call_count == 3
 
-    def test_returns_none_on_bad_json(self, monkeypatch):
+    def test_returns_none_after_retries_on_bad_json(self, monkeypatch):
         mock_resp = MagicMock()
         mock_resp.read.return_value = b"not json"
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
         monkeypatch.setattr("serve.urllib.request.urlopen", lambda *a, **kw: mock_resp)
+        monkeypatch.setattr("serve._time.sleep", lambda _: None)
         result = serve.api_get("http://example.com/test")
         assert result is None
+
+    def test_retry_then_success(self, monkeypatch):
+        call_count = 0
+        mock_resp = make_mock_urlopen({"items": []})
+
+        def fake_urlopen(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise URLError("connection failed")
+            return mock_resp
+
+        monkeypatch.setattr("serve.urllib.request.urlopen", fake_urlopen)
+        monkeypatch.setattr("serve._time.sleep", lambda _: None)
+
+        result = serve.api_get("http://example.com/test", retries=3)
+        assert result == {"items": []}
+        assert call_count == 3
+
+    def test_exponential_backoff_with_jitter(self, monkeypatch):
+        sleep_calls = []
+
+        def always_fail(*args, **kwargs):
+            raise URLError("connection failed")
+
+        monkeypatch.setattr("serve.urllib.request.urlopen", always_fail)
+        monkeypatch.setattr("serve._time.sleep", lambda s: sleep_calls.append(s))
+
+        serve.api_get("http://example.com/test", retries=3)
+
+        assert len(sleep_calls) == 2
+        assert 1.0 <= sleep_calls[0] < 2.0  # 2^0 + jitter
+        assert 2.0 <= sleep_calls[1] < 3.0  # 2^1 + jitter
 
 
 # ============================================================

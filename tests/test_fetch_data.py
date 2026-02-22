@@ -288,7 +288,7 @@ class TestApiGet:
         with pytest.raises(URLError):
             fetch_data.api_get("http://example.com/test", retries=3)
 
-    def test_exponential_backoff(self, monkeypatch):
+    def test_exponential_backoff_with_jitter(self, monkeypatch):
         sleep_calls = []
 
         def always_fail(*args, **kwargs):
@@ -300,8 +300,10 @@ class TestApiGet:
         with pytest.raises(URLError):
             fetch_data.api_get("http://example.com/test", retries=3)
 
-        # Backoff: 2^0=1, 2^1=2 (only sleeps between retries, not after the last)
-        assert sleep_calls == [1, 2]
+        # Backoff: 2^0 + jitter, 2^1 + jitter (only sleeps between retries)
+        assert len(sleep_calls) == 2
+        assert 1.0 <= sleep_calls[0] < 2.0
+        assert 2.0 <= sleep_calls[1] < 3.0
 
 
 # ============================================================
