@@ -883,9 +883,12 @@ body {
         display: none;
     }
 
+    .header-meta {
+        padding-left: 24px;
+    }
+
     .github-link {
         font-size: 9px;
-        padding-left: 24px;
     }
 
     .header-right {
