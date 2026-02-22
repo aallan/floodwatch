@@ -8,7 +8,9 @@ import argparse
 import csv
 import json
 import os
+import random
 import re
+import tempfile
 import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -76,6 +78,24 @@ API_BASE: str = "https://environment.data.gov.uk/flood-monitoring"
 type Reading = dict[str, Any]
 
 
+def _atomic_write_csv(filepath: str, write_fn) -> None:
+    """Write a CSV atomically: temp file, fsync, rename over target."""
+    dir_path = os.path.dirname(filepath) or "."
+    fd, tmp_path = tempfile.mkstemp(dir=dir_path, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", newline="") as f:
+            write_fn(f)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, filepath)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
 def api_get(url: str, retries: int = 3) -> dict[str, Any]:
     """Fetch JSON from the API with retries."""
     for attempt in range(retries):
@@ -86,7 +106,7 @@ def api_get(url: str, retries: int = 3) -> dict[str, Any]:
         except (HTTPError, URLError, TimeoutError) as e:
             print(f"  Attempt {attempt + 1}/{retries} failed for {url}: {e}")
             if attempt < retries - 1:
-                time.sleep(2**attempt)
+                time.sleep(2**attempt + random.uniform(0, 1))
             else:
                 raise
 
@@ -191,30 +211,36 @@ def merge_readings(existing: list[Reading], new_readings: list[Reading]) -> list
 
 
 def save_readings_csv(station: StationInfo, readings: list[Reading], filename: str) -> None:
-    """Save readings to a CSV file."""
+    """Save readings to a CSV file (atomic write)."""
     filepath = os.path.join(DATA_DIR, filename)
-    with open(filepath, "w", newline="") as f:
+    unit = "mm" if station["type"] == "rainfall" else ("mAOD" if station["type"] == "tidal" else "m")
+
+    def write_fn(f):
         writer = csv.writer(f)
-        unit = "mm" if station["type"] == "rainfall" else ("mAOD" if station["type"] == "tidal" else "m")
         writer.writerow(["dateTime", "value", "unit", "station_id", "station_label"])
         for r in readings:
             val = r.get("value", "")
             dt = r.get("dateTime", "")
             if dt and val != "":
                 writer.writerow([dt, val, unit, station["id"], station["label"]])
+
+    _atomic_write_csv(filepath, write_fn)
     print(f"  Saved {len(readings)} readings to {filepath}")
 
 
 def save_stations_csv() -> None:
-    """Save station metadata to CSV."""
+    """Save station metadata to CSV (atomic write)."""
     filepath = os.path.join(DATA_DIR, "stations.csv")
-    with open(filepath, "w", newline="") as f:
+
+    def write_fn(f):
         writer = csv.writer(f)
         writer.writerow(["id", "label", "lat", "lon", "river", "type", "rloi", "measure_id"])
         for s in LEVEL_STATIONS:
             writer.writerow([s["id"], s["label"], s["lat"], s["lon"], s.get("river", ""), s["type"], s.get("rloi", ""), get_measure_id(s)])
         for s in RAINFALL_STATIONS:
             writer.writerow([s["id"], s["label"], s["lat"], s["lon"], "", s["type"], "", get_measure_id(s)])
+
+    _atomic_write_csv(filepath, write_fn)
     print(f"Saved station metadata to {filepath}")
 
 

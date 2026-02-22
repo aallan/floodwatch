@@ -288,7 +288,7 @@ class TestApiGet:
         with pytest.raises(URLError):
             fetch_data.api_get("http://example.com/test", retries=3)
 
-    def test_exponential_backoff(self, monkeypatch):
+    def test_exponential_backoff_with_jitter(self, monkeypatch):
         sleep_calls = []
 
         def always_fail(*args, **kwargs):
@@ -300,8 +300,10 @@ class TestApiGet:
         with pytest.raises(URLError):
             fetch_data.api_get("http://example.com/test", retries=3)
 
-        # Backoff: 2^0=1, 2^1=2 (only sleeps between retries, not after the last)
-        assert sleep_calls == [1, 2]
+        # Backoff: 2^0 + jitter, 2^1 + jitter (only sleeps between retries)
+        assert len(sleep_calls) == 2
+        assert 1.0 <= sleep_calls[0] < 2.0
+        assert 2.0 <= sleep_calls[1] < 3.0
 
 
 # ============================================================
@@ -389,3 +391,53 @@ class TestFetchAllReadings:
         result = fetch_data.fetch_all_readings(station, going_back_days=60)
         assert len(result) >= 2
         assert result[0]["dateTime"] < result[-1]["dateTime"]
+
+
+# ============================================================
+# _atomic_write_csv — atomic file write helper
+# ============================================================
+
+
+class TestAtomicWrite:
+    def test_produces_correct_file(self, tmp_path):
+        filepath = str(tmp_path / "test.csv")
+
+        def write_fn(f):
+            f.write("header\nrow1\nrow2\n")
+
+        fetch_data._atomic_write_csv(filepath, write_fn)
+        assert Path(filepath).read_text() == "header\nrow1\nrow2\n"
+
+    def test_no_temp_file_left_on_success(self, tmp_path):
+        filepath = str(tmp_path / "test.csv")
+
+        def write_fn(f):
+            f.write("data\n")
+
+        fetch_data._atomic_write_csv(filepath, write_fn)
+        assert list(tmp_path.glob("*.tmp")) == []
+
+    def test_cleans_up_on_error(self, tmp_path):
+        filepath = str(tmp_path / "test.csv")
+
+        def write_fn(f):
+            raise ValueError("simulated write error")
+
+        with pytest.raises(ValueError):
+            fetch_data._atomic_write_csv(filepath, write_fn)
+
+        assert list(tmp_path.glob("*.tmp")) == []
+        assert not Path(filepath).exists()
+
+    def test_preserves_original_on_error(self, tmp_path):
+        filepath = tmp_path / "test.csv"
+        filepath.write_text("original content\n")
+
+        def write_fn(f):
+            f.write("partial")
+            raise ValueError("simulated failure")
+
+        with pytest.raises(ValueError):
+            fetch_data._atomic_write_csv(str(filepath), write_fn)
+
+        assert filepath.read_text() == "original content\n"

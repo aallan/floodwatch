@@ -51,8 +51,8 @@ Open an issue using the **Feature request** template. Describe the problem you'r
 ## Running Tests
 
 ```bash
-pytest tests/ -v                    # 55 Python tests
-cd js-tests && npm test             # 25 JavaScript tests
+pytest tests/ -v                    # 64 Python tests
+cd js-tests && npm test             # 40 JavaScript tests
 ```
 
 All tests must pass before a pull request can be merged. See [TESTING.md](TESTING.md) for details on what each test covers.

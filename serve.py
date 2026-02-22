@@ -15,9 +15,11 @@ by proxying directly to the EA Flood Monitoring API.
 import csv
 import json
 import os
+import random
 import signal
 import socket
 import sys
+import tempfile
 import time as _time
 import urllib.error
 import urllib.request
@@ -178,15 +180,36 @@ STATIONS: list[StationDict] = [
 ]
 
 
-def api_get(url: str, timeout: int = 60) -> dict[str, Any] | None:
-    """Fetch JSON from the EA API."""
-    req = urllib.request.Request(url, headers={'Accept': 'application/json'})
+def _atomic_write_csv(filepath: str, write_fn) -> None:
+    """Write a CSV atomically: temp file, fsync, rename over target."""
+    dir_path = os.path.dirname(filepath) or "."
+    fd, tmp_path = tempfile.mkstemp(dir=dir_path, suffix=".tmp")
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode())
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
-        print(f'  API error: {e}')
-        return None
+        with os.fdopen(fd, "w", newline="") as f:
+            write_fn(f)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, filepath)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
+def api_get(url: str, timeout: int = 60, retries: int = 3) -> dict[str, Any] | None:
+    """Fetch JSON from the EA API with retries and exponential backoff."""
+    for attempt in range(retries):
+        req = urllib.request.Request(url, headers={'Accept': 'application/json'})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read().decode())
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
+            print(f'  API error (attempt {attempt + 1}/{retries}): {e}')
+            if attempt < retries - 1:
+                _time.sleep(2**attempt + random.uniform(0, 1))
+    return None
 
 
 def refresh_station(station: StationDict) -> dict[str, Any]:
@@ -264,10 +287,13 @@ def refresh_station(station: StationDict) -> dict[str, Any]:
 
     if new_count > 0:
         existing_rows.sort(key=lambda r: r[0])
-        with open(csv_path, 'w', newline='') as f:
+
+        def write_fn(f):
             writer = csv.writer(f)
             writer.writerow(['dateTime', 'value', 'unit', 'station_id', 'station_label'])
             writer.writerows(existing_rows)
+
+        _atomic_write_csv(csv_path, write_fn)
 
     return {'id': station['id'], 'label': station['label'], 'new_readings': new_count, 'total': len(existing_rows)}
 
@@ -429,6 +455,9 @@ def start_server(port: int, bind_addr: str = '::1') -> None:
             os.remove(PID_FILE)
         except OSError:
             pass
+
+    if bind_addr in ('::', '0.0.0.0'):
+        print('Warning: Binding to all interfaces -- server is publicly accessible')
 
     server = ReusableHTTPServer((bind_addr, port), FloodwatchHandler)
     write_pid()

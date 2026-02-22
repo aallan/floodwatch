@@ -15,7 +15,7 @@ import serve
 from tests.conftest import make_mock_urlopen
 
 # ============================================================
-# api_get (serve.py version — no retry, returns None on error)
+# api_get — retries with exponential backoff and jitter
 # ============================================================
 
 
@@ -27,23 +27,63 @@ class TestServeApiGet:
         result = serve.api_get("http://example.com/test")
         assert result == {"items": [{"value": 1}]}
 
-    def test_returns_none_on_url_error(self, monkeypatch):
+    def test_returns_none_after_retries_on_url_error(self, monkeypatch):
+        call_count = 0
+
         def fail(*a, **kw):
+            nonlocal call_count
+            call_count += 1
             raise URLError("connection failed")
 
         monkeypatch.setattr("serve.urllib.request.urlopen", fail)
+        monkeypatch.setattr("serve._time.sleep", lambda _: None)
         result = serve.api_get("http://example.com/test")
         assert result is None
+        assert call_count == 3
 
-    def test_returns_none_on_bad_json(self, monkeypatch):
+    def test_returns_none_after_retries_on_bad_json(self, monkeypatch):
         mock_resp = MagicMock()
         mock_resp.read.return_value = b"not json"
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
         monkeypatch.setattr("serve.urllib.request.urlopen", lambda *a, **kw: mock_resp)
+        monkeypatch.setattr("serve._time.sleep", lambda _: None)
         result = serve.api_get("http://example.com/test")
         assert result is None
+
+    def test_retry_then_success(self, monkeypatch):
+        call_count = 0
+        mock_resp = make_mock_urlopen({"items": []})
+
+        def fake_urlopen(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise URLError("connection failed")
+            return mock_resp
+
+        monkeypatch.setattr("serve.urllib.request.urlopen", fake_urlopen)
+        monkeypatch.setattr("serve._time.sleep", lambda _: None)
+
+        result = serve.api_get("http://example.com/test", retries=3)
+        assert result == {"items": []}
+        assert call_count == 3
+
+    def test_exponential_backoff_with_jitter(self, monkeypatch):
+        sleep_calls = []
+
+        def always_fail(*args, **kwargs):
+            raise URLError("connection failed")
+
+        monkeypatch.setattr("serve.urllib.request.urlopen", always_fail)
+        monkeypatch.setattr("serve._time.sleep", lambda s: sleep_calls.append(s))
+
+        serve.api_get("http://example.com/test", retries=3)
+
+        assert len(sleep_calls) == 2
+        assert 1.0 <= sleep_calls[0] < 2.0  # 2^0 + jitter
+        assert 2.0 <= sleep_calls[1] < 3.0  # 2^1 + jitter
 
 
 # ============================================================
@@ -213,3 +253,47 @@ class TestHandleRefresh:
         monkeypatch.setattr(serve, "refresh_station", mock_refresh)
         result = json.loads(serve.handle_refresh())
         assert result["stations_updated"] == 3
+
+
+# ============================================================
+# _atomic_write_csv — atomic file write in serve.py
+# ============================================================
+
+
+class TestAtomicWriteServe:
+    def test_no_temp_files_after_refresh(self, data_dir, monkeypatch):
+        """After refresh_station, no .tmp files remain in the data dir."""
+        station = serve.STATIONS[0]
+        monkeypatch.setattr(serve, "api_get", lambda url: {"items": [{"dateTime": "2026-02-20T10:00:00Z", "value": 0.55}]})
+
+        serve.refresh_station(station)
+
+        tmp_files = list(Path(str(data_dir)).glob("*.tmp"))
+        assert tmp_files == []
+
+
+# ============================================================
+# start_server — bind warning
+# ============================================================
+
+
+class TestBindWarning:
+    def _run_start_server(self, monkeypatch, tmp_path, capsys, bind_addr):
+        mock_server = MagicMock()
+        mock_server.server_address = (bind_addr, 8080)
+        mock_server.serve_forever.side_effect = KeyboardInterrupt
+
+        monkeypatch.setattr(serve, "ReusableHTTPServer", lambda addr, handler: mock_server)
+        monkeypatch.setattr(serve, "PID_FILE", str(tmp_path / ".server.pid"))
+        monkeypatch.setattr(serve, "read_pid", lambda: None)
+
+        serve.start_server(8080, bind_addr)
+        return capsys.readouterr()
+
+    def test_warns_on_all_interfaces(self, monkeypatch, tmp_path, capsys):
+        captured = self._run_start_server(monkeypatch, tmp_path, capsys, '::')
+        assert "publicly accessible" in captured.out
+
+    def test_no_warning_on_localhost(self, monkeypatch, tmp_path, capsys):
+        captured = self._run_start_server(monkeypatch, tmp_path, capsys, '::1')
+        assert "publicly accessible" not in captured.out
