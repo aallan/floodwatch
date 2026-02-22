@@ -1,6 +1,6 @@
 # Testing
 
-95 tests cover the data pipeline, server logic, frontend utility functions, and UI interactions. The focus is on areas where bugs are most consequential: data merge/dedup logic (where errors silently corrupt charts), API retry behaviour (where failures lose data), filename sanitisation (where unsanitised input could create path traversal issues), HTML escaping (where station names could inject scripts), and DOM event wiring (where refactoring can silently break popup buttons or canvas rendering). No production dependencies are added — all test tooling is dev-only.
+104 tests cover the data pipeline, server logic, frontend utility functions, and UI interactions. The focus is on areas where bugs are most consequential: data merge/dedup logic (where errors silently corrupt charts), API retry behaviour (where failures lose data), atomic file writes (where interrupted writes could corrupt CSVs), filename sanitisation (where unsanitised input could create path traversal issues), HTML escaping (where station names could inject scripts), and DOM event wiring (where refactoring can silently break popup buttons or canvas rendering). No production dependencies are added — all test tooling is dev-only.
 
 ## Prerequisites
 
@@ -9,7 +9,7 @@
 
 ## Running Tests
 
-**Python** (55 tests via pytest):
+**Python** (64 tests via pytest):
 
 ```bash
 pytest tests/ -v
@@ -25,7 +25,7 @@ npm test
 
 Both suites run in CI on every push to `main` via `.github/workflows/tests.yml`.
 
-## Python Tests — `test_fetch_data.py` (37 tests)
+## Python Tests — `test_fetch_data.py` (41 tests)
 
 Tests the data pipeline that downloads readings from the EA API and writes them as CSV files. All HTTP calls are mocked — no real API requests are made. Filesystem tests use pytest's `tmp_path` for isolation.
 
@@ -60,11 +60,17 @@ Tests the data pipeline that downloads readings from the EA API and writes them 
 - Readings with empty `dateTime` are excluded from the saved file
 - `stations.csv` contains all 19 stations with the correct metadata headers
 
-**`api_get`** (4 tests) — The EA API occasionally times out or returns 5xx errors, especially during flood events when traffic spikes. `api_get` retries with exponential backoff to handle transient failures without losing an entire fetch run. Tests verify:
+**`api_get`** (4 tests) — The EA API occasionally times out or returns 5xx errors, especially during flood events when traffic spikes. `api_get` retries with exponential backoff plus jitter to handle transient failures without losing an entire fetch run. Tests verify:
 - A successful first attempt returns the parsed JSON
 - After two failures, a third successful attempt returns the data (resilience)
 - After exhausting all retries, the original error is raised (doesn't silently swallow failures)
-- The backoff delays are correct — sleeps 1s then 2s between retries (exponential), confirmed by capturing `time.sleep` calls
+- The backoff delays follow `2^attempt + jitter` — first sleep is 1.0–2.0s, second is 2.0–3.0s, confirmed by capturing `time.sleep` calls
+
+**`_atomic_write_csv`** (4 tests) — All CSV writes go through this helper which writes to a temp file, fsyncs, then atomically renames over the target. If interrupted mid-write, the original file remains intact. Tests verify:
+- A successful write produces the correct file contents
+- No `.tmp` files are left behind after a successful write
+- If the write function raises, the temp file is cleaned up
+- If the write fails, the original file is preserved unchanged
 
 **`fetch_readings_batch` / `fetch_all_readings`** (5 tests) — The full-history fetcher works backwards in 28-day chunks, which means chunks can overlap and the same reading may appear twice. Tests verify:
 - A successful batch returns the API's `items` array
@@ -73,14 +79,16 @@ Tests the data pipeline that downloads readings from the EA API and writes them 
 - The fetcher stops after 3 consecutive empty chunks rather than iterating all 13+ chunks for a full year — avoids hammering the API for stations that have limited historical data
 - The combined result is sorted chronologically regardless of which chunk each reading came from
 
-## Python Tests — `test_serve.py` (12 tests)
+## Python Tests — `test_serve.py` (18 tests)
 
-Tests the dev server's refresh logic and lifecycle management. HTTP calls to the EA API are mocked; filesystem operations use `tmp_path`.
+Tests the dev server's refresh logic, lifecycle management, and hardening. HTTP calls to the EA API are mocked; filesystem operations use `tmp_path`.
 
-**`api_get`** (3 tests) — The server's version of `api_get` deliberately has no retry — if one station's refresh fails, the server moves on to the next rather than blocking. Tests verify:
+**`api_get`** (5 tests) — The server's `api_get` retries 3 times with exponential backoff and jitter before returning `None`. Unlike `fetch_data.py` (which raises on exhaustion), this version returns `None` so the server can move on to the next station. Tests verify:
 - Successful requests return parsed JSON
-- Network errors (`URLError`) return `None` instead of crashing the server
-- Malformed JSON responses return `None` instead of raising an exception
+- Network errors (`URLError`) return `None` after exhausting all 3 retries
+- Malformed JSON responses return `None` after retries
+- After two failures, a third successful attempt returns the data
+- The backoff delays follow `2^attempt + jitter` — first sleep is 1.0–2.0s, second is 2.0–3.0s
 
 **`refresh_station`** (5 tests) — When the frontend's Refresh button is clicked, the server decides how to fetch based on the gap since the last reading. The strategy affects both speed and completeness. Tests verify:
 - **No existing data** — fetches the last 28 days as a starting point and writes a new CSV
@@ -97,6 +105,13 @@ Tests the dev server's refresh logic and lifecycle management. HTTP calls to the
 **`handle_refresh`** (2 tests) — Integration test for the JSON response that the frontend's activity log parses. Tests verify:
 - The response contains `success`, `timestamp`, and a `details` array with one entry per station
 - The `stations_updated` count correctly reflects how many stations received new data
+
+**`_atomic_write_csv`** (1 test) — Verifies the atomic write helper is used correctly in `refresh_station`:
+- After a successful refresh, no `.tmp` files are left behind in the data directory
+
+**Bind warning** (2 tests) — The dev server warns when bound to all network interfaces (`::` or `0.0.0.0`), since it has no authentication or TLS. Tests verify:
+- Binding to `::` prints a "publicly accessible" warning
+- Binding to `::1` (localhost) prints no warning
 
 ## Python Tests — `test_serve_handler.py` (5 tests)
 
@@ -182,7 +197,7 @@ The main application script (`js/floodwatch.js`) is loaded into jsdom via `eval(
 
 ## Test Architecture
 
-- **Python:** pytest with shared fixtures in `conftest.py`. `monkeypatch` replaces `urlopen` and `time.sleep` so HTTP and backoff tests run instantly without network access. `tmp_path` provides an isolated filesystem per test — each test gets its own empty `data/` directory. All 55 tests run in ~2 seconds.
+- **Python:** pytest with shared fixtures in `conftest.py`. `monkeypatch` replaces `urlopen` and `time.sleep` so HTTP and backoff tests run instantly without network access. `tmp_path` provides an isolated filesystem per test — each test gets its own empty `data/` directory. All 64 tests run in ~2 seconds.
 - **JavaScript (core):** Vitest with jsdom environment. jsdom is needed because `escapeHtml` uses `document.createElement` — pure Node has no DOM. The extracted functions accept dependencies as parameters (e.g. `getStation(id, stations)` instead of reading a global `STATIONS`) so tests can pass mock data without setting up the full app state.
 - **JavaScript (UI):** The same Vitest + jsdom environment, but `floodwatch.js` is loaded via `eval()` with global mocks for Leaflet, Chart.js, Papa Parse, and `fetch`. A `setup-ui.js` harness provides the minimal DOM scaffold and canvas 2D context stubs. This tests event delegation, DOM wiring, and canvas coordinate logic without refactoring the script to ES modules.
 - **CI:** Two parallel jobs in `.github/workflows/tests.yml` — Python (pytest on 3.12) and JavaScript (Vitest on Node 22). Actions are SHA-pinned to match the project's existing `update-data.yml` workflow. Tests run on push to `main` and on pull requests, with path filters so unrelated changes (like editing GeoJSON files) don't trigger unnecessary test runs.
