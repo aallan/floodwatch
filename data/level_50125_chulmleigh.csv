@@ -3889,3 +3889,7 @@ dateTime,value,unit,station_id,station_label
 2026-02-22T11:45:00Z,1.013,m,50125,Chulmleigh
 2026-02-22T12:00:00Z,1.014,m,50125,Chulmleigh
 2026-02-22T12:15:00Z,1.014,m,50125,Chulmleigh
+2026-02-22T12:30:00Z,1.012,m,50125,Chulmleigh
+2026-02-22T12:45:00Z,1.009,m,50125,Chulmleigh
+2026-02-22T13:00:00Z,1.004,m,50125,Chulmleigh
+2026-02-22T13:15:00Z,0.997,m,50125,Chulmleigh
