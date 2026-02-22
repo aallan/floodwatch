@@ -1747,9 +1747,16 @@ async function init() {
     document.getElementById('refresh-btn').addEventListener('click', refreshData);
     document.querySelector('.flood-warnings-summary').addEventListener('click', toggleFloodWarnings);
 
-    // Flood warnings, backend detection run in parallel — non-blocking
+    // Flood warnings, backend detection, version tag run in parallel — non-blocking
     fetchFloodWarnings();
     detectBackend().then(result => { hasBackend = result; });
+    fetch('version.json')
+        .then(r => r.json())
+        .then(data => {
+            const el = document.getElementById('version-tag');
+            if (el && data.version) el.textContent = '(' + data.version + ')';
+        })
+        .catch(() => {}); // non-critical
 }
 
 init();

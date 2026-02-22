@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-02-22
+
+### Added
+- Version tag displayed in site header next to "View on GitHub" link — shows git tag on releases, commit hash between releases
+- `version.json` auto-updated by pre-commit hook via `git describe --tags --always`
+- Pre-commit hook (`version-json`) in `.pre-commit-config.yaml` to keep version in sync
+
+### Fixed
+- Dartmoor Line GeoJSON trim adjusted — previous cut was too aggressive, leaving a visible gap near Colebrooke
+
+### Changed
+- Atomic file writes for all CSV operations (`fetch_data.py`, `serve.py`, `refresh.php`) — write to temp file, fsync, rename
+- API retry with exponential backoff and jitter in `serve.py` (3 attempts, `2^n + random` delay)
+- Bind warning when dev server listens on all interfaces (`::` or `0.0.0.0`)
+- Added jitter to `fetch_data.py` backoff for consistency
+- Test count: 95 → 104 (64 Python + 40 JavaScript)
+
 ## [1.2.0] — 2026-02-21
 
 ### Added
@@ -135,7 +152,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Text overflow in popup boxes
 - GitHub Actions deprecation warning
 
-[Unreleased]: https://github.com/aallan/floodwatch/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/aallan/floodwatch/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/aallan/floodwatch/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/aallan/floodwatch/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/aallan/floodwatch/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/aallan/floodwatch/compare/v0.6.0...v1.0.0

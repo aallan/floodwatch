@@ -7,3 +7,11 @@ repos:
         types: [python]
       - id: ruff-format
         types: [python]
+  - repo: local
+    hooks:
+      - id: version-json
+        name: update version.json
+        entry: bash -c 'echo "{\"version\":\"$(git describe --tags --always)\"}" > version.json && git add version.json'
+        language: system
+        always_run: true
+        pass_filenames: false

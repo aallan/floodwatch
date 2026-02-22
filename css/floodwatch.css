@@ -69,15 +69,24 @@ body {
     gap: 0px;
 }
 
+.header-meta {
+    padding-left: 32px;
+}
+
 .github-link {
     font-size: 10px;
     color: var(--text-secondary);
     text-decoration: none;
-    padding-left: 32px;
 }
 
 .github-link:hover {
     color: var(--text-primary);
+}
+
+.version-tag {
+    font-size: 10px;
+    color: var(--text-secondary);
+    padding-left: 4px;
 }
 
 .header-right {
