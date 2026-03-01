@@ -4564,3 +4564,7 @@ dateTime,value,unit,station_id,station_label
 2026-03-01T12:30:00Z,0.413,m,50149,Sticklepath
 2026-03-01T12:45:00Z,0.413,m,50149,Sticklepath
 2026-03-01T13:00:00Z,0.402,m,50149,Sticklepath
+2026-03-01T13:15:00Z,0.415,m,50149,Sticklepath
+2026-03-01T13:30:00Z,0.413,m,50149,Sticklepath
+2026-03-01T13:45:00Z,0.415,m,50149,Sticklepath
+2026-03-01T14:00:00Z,0.411,m,50149,Sticklepath
