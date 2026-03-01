@@ -4540,3 +4540,7 @@ dateTime,value,unit,station_id,station_label
 2026-03-01T06:30:00Z,0.407,m,50149,Sticklepath
 2026-03-01T06:45:00Z,0.408,m,50149,Sticklepath
 2026-03-01T07:00:00Z,0.41,m,50149,Sticklepath
+2026-03-01T07:15:00Z,0.417,m,50149,Sticklepath
+2026-03-01T07:30:00Z,0.403,m,50149,Sticklepath
+2026-03-01T07:45:00Z,0.405,m,50149,Sticklepath
+2026-03-01T08:00:00Z,0.404,m,50149,Sticklepath
