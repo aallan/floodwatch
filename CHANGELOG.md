@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [1.4.1] — 2026-03-04
+
+### Fixed
+- Red console errors on static deployment — switched `detectBackend()` from POST to GET and `fetchFloodWarnings()` from `fetch()` to XHR so CORS failures are silent
+- CSV fallback warning disappearing too quickly — added persistent "No live data fetched" line to refresh summary, extended display time
+
 ## [1.4.0] — 2026-03-04
 
 ### Added
@@ -167,7 +173,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Text overflow in popup boxes
 - GitHub Actions deprecation warning
 
-[Unreleased]: https://github.com/aallan/floodwatch/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/aallan/floodwatch/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/aallan/floodwatch/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/aallan/floodwatch/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/aallan/floodwatch/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/aallan/floodwatch/compare/v1.2.0...v1.3.0
