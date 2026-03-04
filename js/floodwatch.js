@@ -1364,12 +1364,16 @@ async function refreshData() {
         let stationsUpdated = 0;
         let stationsFailed = 0;
 
+        let useCSVFallback = false;
+
         for (let i = 0; i < allStations.length; i++) {
             const station = allStations[i];
             setLogProgress(i + 1, total, 'stations');
             addLogEntry(`Fetching ${station.label}\u2026`, 'info');
 
             try {
+                if (useCSVFallback) throw new Error('CSV fallback');
+
                 const existing = stationData[station.id]?.readings || [];
                 const latestTime = existing.length > 0 ? existing[existing.length - 1].dateTime : null;
                 const now = new Date();
@@ -1457,9 +1461,32 @@ async function refreshData() {
                     addLogEntry(`${station.label}: no new data`, 'success');
                 }
             } catch (e) {
-                stationsFailed++;
-                addLogEntry(`${station.label}: failed`, 'error');
-                console.warn(`Refresh failed for ${station.label}:`, e);
+                // EA API failed (likely CORS) — fall back to reloading CSV
+                if (!useCSVFallback) {
+                    useCSVFallback = true;
+                    addLogEntry('EA API unavailable \u2014 using cached data (updated hourly)', 'warn');
+                }
+                try {
+                    const data = await loadCSV(station.file);
+                    const readings = data
+                        .filter(r => r.dateTime && r.value !== null && r.value !== '')
+                        .map(r => ({ dateTime: new Date(r.dateTime), value: parseFloat(r.value) }))
+                        .filter(r => !isNaN(r.value))
+                        .sort((a, b) => a.dateTime - b.dateTime);
+
+                    const oldCount = stationData[station.id]?.readings?.length || 0;
+                    stationData[station.id] = {
+                        readings,
+                        latest: readings.length > 0 ? readings[readings.length - 1] : null
+                    };
+                    const diff = readings.length - oldCount;
+                    if (diff > 0) { totalNew += diff; stationsUpdated++; }
+                    addLogEntry(`${station.label}: loaded cached data`, 'success');
+                } catch {
+                    stationsFailed++;
+                    addLogEntry(`${station.label}: failed`, 'error');
+                    console.warn(`Refresh failed for ${station.label}:`, e);
+                }
             }
         }
 
@@ -1491,16 +1518,18 @@ async function refreshData() {
             addLogEntry('Cached to browser storage', 'success');
         }
 
-        // Summary
-        // Refresh flood warnings
+        // Refresh flood warnings (may silently fail if EA API is CORS-blocked)
         addLogEntry('Checking flood warnings\u2026', 'info');
         await fetchFloodWarnings();
-        addLogEntry('Flood warnings updated', 'success');
 
-        const summary = `Done: ${stationsUpdated} updated, +${totalNew} readings` + (stationsFailed > 0 ? `, ${stationsFailed} failed` : '');
-        addLogEntry(summary, stationsFailed > 0 ? 'warn' : 'success');
+        const source = useCSVFallback ? ' (cached data)' : '';
+        const summary = `Done: ${stationsUpdated} updated, +${totalNew} readings${source}` + (stationsFailed > 0 ? `, ${stationsFailed} failed` : '');
+        addLogEntry(summary, stationsFailed > 0 ? 'warn' : (useCSVFallback ? 'warn' : 'success'));
+        if (useCSVFallback) {
+            addLogEntry('No live data fetched \u2014 EA API is currently unavailable', 'warn');
+        }
         statusEl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
-        hideLog(4000);
+        hideLog(useCSVFallback ? 6000 : 4000);
 
     } catch (e) {
         addLogEntry(`Refresh failed: ${e.message}`, 'error');
@@ -1537,26 +1566,40 @@ function escapeHtml(str) {
 }
 
 async function fetchFloodWarnings() {
-    try {
-        const resp = await fetch(API_BASE + '/id/floods?county=Devon');
-        if (!resp.ok) throw new Error(`Flood warnings API error: ${resp.status}`);
-        const data = await resp.json();
-        const items = data.items || [];
+    // Uses XHR to keep CORS failures silent in the console (fetch() logs
+    // a red error that can't be suppressed from JavaScript).
+    return new Promise(resolve => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', API_BASE + '/id/floods?county=Devon');
+        xhr.onload = () => {
+            try {
+                if (xhr.status < 200 || xhr.status >= 300) throw new Error(`Flood warnings API error: ${xhr.status}`);
+                const data = JSON.parse(xhr.responseText);
+                const items = data.items || [];
 
-        // Filter to Taw catchment areas with active severity (1-3)
-        const tawWarnings = items.filter(item => {
-            const areaId = item.floodAreaID || '';
-            return TAW_FLOOD_AREAS.includes(areaId) &&
-                   item.severityLevel >= 1 && item.severityLevel <= 3;
-        });
+                const tawWarnings = items.filter(item => {
+                    const areaId = item.floodAreaID || '';
+                    return TAW_FLOOD_AREAS.includes(areaId) &&
+                           item.severityLevel >= 1 && item.severityLevel <= 3;
+                });
 
-        // Sort by severity (most severe first)
-        tawWarnings.sort((a, b) => a.severityLevel - b.severityLevel);
-
-        renderFloodWarnings(tawWarnings);
-    } catch (e) {
-        console.warn('Could not fetch flood warnings:', e);
-    }
+                tawWarnings.sort((a, b) => a.severityLevel - b.severityLevel);
+                renderFloodWarnings(tawWarnings);
+            } catch (e) {
+                console.warn('Could not fetch flood warnings:', e);
+                const statusEl = document.getElementById('flood-status');
+                statusEl.classList.add('visible');
+            }
+            resolve();
+        };
+        xhr.onerror = () => {
+            console.warn('Could not fetch flood warnings (network error)');
+            const statusEl = document.getElementById('flood-status');
+            statusEl.classList.add('visible');
+            resolve();
+        };
+        xhr.send();
+    });
 }
 
 function renderFloodWarnings(warnings) {
@@ -1708,13 +1751,17 @@ function loadFromLocalStorage() {
 
 async function detectBackend() {
     // Check whether a refresh backend (serve.py or refresh.php) is available.
-    // On static hosts this 404s — we test via XHR instead of fetch() because
-    // fetch() logs non-2xx responses as console errors in Chrome, which looks
-    // alarming even though they are handled.  XHR failures are silent.
+    // GET + JSON-parse check: a real backend executes the PHP and returns
+    // JSON; a static file server returns the raw PHP source (which isn't
+    // JSON).  Uses XHR to keep probe failures silent in the console.
     return new Promise(resolve => {
         const xhr = new XMLHttpRequest();
-        xhr.open('HEAD', 'refresh.php');
-        xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
+        xhr.open('GET', 'refresh.php?probe=1');
+        xhr.onload = () => {
+            if (xhr.status < 200 || xhr.status >= 300) return resolve(false);
+            try { JSON.parse(xhr.responseText); resolve(true); }
+            catch { resolve(false); }
+        };
         xhr.onerror = () => resolve(false);
         xhr.send();
     });
