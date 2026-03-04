@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-03-04
+
+### Added
+- CORS fallback for Refresh Data — tries EA API first, falls back to cached CSV data (updated hourly by GitHub Actions) if CORS-blocked, auto-recovers when EA restores headers
+- Explicit log messages distinguishing live EA API data from cached data during refresh
+
+### Fixed
+- `detectBackend()` false positive on static deployments — `refresh.php` exists as a static file, HEAD returned 200; switched to POST + JSON parse check
+- Flood status bar not shown when EA API is unreachable — now displays default green status dot
+
 ## [1.3.1] — 2026-02-22
 
 ### Fixed
@@ -157,7 +167,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Text overflow in popup boxes
 - GitHub Actions deprecation warning
 
-[Unreleased]: https://github.com/aallan/floodwatch/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/aallan/floodwatch/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/aallan/floodwatch/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/aallan/floodwatch/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/aallan/floodwatch/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/aallan/floodwatch/compare/v1.1.0...v1.2.0
