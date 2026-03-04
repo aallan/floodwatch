@@ -1525,8 +1525,11 @@ async function refreshData() {
         const source = useCSVFallback ? ' (cached data)' : '';
         const summary = `Done: ${stationsUpdated} updated, +${totalNew} readings${source}` + (stationsFailed > 0 ? `, ${stationsFailed} failed` : '');
         addLogEntry(summary, stationsFailed > 0 ? 'warn' : (useCSVFallback ? 'warn' : 'success'));
+        if (useCSVFallback) {
+            addLogEntry('No live data fetched \u2014 EA API is currently unavailable', 'warn');
+        }
         statusEl.textContent = `Updated ${new Date().toLocaleTimeString()}`;
-        hideLog(4000);
+        hideLog(useCSVFallback ? 6000 : 4000);
 
     } catch (e) {
         addLogEntry(`Refresh failed: ${e.message}`, 'error');
@@ -1563,29 +1566,40 @@ function escapeHtml(str) {
 }
 
 async function fetchFloodWarnings() {
-    try {
-        const resp = await fetch(API_BASE + '/id/floods?county=Devon');
-        if (!resp.ok) throw new Error(`Flood warnings API error: ${resp.status}`);
-        const data = await resp.json();
-        const items = data.items || [];
+    // Uses XHR to keep CORS failures silent in the console (fetch() logs
+    // a red error that can't be suppressed from JavaScript).
+    return new Promise(resolve => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', API_BASE + '/id/floods?county=Devon');
+        xhr.onload = () => {
+            try {
+                if (xhr.status < 200 || xhr.status >= 300) throw new Error(`Flood warnings API error: ${xhr.status}`);
+                const data = JSON.parse(xhr.responseText);
+                const items = data.items || [];
 
-        // Filter to Taw catchment areas with active severity (1-3)
-        const tawWarnings = items.filter(item => {
-            const areaId = item.floodAreaID || '';
-            return TAW_FLOOD_AREAS.includes(areaId) &&
-                   item.severityLevel >= 1 && item.severityLevel <= 3;
-        });
+                const tawWarnings = items.filter(item => {
+                    const areaId = item.floodAreaID || '';
+                    return TAW_FLOOD_AREAS.includes(areaId) &&
+                           item.severityLevel >= 1 && item.severityLevel <= 3;
+                });
 
-        // Sort by severity (most severe first)
-        tawWarnings.sort((a, b) => a.severityLevel - b.severityLevel);
-
-        renderFloodWarnings(tawWarnings);
-    } catch (e) {
-        console.warn('Could not fetch flood warnings:', e);
-        // API unreachable (likely CORS) — show status dot so UI isn't blank
-        const statusEl = document.getElementById('flood-status');
-        statusEl.classList.add('visible');
-    }
+                tawWarnings.sort((a, b) => a.severityLevel - b.severityLevel);
+                renderFloodWarnings(tawWarnings);
+            } catch (e) {
+                console.warn('Could not fetch flood warnings:', e);
+                const statusEl = document.getElementById('flood-status');
+                statusEl.classList.add('visible');
+            }
+            resolve();
+        };
+        xhr.onerror = () => {
+            console.warn('Could not fetch flood warnings (network error)');
+            const statusEl = document.getElementById('flood-status');
+            statusEl.classList.add('visible');
+            resolve();
+        };
+        xhr.send();
+    });
 }
 
 function renderFloodWarnings(warnings) {
@@ -1737,12 +1751,12 @@ function loadFromLocalStorage() {
 
 async function detectBackend() {
     // Check whether a refresh backend (serve.py or refresh.php) is available.
-    // POST + JSON-parse check: a real backend returns JSON, a static file
-    // server returns 400/405 or the raw PHP source (which isn't JSON).
-    // Uses XHR to keep probe failures silent in the console.
+    // GET + JSON-parse check: a real backend executes the PHP and returns
+    // JSON; a static file server returns the raw PHP source (which isn't
+    // JSON).  Uses XHR to keep probe failures silent in the console.
     return new Promise(resolve => {
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', 'refresh.php?probe=1');
+        xhr.open('GET', 'refresh.php?probe=1');
         xhr.onload = () => {
             if (xhr.status < 200 || xhr.status >= 300) return resolve(false);
             try { JSON.parse(xhr.responseText); resolve(true); }
