@@ -7511,3 +7511,7 @@ dateTime,value,unit,station_id,station_label
 2026-04-01T08:45:00Z,1.555,mAOD,50198,Barnstaple (Tidal)
 2026-04-01T09:00:00Z,1.355,mAOD,50198,Barnstaple (Tidal)
 2026-04-01T09:15:00Z,1.168,mAOD,50198,Barnstaple (Tidal)
+2026-04-01T09:30:00Z,1.005,mAOD,50198,Barnstaple (Tidal)
+2026-04-01T09:45:00Z,0.873,mAOD,50198,Barnstaple (Tidal)
+2026-04-01T10:00:00Z,0.773,mAOD,50198,Barnstaple (Tidal)
+2026-04-01T10:15:00Z,0.688,mAOD,50198,Barnstaple (Tidal)
