@@ -1,0 +1,209 @@
+{
+  "objectIdFieldName": "ObjectId",
+  "uniqueIdField": {
+    "name": "ObjectId",
+    "isSystemMaintained": true
+  },
+  "globalIdFieldName": "",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+    "wkid": 102100,
+    "latestWkid": 3857
+  },
+  "fields": [
+    {
+      "name": "ObjectId",
+      "type": "esriFieldTypeOID",
+      "alias": "ObjectId",
+      "sqlType": "sqlTypeInteger",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "statusStart",
+      "type": "esriFieldTypeDate",
+      "alias": "statusStart",
+      "sqlType": "sqlTypeOther",
+      "length": 8,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "latestEventStart",
+      "type": "esriFieldTypeDate",
+      "alias": "latestEventStart",
+      "sqlType": "sqlTypeOther",
+      "length": 8,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "latestEventEnd",
+      "type": "esriFieldTypeDate",
+      "alias": "latestEventEnd",
+      "sqlType": "sqlTypeOther",
+      "length": 8,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "receivingWaterCourse",
+      "type": "esriFieldTypeString",
+      "alias": "receivingWaterCourse",
+      "sqlType": "sqlTypeOther",
+      "length": 254,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "lastUpdated",
+      "type": "esriFieldTypeDate",
+      "alias": "lastUpdated",
+      "sqlType": "sqlTypeOther",
+      "length": 8,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "company",
+      "type": "esriFieldTypeString",
+      "alias": "company",
+      "sqlType": "sqlTypeOther",
+      "length": 254,
+      "domain": {
+        "type": "codedValue",
+        "name": "South West Water - Storm Overflow Activity_points_company_18854c9e-3db8-4cdf-8754-fd0427c65d7a",
+        "codedValues": []
+      },
+      "defaultValue": null
+    },
+    {
+      "name": "status",
+      "type": "esriFieldTypeInteger",
+      "alias": "status",
+      "sqlType": "sqlTypeOther",
+      "domain": {
+        "type": "codedValue",
+        "name": "South West Water - Storm Overflow Activity_points_PROD_status_f8020e2b-1b4a-49f7-8171-b644fbdbcc43",
+        "codedValues": [
+          {
+            "name": "Offline",
+            "code": -1
+          },
+          {
+            "name": "Stop",
+            "code": 0
+          },
+          {
+            "name": "Start",
+            "code": 1
+          }
+        ]
+      },
+      "defaultValue": null
+    },
+    {
+      "name": "longitude",
+      "type": "esriFieldTypeDouble",
+      "alias": "longitude",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "latitude",
+      "type": "esriFieldTypeDouble",
+      "alias": "latitude",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "Id",
+      "type": "esriFieldTypeString",
+      "alias": "Id",
+      "sqlType": "sqlTypeOther",
+      "length": 254,
+      "domain": null,
+      "defaultValue": null
+    }
+  ],
+  "exceededTransferLimit": true,
+  "features": [
+    {
+      "attributes": {
+        "ObjectId": 292,
+        "statusStart": 1777836621000,
+        "latestEventStart": 1777833821000,
+        "latestEventEnd": 1777836621000,
+        "receivingWaterCourse": "RIVER TAW ESTUARY(E)",
+        "lastUpdated": 1780492500000,
+        "company": "South West Water",
+        "status": 0,
+        "longitude": -4.063176,
+        "latitude": 51.078177,
+        "Id": "SBB00044"
+      }
+    },
+    {
+      "attributes": {
+        "ObjectId": 688,
+        "statusStart": 1779209280200,
+        "latestEventStart": 1779208580200,
+        "latestEventEnd": 1779209280200,
+        "receivingWaterCourse": "TRIB OF MULLY BROOK",
+        "lastUpdated": 1780491600000,
+        "company": "South West Water",
+        "status": 0,
+        "longitude": -3.9631559999999997,
+        "latitude": 50.907408,
+        "Id": "SBB00054"
+      }
+    },
+    {
+      "attributes": {
+        "ObjectId": 6,
+        "statusStart": 1780421171000,
+        "latestEventStart": 1780420029000,
+        "latestEventEnd": 1780421171000,
+        "receivingWaterCourse": "RIVER TAW ESTUARY",
+        "lastUpdated": 1780492500000,
+        "company": "South West Water",
+        "status": 0,
+        "longitude": -4.096698,
+        "latitude": 51.087023,
+        "Id": "SBB00072"
+      }
+    },
+    {
+      "attributes": {
+        "ObjectId": 735,
+        "statusStart": 1762176300100,
+        "latestEventStart": 1762176230100,
+        "latestEventEnd": 1762176300100,
+        "receivingWaterCourse": "RIVER YEO (S)",
+        "lastUpdated": 1780488000000,
+        "company": "South West Water",
+        "status": 0,
+        "longitude": -3.810173,
+        "latitude": 50.85781,
+        "Id": "SBB00074"
+      }
+    },
+    {
+      "attributes": {
+        "ObjectId": 1008,
+        "statusStart": 1773414803000,
+        "latestEventStart": 1773414632000,
+        "latestEventEnd": 1773414803000,
+        "receivingWaterCourse": "RIVER TAW",
+        "lastUpdated": 1780491600000,
+        "company": "South West Water",
+        "status": 0,
+        "longitude": -3.917784,
+        "latitude": 50.737736,
+        "Id": "SBB00096"
+      }
+    }
+  ]
+}

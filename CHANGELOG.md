@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+- Storm overflow (CSO) layer covering ~75 South West Water sites in the Taw catchment, sourced live from SWW's contribution to Water UK's National Storm Overflow Hub (open ArcGIS REST FeatureServer)
+- Per-site event log accumulator: `process_cso()` in `fetch_data.py` polls the live feed each hour, detects state transitions, and appends new events to `data/cso_<permit_id>.csv`. Idempotent — re-running with no upstream changes is a no-op
+- CSO frontend layer: smaller purple-shaded circle markers (status-driven colours), Tier-A markers (active or recent <48h) visible at all zoom levels, Tier-B markers (quiet, offline) fade in at zoom ≥ 11 to avoid catchment-overview clutter
+- CSO popups with current state, asset type, permit ID, EDM last-ping, "This month" + "Last 30 days" spill totals, an adaptive recent-activity panel (event list for ≤3 events, daily-totals histogram for >3), and a multi-year annual hours bar chart
+- One-off historical backfill (`fetch_cso_history.py`): pulls 2021–2025 annual returns from Water UK's All-Years FeatureServer, joins old WaSC permit refs to new DEFRA IDs, writes `data/cso_sites_meta.csv` + `data/cso_annual_history.csv`
+- 27 new Python tests covering the CSO event-log state machine (`tests/test_fetch_cso.py`)
+- 36 new JS tests covering CSO marker rendering, visual-state mapping, stats computation, overlap detection, and zoom-fade behaviour (`js-tests/floodwatch-cso.test.js`)
+- Marker hierarchy by asset type: 22px circles for major facilities (wastewater treatment works sites — Inlet SO at WwTW, Storm tank at WwTW); 14px for minor (sewer-network overflows, pumping stations)
+- Hover tooltips on every CSO marker with the expanded site name ("Chulmleigh Wastewater Treatment Works Settled Storm Overflow" rather than the compressed "Chulmleigh WWTW SSO") so users unfamiliar with water-industry acronyms can identify markers at a glance
+- `expandAcronyms` helper expands water-industry shorthand (WWTW, STW, SSO, CSO, PS, etc.) in popup titles and tooltips
+- New CSS variable `--accent-cso: #b48ed4` (bright lavender, readable on the dark popup background)
+
+### Changed
+- Test count: 104 → 181 (91 Python + 90 JavaScript)
+- README "Data Source" section renamed to "Data Sources" and expanded with SWW + Annual Returns endpoints
+- `--accent-cso` added to the root CSS variables alongside the existing accent palette
+
 ## [1.4.1] — 2026-03-04
 
 ### Fixed

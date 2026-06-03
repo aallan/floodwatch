@@ -16,6 +16,9 @@
     --warning-alert: #d4b84a;
     --warning-clear: #4aad4a;
     --accent-forecast: #d4a037;
+    /* CSO accent — bright enough to read on the dark popup bg, matches
+       the "recent" marker shade. */
+    --accent-cso: #b48ed4;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -318,6 +321,31 @@ body {
 
 .legend .legend-body {
     display: block;
+    /* Two-column layout on desktop — keeps the legend short enough to
+       avoid overlapping Leaflet's zoom controls (top-left of map).
+       Each .legend-section-block has `break-inside: avoid` so a column
+       break can't separate a section's h4 from its items. */
+    column-count: 2;
+    column-gap: 18px;
+}
+.legend-section-block {
+    break-inside: avoid;
+    /* Prevent the first child of a column from being a section header
+       with no spacing above the column's content. */
+    display: block;
+}
+.legend-section-block + .legend-section-block h4.legend-section {
+    margin-top: 8px;
+}
+/* Force this section to start column 2 — pins the column layout so the
+   browser's auto-balance can't put Monitoring Stations + Trend in the
+   wrong column. With this rule:
+     Column 1: Monitoring Stations, Trend (1h)
+     Column 2: Storm Overflow, Rivers, Railway
+   The result is unbalanced (column 2 is taller), but the logical
+   grouping reads correctly. */
+.legend-section-block.column-break {
+    break-before: column;
 }
 
 /* Popup styling */
@@ -334,6 +362,39 @@ body {
 
 .tarka-tooltip .leaflet-tooltip-top::before {
     border-top-color: rgba(50, 50, 50, 0.85) !important;
+}
+
+/* CSO marker hover tooltip — same dark pill style as the railway-station
+   tooltips, with a subtle purple-tinged border to hint at the layer. */
+.cso-tooltip {
+    background: rgba(50, 50, 50, 0.9) !important;
+    color: white !important;
+    border: 1px solid rgba(180, 142, 212, 0.4) !important;
+    border-radius: 4px !important;
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3) !important;
+}
+.cso-tooltip .leaflet-tooltip-top::before {
+    border-top-color: rgba(50, 50, 50, 0.9) !important;
+}
+
+/* EA station marker hover tooltip — same dark pill as the CSO tooltip
+   but without the purple accent border, so the styling is shared visual
+   language across all map markers (level, rainfall, tidal). */
+.station-tooltip {
+    background: rgba(50, 50, 50, 0.9) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 4px !important;
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3) !important;
+}
+.station-tooltip .leaflet-tooltip-top::before {
+    border-top-color: rgba(50, 50, 50, 0.9) !important;
 }
 
 .leaflet-popup-content-wrapper {
@@ -609,6 +670,262 @@ body {
 
 .station-marker.tidal .marker-value {
     transform: rotate(-45deg);
+}
+
+/* ===========================================================
+   CSO (Combined Sewer Overflow) markers
+   Single hue (purple) shaded by status. Size encodes facility
+   importance — major (WWTW/STW sites) are 22px, minor (pumping
+   stations and sewer-network overflows) are 14px. The outer div
+   is always 32x32 for a generous tap target on mobile.
+   =========================================================== */
+.cso-marker {
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.85);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+/* Major facility (treatment works) — 22px visible inside the 32px
+   hit box, 5px margin on each side. */
+.cso-marker.major {
+    width: 22px;
+    height: 22px;
+    margin: 5px;
+}
+
+/* Minor (PS, sewer-network overflow) — 14px visible, 9px margin. */
+.cso-marker.minor {
+    width: 14px;
+    height: 14px;
+    margin: 9px;
+}
+
+.cso-marker:hover {
+    transform: scale(1.25);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+/* Status shades — same hue (~280°), saturation/lightness vary by state. */
+.cso-marker.active {
+    background: #5b2a8a;
+    /* Subtle attention-getting glow for currently-discharging sites. */
+    box-shadow: 0 0 0 3px rgba(91,42,138,0.25), 0 1px 4px rgba(0,0,0,0.4);
+}
+.cso-marker.recent { background: #9b6cc4; }
+.cso-marker.quiet  { background: #c9b4dd; }
+
+/* Offline — hollow circle with grey stroke, no fill. Visually distinct
+   from "quiet" because offline means we DON'T KNOW the state. */
+.cso-marker.offline {
+    background: transparent;
+    border-color: #888;
+}
+
+.cso-marker.unknown {
+    background: transparent;
+    border-color: #ccc;
+    border-style: dashed;
+}
+
+/* Legend dots — match marker shades */
+.legend-dot.cso-active  { background: #5b2a8a; }
+.legend-dot.cso-recent  { background: #9b6cc4; }
+.legend-dot.cso-quiet   { background: #c9b4dd; }
+.legend-dot.cso-offline { background: transparent; border: 2px solid #888; box-sizing: border-box; }
+
+/* ============================================================
+   CSO popup — dark-theme styling, mirrors existing EA popup
+   density (12-13px text, ~3-6px vertical padding, 16px gutters).
+   ============================================================ */
+.popup-header.cso .station-type.cso { color: var(--accent-cso); }
+
+/* Compact "status + timestamp" row */
+.cso-current {
+    padding: 4px 16px 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+}
+.cso-current .timestamp {
+    color: var(--text-secondary);
+    font-size: 11px;
+}
+.cso-state-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 11px;
+    color: white;
+    white-space: nowrap;
+}
+.cso-state-badge.active  { background: #5b2a8a; }
+.cso-state-badge.recent  { background: #9b6cc4; }
+.cso-state-badge.quiet   { background: var(--border); color: var(--text-secondary); }
+.cso-state-badge.offline { background: transparent; color: var(--text-secondary); border: 1px dashed var(--border); }
+.cso-state-badge.unknown { background: transparent; color: var(--text-secondary); border: 1px dashed var(--border); }
+
+/* Single-line meta strip: "Asset · Permit · EDM seen 30 min ago" */
+.cso-meta {
+    padding: 3px 16px 5px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Stats — two cards side by side: "This month" + "Last 30 days". */
+.cso-stats {
+    padding: 6px 16px;
+    border-bottom: 1px solid var(--border);
+}
+.cso-stat-loading {
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 11px;
+}
+.cso-stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+.cso-stat {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 6px;
+    text-align: center;
+}
+.cso-stat-label {
+    font-size: 9px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.cso-stat-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 1px 0;
+    line-height: 1;
+}
+.cso-stat-sub {
+    font-size: 10px;
+    color: var(--text-secondary);
+}
+
+/* Chart blocks */
+.cso-chart-block {
+    padding: 4px 16px 6px;
+}
+.cso-chart-block + .cso-chart-block {
+    border-top: 1px solid var(--border);
+}
+.cso-chart-block h4 {
+    margin: 0 0 2px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--accent-cso);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+/* "Monitoring started X" subtitle — reset the h4's uppercase + accent
+   colour so it reads as a quiet meta-line note (matches .cso-meta). */
+.cso-chart-block h4 .cso-monitoring-since {
+    font-style: italic;
+    font-weight: normal;
+    color: var(--text-secondary);
+    font-size: 11px;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-left: 0.4em;
+}
+.cso-chart-container {
+    position: relative;
+    height: 70px;  /* Daily-totals histogram — compact */
+    width: 100%;
+    overflow: hidden;  /* clip canvas if it overflows */
+}
+.cso-chart-container.annual {
+    height: 90px;  /* Annual bar chart */
+}
+/* When the histogram is replaced by an event list, drop the fixed height
+   and let the <ul> determine the container's size. */
+.cso-chart-container.as-list {
+    height: auto;
+    overflow: visible;
+}
+
+/* Empty-state message when there are 0 events in the 30-day window.
+   Uses the same compact container styling as the event list so it
+   takes ~16-20px instead of 70px of canvas. */
+.cso-no-events {
+    color: var(--text-secondary);
+    font-style: italic;
+    font-size: 11px;
+    padding: 2px 0;
+}
+
+/* Event-list mode — used when N <= 3 events in the 30-day window. */
+.cso-event-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 11px;
+}
+.cso-event-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 2px 0;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+}
+.cso-event-list li:last-child {
+    border-bottom: 0;
+}
+.cso-event-list .cso-event-when {
+    color: var(--text-primary);
+}
+.cso-event-list .cso-event-dur {
+    color: var(--accent-cso);
+    font-weight: 600;
+    margin-left: 8px;
+    white-space: nowrap;
+}
+
+/* Force the Chart.js canvas to fit its container. Without this rule the
+   canvas can draw at its internal pixel size, overflow the container,
+   and end up sitting over the map area BELOW the popup while capturing
+   all mouse events there. */
+.cso-chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Mobile — even tighter, single-column stats if space-tight. */
+@media (max-width: 480px) {
+    .cso-current   { padding: 3px 12px 4px; gap: 6px; }
+    .cso-meta      { padding: 2px 12px 4px; font-size: 10px; }
+    .cso-stats     { padding: 4px 12px; }
+    .cso-chart-block { padding: 3px 12px 5px; }
+    .cso-stat-value { font-size: 14px; }
+    .cso-chart-container       { height: 60px; }
+    .cso-chart-container.annual { height: 80px; }
+}
+
+/* Force the Chart.js canvas to fit its container. Without this rule the
+   canvas can draw at its internal pixel size, overflow the .cso-chart-
+   container box, and end up sitting over the map area BELOW the popup
+   while capturing all mouse events there — which is why map scroll
+   stops working as soon as a CSO popup opens. The existing .popup-chart
+   canvas rule (line ~437) does the same thing for EA charts. */
+.cso-chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
 }
 
 .marker-value {
@@ -1018,6 +1335,10 @@ body {
 
     .legend .legend-body {
         display: none;
+        /* On mobile, revert to single-column when the dropdown is open
+           — the narrow legend pill (150px max-width) doesn't have room
+           for two columns anyway. */
+        column-count: 1;
     }
 
     .legend.expanded .legend-body {

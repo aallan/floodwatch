@@ -36,8 +36,30 @@ const STATIONS = {
     ],
     tidal: [
         { id: '50198', label: 'Barnstaple (Tidal)', lat: 51.080046, lon: -4.064537, file: 'level_50198_barnstaple_(tidal).csv', measureId: '50198-level-tidal_level-i-15_min-mAOD', river: 'River Taw' },
-    ]
+    ],
+    // CSO (Combined Sewer Overflow) sites — populated at runtime from
+    // data/cso_sites.csv by loadCsoData(). Static list is in the CSV
+    // because there are ~75 sites and the fetcher maintains it.
+    cso: [],
 };
+
+// CSO state — populated at startup, used by markers + popups.
+const csoStatus = {};   // id -> {status, statusStart, latestEventStart, latestEventEnd, lastUpdated}
+const csoMeta = {};     // id -> {name, asset_type, shellfish_water, bathing_water}
+const csoHistory = {};  // id -> [{year, hours, spills}, ...]
+let csoGeneratedAt = '';
+
+// Zoom threshold below which tier-B CSO markers (quiet / offline) fade out.
+// Tier A (currently spilling, or ended within 48h) stays visible at all zoom levels.
+const CSO_FADE_ZOOM = 11;
+const CSO_RECENT_WINDOW_MS = 48 * 3600 * 1000;
+
+
+// Date polling began. Displayed in the "Last 30 days" popup subhead so
+// users understand why the chart has limited history — the live SWW
+// FeatureServer only exposes the most recent event per site, so 30-day
+// history fills out hour-by-hour as the cron accumulates events.
+const CSO_MONITORING_START = '3rd Jun 2026';
 
 // Flood warning area IDs for the Taw catchment
 const TAW_FLOOD_AREAS = [
@@ -125,6 +147,9 @@ function initMap() {
     }).addTo(map);
 
     addLegend();
+
+    // Recompute CSO tier-B opacity whenever the user changes zoom level.
+    map.on('zoomend', applyCsoZoomFade);
 }
 
 // ============================================================
@@ -362,29 +387,48 @@ function addLegend() {
     const legend = L.control({ position: 'bottomleft' });
     legend.onAdd = () => {
         const div = L.DomUtil.create('div', 'legend');
+        // Each section is wrapped in a .legend-section-block so CSS
+        // multi-column layout can keep section titles paired with their
+        // items via `break-inside: avoid`. Without the wrapper, columns
+        // could split (say) the "Rivers" h4 from its first item.
         div.innerHTML = `
             <div class="legend-toggle">Legend</div>
             <div class="legend-body">
-            <h4>Monitoring Stations</h4>
-            <div class="legend-item"><div class="legend-dot river"></div> River Level (m)</div>
-            <div class="legend-item"><div class="legend-dot tidal"></div> Tidal Level (mAOD)</div>
-            <div class="legend-item"><div class="legend-dot rain"></div> Rainfall (mm)</div>
-            <h4 class="legend-section">Rivers</h4>
-            <div class="legend-item"><div class="legend-line river-taw"></div> River Taw</div>
-            <div class="legend-item"><div class="legend-line river-mole"></div> River Mole</div>
-            <div class="legend-item"><div class="legend-line river-little-dart"></div> Little Dart River</div>
-            <div class="legend-item"><div class="legend-line river-yeo"></div> River Yeo</div>
-            <div class="legend-item"><div class="legend-line river-lapford-yeo"></div> Lapford Yeo</div>
-            <div class="legend-item"><div class="legend-line river-crooked-oak"></div> Crooked Oak</div>
-            <div class="legend-item"><div class="legend-line river-hollocombe"></div> Hollocombe Water</div>
-            <div class="legend-item"><div class="legend-flow-arrow">&#x25B2;</div> Flow direction</div>
-            <h4 class="legend-section">Railway</h4>
-            <div class="legend-item"><div class="legend-line railway"></div> Tarka Line</div>
-            <div class="legend-item"><div class="legend-line railway"></div> Dartmoor Line</div>
-            <h4 class="legend-section">Trend (1h)</h4>
-            <div class="legend-item"><div class="legend-trend rising">&uarr;</div> Rising</div>
-            <div class="legend-item"><div class="legend-trend falling">&darr;</div> Falling</div>
-            <div class="legend-item"><div class="legend-trend steady">&rarr;</div> Steady</div>
+              <div class="legend-section-block">
+                <h4>Monitoring Stations</h4>
+                <div class="legend-item"><div class="legend-dot river"></div> River Level (m)</div>
+                <div class="legend-item"><div class="legend-dot tidal"></div> Tidal Level (mAOD)</div>
+                <div class="legend-item"><div class="legend-dot rain"></div> Rainfall (mm)</div>
+              </div>
+              <div class="legend-section-block">
+                <h4 class="legend-section">Trend (1h)</h4>
+                <div class="legend-item"><div class="legend-trend rising">&uarr;</div> Rising</div>
+                <div class="legend-item"><div class="legend-trend falling">&darr;</div> Falling</div>
+                <div class="legend-item"><div class="legend-trend steady">&rarr;</div> Steady</div>
+              </div>
+              <div class="legend-section-block">
+                <h4 class="legend-section">Storm Overflow</h4>
+                <div class="legend-item"><div class="legend-dot cso-active"></div> Discharging now</div>
+                <div class="legend-item"><div class="legend-dot cso-recent"></div> Spilled within 48h</div>
+                <div class="legend-item"><div class="legend-dot cso-quiet"></div> Quiet</div>
+                <div class="legend-item"><div class="legend-dot cso-offline"></div> Monitor offline</div>
+              </div>
+              <div class="legend-section-block column-break">
+                <h4 class="legend-section">Rivers</h4>
+                <div class="legend-item"><div class="legend-line river-taw"></div> River Taw</div>
+                <div class="legend-item"><div class="legend-line river-mole"></div> River Mole</div>
+                <div class="legend-item"><div class="legend-line river-little-dart"></div> Little Dart River</div>
+                <div class="legend-item"><div class="legend-line river-yeo"></div> River Yeo</div>
+                <div class="legend-item"><div class="legend-line river-lapford-yeo"></div> Lapford Yeo</div>
+                <div class="legend-item"><div class="legend-line river-crooked-oak"></div> Crooked Oak</div>
+                <div class="legend-item"><div class="legend-line river-hollocombe"></div> Hollocombe Water</div>
+                <div class="legend-item"><div class="legend-flow-arrow">&#x25B2;</div> Flow direction</div>
+              </div>
+              <div class="legend-section-block">
+                <h4 class="legend-section">Railway</h4>
+                <div class="legend-item"><div class="legend-line railway"></div> Tarka Line</div>
+                <div class="legend-item"><div class="legend-line railway"></div> Dartmoor Line</div>
+              </div>
             </div>
         `;
         div.querySelector('.legend-toggle').addEventListener('click', function() {
@@ -444,6 +488,152 @@ async function loadAllData() {
 }
 
 // ============================================================
+// CSO data loading (sites + status + metadata + annual history)
+// ============================================================
+// Four files, all produced by the Python fetchers in fetch_data.py +
+// fetch_cso_history.py. Loaded once at startup — site list rarely changes
+// and status JSON is small enough (~75 entries) that one fetch is fine.
+async function loadCsoData() {
+    // Site list — populates STATIONS.cso. Each row: id, river, lat, lon.
+    try {
+        const sitesRows = await loadCSV('cso_sites.csv');
+        STATIONS.cso = sitesRows
+            .filter(r => r.id && r.lat && r.lon)
+            .map(r => ({
+                id: r.id,
+                lat: parseFloat(r.lat),
+                lon: parseFloat(r.lon),
+                river: r.river || '',
+                // Label resolves later when csoMeta loads; fall back to permit ID.
+                label: r.id,
+            }));
+    } catch (e) {
+        console.warn('Could not load cso_sites.csv — CSO layer disabled:', e);
+        STATIONS.cso = [];
+        return;
+    }
+
+    // Status snapshot — JSON, keyed by site id.
+    try {
+        const resp = await fetch(DATA_BASE + 'cso_status.json', { cache: 'no-cache' });
+        if (!resp.ok) throw new Error(`${resp.status} ${resp.url}`);
+        const snap = await resp.json();
+        csoGeneratedAt = snap.generated_at || '';
+        for (const [id, status] of Object.entries(snap.sites || {})) {
+            csoStatus[id] = status;
+        }
+    } catch (e) {
+        console.warn('Could not load cso_status.json — markers will use unknown status:', e);
+    }
+
+    // Static site metadata — name, asset type, designation flags.
+    // (One-off output of fetch_cso_history.py.)
+    try {
+        const metaRows = await loadCSV('cso_sites_meta.csv');
+        for (const r of metaRows) {
+            if (!r.id) continue;
+            csoMeta[r.id] = {
+                name: r.name || '',
+                assetType: r.asset_type || '',
+                shellfishWater: r.shellfish_water || '',
+                bathingWater: r.bathing_water || '',
+            };
+        }
+        // Patch the human-readable label onto each STATIONS.cso entry.
+        for (const site of STATIONS.cso) {
+            const meta = csoMeta[site.id];
+            if (meta?.name) site.label = titleCase(meta.name);
+        }
+    } catch (e) {
+        console.warn('Could not load cso_sites_meta.csv:', e);
+    }
+
+    // Annual history — popup chart data.
+    try {
+        const histRows = await loadCSV('cso_annual_history.csv');
+        for (const r of histRows) {
+            if (!r.id || !r.year) continue;
+            (csoHistory[r.id] ??= []).push({
+                year: r.year,
+                hours: r.hours === '' ? null : parseFloat(r.hours),
+                spills: r.spills === '' ? null : parseInt(r.spills, 10),
+            });
+        }
+        // Sort each site's history ascending by year for chart axes.
+        for (const id of Object.keys(csoHistory)) {
+            csoHistory[id].sort((a, b) => String(a.year).localeCompare(String(b.year)));
+        }
+    } catch (e) {
+        console.warn('Could not load cso_annual_history.csv:', e);
+    }
+}
+
+// Convert an ALL CAPS source name like "CHULMLEIGH WWTW SSO" to "Chulmleigh
+// WWTW SSO" — title-case but keep known acronyms uppercase. Used for
+// tooltips (short, fits in a small badge) and the marker hover label.
+function titleCase(s) {
+    if (!s) return '';
+    const acronyms = new Set(['STW', 'SSO', 'CSO', 'WWTW', 'WWTP', 'PS', 'STP']);
+    return s.toLowerCase().split(/\s+/).map(w => {
+        const up = w.toUpperCase();
+        if (acronyms.has(up)) return up;
+        // Preserve parenthesised content like "(tidal)" -> "(Tidal)"
+        return w.replace(/^(\(?)([a-z])/, (_, p, c) => p + c.toUpperCase());
+    }).join(' ');
+}
+
+// Expand water-industry acronyms to their long form. Used in popup titles
+// and the asset-type meta line so the popup reads naturally for users
+// unfamiliar with the abbreviations — matches the descriptive style used
+// by sites like water-watch.co.uk.
+//
+// Input is the already-titleCased string; we expand acronyms in place.
+// Case-insensitive match so both "WWTW" and "WwTW" (SWW's casing) work.
+function expandAcronyms(s) {
+    if (!s) return '';
+    const expansions = [
+        // Longest first so "WWTW" matches before any shorter accidental subset
+        [/\bWWTW\b/gi, 'wastewater treatment works'],
+        [/\bWWTP\b/gi, 'wastewater treatment plant'],
+        [/\bWwTW\b/g,  'wastewater treatment works'],  // SWW's mixed-case form
+        [/\bSTW\b/gi,  'sewage treatment works'],
+        [/\bSTP\b/gi,  'sewage treatment plant'],
+        [/\bSSO\b/gi,  'settled storm overflow'],
+        [/\bCSO\b/gi,  'combined sewer overflow'],
+        [/\bPS\b/gi,   'pumping station'],
+    ];
+    let out = s;
+    for (const [re, long] of expansions) {
+        out = out.replace(re, long);
+    }
+    return out;
+}
+
+// Resolve a CSO site's visual status from its current state snapshot.
+// Returns one of: 'active' (status=1), 'recent' (status=0 AND ended <48h
+// ago), 'quiet' (status=0, older), 'offline' (status=-1), 'unknown' (no
+// snapshot row).
+function csoVisualState(siteId, now) {
+    const s = csoStatus[siteId];
+    if (!s) return 'unknown';
+    if (s.status === 1) return 'active';
+    if (s.status === -1) return 'offline';
+    // status === 0: distinguish recent vs quiet by event-end age
+    if (s.latestEventEnd) {
+        const endMs = new Date(s.latestEventEnd).getTime();
+        if (!isNaN(endMs) && (now - endMs) < CSO_RECENT_WINDOW_MS) {
+            return 'recent';
+        }
+    }
+    return 'quiet';
+}
+
+// Tier A (always visible at any zoom): currently discharging OR recent <48h.
+function csoIsTierA(visualState) {
+    return visualState === 'active' || visualState === 'recent';
+}
+
+// ============================================================
 // Station Markers
 // ============================================================
 function createMarkers() {
@@ -461,9 +651,24 @@ function createMarkers() {
     for (const station of STATIONS.tidal) {
         createStationMarker(station, 'tidal');
     }
+
+    // CSO sites — rendered last so they're under EA markers on the z-axis.
+    for (const site of STATIONS.cso) {
+        createStationMarker(site, 'cso');
+    }
+
+    // First-paint pass to apply the current zoom level's tier-B opacity.
+    applyCsoZoomFade();
 }
 
 function createStationMarker(station, type) {
+    // CSO sites have a distinct rendering pipeline — smaller, purple
+    // shades by status, no inline value text, tap area larger than the
+    // visible circle for mobile.
+    if (type === 'cso') {
+        return createCsoMarker(station);
+    }
+
     const data = stationData[station.id];
     const latestValue = data?.latest ? data.latest.value : '?';
     const displayValue = typeof latestValue === 'number' ? latestValue.toFixed(type === 'rainfall' ? 1 : 2) : '?';
@@ -488,13 +693,141 @@ function createStationMarker(station, type) {
 
     const marker = L.marker([station.lat, station.lon], { icon, zIndexOffset: 500 }).addTo(map);
 
+    // Hover tooltip with the station name — same pattern as CSO markers.
+    // Helpful when the value alone (e.g. "0.4 m") doesn't identify the
+    // station to a user scanning the map.
+    marker.bindTooltip(station.label, {
+        permanent: false,
+        direction: 'top',
+        offset: [0, -18],
+        className: 'station-tooltip',
+    });
+
     marker.on('click', () => openPopup(marker, station, type));
+}
+
+// Great-circle distance between two lat/lon points in metres (Haversine).
+// Used to detect when a CSO marker would visually overlap with an EA
+// station marker so we can offset the icon anchor.
+function distanceMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const toRad = (d) => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2
+            + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Classify a CSO site by asset type: "major" = at a wastewater treatment
+// works (large facility serving a population centre), "minor" = pumping
+// station or sewer-network overflow. Drives marker size and whether a
+// permanent label is shown at high zoom — visual hierarchy that matches
+// the actual infrastructure scale.
+function isCsoMajorFacility(assetType) {
+    if (!assetType) return false;
+    // Catches "Storm tank at WwTW", "Inlet SO at WwTW", and their
+    // "- with treatment" variants. SWW uses the mixed-case "WwTW" spelling.
+    return /\bwwtw\b/i.test(assetType);
+}
+
+// True if `site` sits within CSO_OVERLAP_THRESHOLD_M of any EA station
+// (level/rainfall/tidal). Kept as a utility for future use; the marker
+// rendering itself doesn't offset based on this (offset was confusing).
+const CSO_OVERLAP_THRESHOLD_M = 500;
+
+function csoOverlapsEAStation(site) {
+    const eaStations = [
+        ...(STATIONS.level || []),
+        ...(STATIONS.rainfall || []),
+        ...(STATIONS.tidal || []),
+    ];
+    return eaStations.some(ea =>
+        distanceMeters(site.lat, site.lon, ea.lat, ea.lon) < CSO_OVERLAP_THRESHOLD_M
+    );
+}
+
+// CSO-specific marker rendering. 32px transparent hit area for mobile tap
+// targets, visible circle 22px (major facility) or 14px (minor: pumping
+// station / sewer-network overflow). The status class is set here at
+// create time; tier-B opacity and permanent-label visibility are updated
+// by applyCsoZoomFade() on zoom changes.
+//
+// Markers are drawn at their actual lat/lon — no offset. At zoom 10-11
+// (catchment overview), markers near EA stations may be hidden under the
+// larger EA marker; at zoom 12+ they separate naturally. Permanent labels
+// appear next to major-facility markers at zoom ≥ CSO_LABEL_ZOOM so the
+// significant sites are obvious without hovering.
+function createCsoMarker(site) {
+    const state = csoVisualState(site.id, Date.now());
+    const tier = csoIsTierA(state) ? 'tier-a' : 'tier-b';
+    const isMajor = isCsoMajorFacility(csoMeta[site.id]?.assetType);
+    const sizeClass = isMajor ? 'major' : 'minor';
+
+    // 32px outer hit area. Inner visible circle is sized via CSS based on
+    // sizeClass — 22px for major, 14px for minor.
+    const size = 32;
+    const icon = L.divIcon({
+        html: `<div class="cso-marker ${state} ${tier} ${sizeClass}"></div>`,
+        className: '',
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+        popupAnchor: [0, -8],
+    });
+
+    const marker = L.marker([site.lat, site.lon], {
+        icon,
+        // zIndexOffset 100 < EA markers' 500 — CSO sits under EA when
+        // markers stack at low zoom. Users zoom in to inspect individual
+        // sites; tooltips work at any zoom for identification.
+        zIndexOffset: 100,
+    }).addTo(map);
+
+    // Hover tooltip with the expanded (acronym-free) site name so users
+    // unfamiliar with EA shorthand can read it naturally when they need
+    // to identify a marker.
+    marker.bindTooltip(expandAcronyms(site.label) || site.id, {
+        permanent: false,
+        direction: 'top',
+        offset: [0, -10],
+        className: 'cso-tooltip',
+    });
+
+    // Tag the leaflet marker so applyCsoZoomFade() can find it.
+    marker._csoTier = tier;
+    marker._csoId = site.id;
+    marker._csoMajor = isMajor;
+
+    marker.on('click', () => openPopup(marker, site, 'cso'));
+    return marker;
+}
+
+// Apply zoom-based opacity to CSO markers. Tier A (active / recent <48h)
+// stays at full opacity. Tier B (quiet / offline) fades to 0 at zoom
+// below CSO_FADE_ZOOM, full opacity at or above it. Called on map
+// zoomend and after createMarkers() for first paint.
+function applyCsoZoomFade() {
+    if (!map) return;
+    const z = map.getZoom();
+    const tierBOpacity = z >= CSO_FADE_ZOOM ? 1 : 0;
+    map.eachLayer(layer => {
+        if (layer instanceof L.Marker && layer._csoTier === 'tier-b') {
+            layer.setOpacity(tierBOpacity);
+        }
+    });
 }
 
 // ============================================================
 // Popup
 // ============================================================
 function openPopup(marker, station, type) {
+    // CSO popups have a different shape (status + history, not value +
+    // chart) — delegate to a dedicated builder. Full implementation
+    // (stats + Gantt + annual chart) lives in openCsoPopup().
+    if (type === 'cso') {
+        return openCsoPopup(marker, station);
+    }
+
     const data = stationData[station.id];
     const latest = data?.latest;
     const unit = type === 'tidal' ? 'mAOD' : (type === 'level' ? 'm' : 'mm');
@@ -590,6 +923,436 @@ function openPopup(marker, station, type) {
         // Wait for popup DOM to render
         setTimeout(() => renderChart(station.id, 5 * 24, type), 50);
     }
+}
+
+// ============================================================
+// CSO popup — current state, lazy-loaded event log, two charts
+// ============================================================
+
+// Tracks Chart.js instances inside the active CSO popup so we can destroy
+// them on popup close. Separate from `activePopupChart` which the EA
+// markers use — they render only one chart at a time, we render two.
+let activeCsoCharts = [];
+
+// In-memory cache of per-site event logs. Each is the contents of
+// data/cso_<id>.csv parsed into {start: Date, end: Date|null, ongoing: bool}.
+// Loaded lazily on first popup open for that site.
+const csoEventCache = {};
+
+async function loadCsoEventLog(siteId) {
+    if (csoEventCache[siteId]) return csoEventCache[siteId];
+    try {
+        const rows = await loadCSV(`cso_${siteId}.csv`);
+        const events = rows.map(r => ({
+            start: r.start_time ? new Date(r.start_time) : null,
+            end: r.end_time ? new Date(r.end_time) : null,
+            ongoing: r.is_ongoing === 'true',
+        })).filter(e => e.start && !isNaN(e.start));
+        csoEventCache[siteId] = events;
+        return events;
+    } catch (e) {
+        console.warn(`No event log for ${siteId} yet:`, e);
+        csoEventCache[siteId] = [];
+        return [];
+    }
+}
+
+// Compute spill stats over a [windowStart, windowEnd] interval. Hours sums
+// the portion of each event's duration that falls inside the window; spills
+// counts events overlapping it. Ongoing events are treated as ending at
+// windowEnd (i.e. "still going as of now").
+function computeCsoStats(events, windowStart, windowEnd) {
+    let hours = 0;
+    let spills = 0;
+    for (const e of events) {
+        const eEnd = e.end || windowEnd;
+        const oStart = Math.max(e.start.getTime(), windowStart.getTime());
+        const oEnd = Math.min(eEnd.getTime(), windowEnd.getTime());
+        if (oEnd > oStart) {
+            hours += (oEnd - oStart) / 3600000;
+            spills += 1;
+        }
+    }
+    return { hours, spills };
+}
+
+// Build the stats panel using DOM construction (textContent only — no
+// innerHTML, no string interpolation into HTML). Numeric values from
+// computeCsoStats are safe inputs but DOM construction keeps the XSS
+// surface explicitly zero.
+function renderCsoStats(container, monthStats, slidingStats) {
+    while (container.firstChild) container.removeChild(container.firstChild);
+    const grid = document.createElement('div');
+    grid.className = 'cso-stat-grid';
+
+    const buildStat = (labelText, hours, spills) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'cso-stat';
+        const label = document.createElement('div');
+        label.className = 'cso-stat-label';
+        label.textContent = labelText;
+        const value = document.createElement('div');
+        value.className = 'cso-stat-value';
+        value.textContent = `${hours.toFixed(1)}h`;
+        const sub = document.createElement('div');
+        sub.className = 'cso-stat-sub';
+        sub.textContent = `${spills} ${spills === 1 ? 'spill' : 'spills'}`;
+        wrap.append(label, value, sub);
+        return wrap;
+    };
+
+    grid.append(
+        buildStat('This month', monthStats.hours, monthStats.spills),
+        buildStat('Last 30 days', slidingStats.hours, slidingStats.spills),
+    );
+    container.appendChild(grid);
+}
+
+function openCsoPopup(marker, site) {
+    const status = csoStatus[site.id] || {};
+    const meta = csoMeta[site.id] || {};
+    const history = csoHistory[site.id] || [];
+
+    const state = csoVisualState(site.id, Date.now());
+    const stateLabel = {
+        active: 'Discharging now',
+        recent: 'Spilled within 48h',
+        quiet: 'Quiet',
+        offline: 'Monitor offline',
+        unknown: 'Status unknown',
+    }[state];
+
+    const safeId = site.id.replace(/[^a-zA-Z0-9_-]/g, '');
+    // Popup title uses the expanded EA permit name (acronyms spelled out)
+    // so users unfamiliar with WWTW/SSO/etc. can read it naturally — matches
+    // the descriptive style of sites like water-watch.co.uk.
+    const safeLabel = escapeHtml(expandAcronyms(site.label) || site.id);
+    const safeRiver = site.river ? escapeHtml(site.river) : '';
+    const safeAsset = meta.assetType ? escapeHtml(meta.assetType) : '';
+
+    const sinceStart = status.statusStart ? formatTime(new Date(status.statusStart)) : '';
+    const lastPing = status.lastUpdated ? formatTime(new Date(status.lastUpdated)) : '';
+
+    // All template values are escapeHtml()'d, status state is a known-safe
+    // literal, IDs are sanitised — same XSS posture as the existing EA popups.
+    // Compact meta line: only render parts that exist, joined with " · ".
+    // Avoids three separate rows for Asset / Permit / EDM.
+    const metaParts = [];
+    if (safeAsset) metaParts.push(safeAsset);
+    metaParts.push(escapeHtml(site.id));
+    if (lastPing) metaParts.push(`EDM ${escapeHtml(lastPing)}`);
+
+    const html = `
+        <div class="popup-header cso">
+            <h3>${safeLabel}</h3>
+            <div class="station-type cso">Storm Overflow${safeRiver ? ' &mdash; ' + safeRiver : ''}</div>
+        </div>
+        <div class="cso-current ${state}">
+            <span class="cso-state-badge ${state}">${stateLabel}</span>
+            ${sinceStart ? `<span class="timestamp">since ${escapeHtml(sinceStart)}</span>` : ''}
+        </div>
+        <div class="cso-meta">${metaParts.join(' &middot; ')}</div>
+        <div class="cso-stats" id="cso-stats-${safeId}">
+            <div class="cso-stat-loading">Loading…</div>
+        </div>
+        <div class="cso-chart-block">
+            <h4>Last 30 days <span class="cso-monitoring-since">(monitoring started ${CSO_MONITORING_START})</span></h4>
+            <div class="cso-chart-container"><canvas id="cso-gantt-${safeId}"></canvas></div>
+        </div>
+        <div class="cso-chart-block">
+            <h4>Annual spill hours</h4>
+            <div class="cso-chart-container annual"><canvas id="cso-annual-${safeId}"></canvas></div>
+        </div>
+    `;
+
+    // unbindPopup + bindPopup pattern: matches the EA popup behaviour
+    // (see openPopup line ~773). Without the explicit unbind, Leaflet
+    // retains a stale popup binding after the user closes the popup once,
+    // and the second click silently fails to reopen it.
+    marker.unbindPopup();
+    marker.bindPopup(html, { className: 'cso-popup', maxWidth: 380 }).openPopup();
+
+    // Tear down any charts left over from a previous CSO popup. Wrapped
+    // in try/catch because Chart.js can throw if the canvas was already
+    // detached when its containing popup closed.
+    for (const c of activeCsoCharts) {
+        try { c.destroy(); } catch (_) { /* canvas already gone */ }
+    }
+    activeCsoCharts = [];
+
+    // Render charts after Leaflet has attached the popup DOM.
+    setTimeout(() => renderCsoPopupCharts(site.id, history), 50);
+}
+
+async function renderCsoPopupCharts(siteId, history) {
+    const safeId = siteId.replace(/[^a-zA-Z0-9_-]/g, '');
+    const events = await loadCsoEventLog(siteId);
+
+    // Two stat windows: calendar month + last-30-days sliding.
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400 * 1000);
+
+    const statsEl = document.getElementById(`cso-stats-${safeId}`);
+    if (statsEl) {
+        renderCsoStats(
+            statsEl,
+            computeCsoStats(events, monthStart, now),
+            computeCsoStats(events, thirtyDaysAgo, now),
+        );
+    }
+
+    renderCsoRecentActivity(safeId, events, thirtyDaysAgo, now);
+    renderCsoAnnualChart(safeId, history);
+}
+
+// Recent-activity panel — adapts the visualisation to data density.
+//   N == 0  → "no spills" message painted on canvas
+//   N ≤ THRESHOLD → textual event list (each row: date, duration)
+//   N >  THRESHOLD → daily-totals histogram
+//
+// Sparse data (1-3 events) reads better as a list — a histogram with one
+// 6-minute bar in 30 days of empty space is a lot of chart for very
+// little information. Once polling has accumulated more events the
+// histogram surfaces patterns the list can't (e.g. clusters during
+// storms).
+const CSO_HISTOGRAM_THRESHOLD = 3;
+
+function renderCsoRecentActivity(safeId, events, windowStart, windowEnd) {
+    const canvas = document.getElementById(`cso-gantt-${safeId}`);
+    if (!canvas) return;
+    const container = canvas.parentElement;
+
+    const inWindow = events.filter(e => {
+        const eEnd = e.end || windowEnd;
+        return eEnd.getTime() >= windowStart.getTime() && e.start.getTime() <= windowEnd.getTime();
+    });
+
+    if (inWindow.length === 0) {
+        renderCsoNoSpills(container);
+        return;
+    }
+
+    if (inWindow.length <= CSO_HISTOGRAM_THRESHOLD) {
+        renderCsoEventList(container, inWindow, windowEnd);
+        return;
+    }
+
+    renderCsoHistogram(canvas, events, windowStart, windowEnd);
+}
+
+// Replace the canvas with a one-line "no spills" message. Same compact
+// container treatment as the event-list mode (height: auto, no 70px
+// canvas reserve) so the empty state takes about the same vertical
+// space as a single list row.
+function renderCsoNoSpills(container) {
+    while (container.firstChild) container.removeChild(container.firstChild);
+    container.classList.add('as-list');
+
+    const msg = document.createElement('div');
+    msg.className = 'cso-no-events';
+    msg.textContent = 'No spills in the last 30 days';
+    container.appendChild(msg);
+}
+
+// Compact event list — replaces the canvas with a <ul> when there are
+// only a few events to show. Newest first. DOM construction (no innerHTML)
+// keeps the XSS surface zero — all interpolated values come from Date
+// methods or pre-computed numbers.
+function renderCsoEventList(container, eventsInWindow, windowEnd) {
+    while (container.firstChild) container.removeChild(container.firstChild);
+    container.classList.add('as-list');
+
+    const ul = document.createElement('ul');
+    ul.className = 'cso-event-list';
+
+    // Newest event first.
+    const sorted = [...eventsInWindow].sort((a, b) => b.start - a.start);
+
+    for (const e of sorted) {
+        const li = document.createElement('li');
+
+        const whenSpan = document.createElement('span');
+        whenSpan.className = 'cso-event-when';
+        whenSpan.textContent = e.start.toLocaleString('en-GB', {
+            day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC',
+        }) + ' UTC';
+
+        const durSpan = document.createElement('span');
+        durSpan.className = 'cso-event-dur';
+        durSpan.textContent = formatCsoEventDuration(e, windowEnd);
+
+        li.append(whenSpan, durSpan);
+        ul.appendChild(li);
+    }
+
+    container.appendChild(ul);
+}
+
+function formatCsoEventDuration(event, windowEnd) {
+    const eEnd = event.end || windowEnd;
+    const mins = Math.round((eEnd.getTime() - event.start.getTime()) / 60000);
+    const tag = event.ongoing ? ' (ongoing)' : '';
+    if (mins < 60) return `${mins} min${tag}`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return (m === 0 ? `${h}h` : `${h}h ${m}m`) + tag;
+}
+
+// Daily-totals bar chart. One bar per calendar day, height = total
+// minutes of spill that day. Only used when there are >3 events in
+// window (per renderCsoRecentActivity dispatch).
+function renderCsoHistogram(canvas, events, windowStart, windowEnd) {
+    // Bucket each event's duration into the calendar days it overlaps.
+    const dayMs = 86400 * 1000;
+    const startDay = new Date(Date.UTC(windowStart.getUTCFullYear(), windowStart.getUTCMonth(), windowStart.getUTCDate()));
+    const numDays = Math.ceil((windowEnd.getTime() - startDay.getTime()) / dayMs);
+
+    const dailyMinutes = new Array(numDays).fill(0);
+    const labels = [];
+    for (let i = 0; i < numDays; i++) {
+        const d = new Date(startDay.getTime() + i * dayMs);
+        labels.push(d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
+    }
+
+    for (const e of events) {
+        const eEnd = e.end || windowEnd;
+        const oStart = Math.max(e.start.getTime(), windowStart.getTime());
+        const oEnd = Math.min(eEnd.getTime(), windowEnd.getTime());
+        if (oEnd <= oStart) continue;
+
+        // Distribute event minutes across the days it overlaps.
+        let cursor = oStart;
+        while (cursor < oEnd) {
+            const dayIndex = Math.floor((cursor - startDay.getTime()) / dayMs);
+            const dayEnd = startDay.getTime() + (dayIndex + 1) * dayMs;
+            const segEnd = Math.min(dayEnd, oEnd);
+            if (dayIndex >= 0 && dayIndex < numDays) {
+                dailyMinutes[dayIndex] += (segEnd - cursor) / 60000;
+            }
+            cursor = segEnd;
+        }
+    }
+
+    // Convert minutes to hours for display.
+    const dailyHours = dailyMinutes.map(m => +(m / 60).toFixed(2));
+
+    const chart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                data: dailyHours,
+                backgroundColor: '#9b6cc4',
+                borderColor: '#5b2a8a',
+                borderWidth: 1,
+                barPercentage: 1.0,
+                categoryPercentage: 0.9,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: (items) => labels[items[0].dataIndex],
+                        label: (item) => {
+                            const h = item.parsed.y;
+                            if (h < 1) return `${Math.round(h * 60)} min`;
+                            return `${h.toFixed(1)}h`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: '#8890a8',
+                        font: { size: 9 },
+                        maxRotation: 0,
+                        autoSkipPadding: 12,
+                    },
+                    grid: { display: false },
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#8890a8',
+                        font: { size: 9 },
+                        callback: v => v + 'h',
+                    },
+                    grid: { color: 'rgba(144,152,176,0.15)' },
+                },
+            },
+        },
+    });
+    activeCsoCharts.push(chart);
+}
+
+function renderCsoAnnualChart(safeId, history) {
+    const canvas = document.getElementById(`cso-annual-${safeId}`);
+    if (!canvas) return;
+
+    if (history.length === 0) {
+        const ctx = sizeCanvasToDisplay(canvas);
+        const rect = canvas.getBoundingClientRect();
+        ctx.fillStyle = '#888';
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No annual returns recorded', rect.width / 2, rect.height / 2);
+        return;
+    }
+
+    const chart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: history.map(h => String(h.year)),
+            datasets: [{
+                label: 'Hours discharging',
+                data: history.map(h => h.hours),
+                backgroundColor: '#9b6cc4',
+                borderColor: '#5b2a8a',
+                borderWidth: 1,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (item) => {
+                            const h = history[item.dataIndex];
+                            const parts = [h.hours == null ? '?' : h.hours.toFixed(1) + 'h'];
+                            if (h.spills != null) parts.push(`${h.spills} spills`);
+                            return parts.join(' · ');
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#8890a8', font: { size: 10 } },
+                    grid: { display: false },
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#8890a8',
+                        font: { size: 10 },
+                        callback: v => v + 'h',
+                    },
+                    grid: { color: '#3a406022' },
+                },
+            },
+        },
+    });
+    activeCsoCharts.push(chart);
 }
 
 function setTimeRange(stationId, hours, type, btn) {
@@ -1775,7 +2538,9 @@ async function init() {
     loadRiverOverlay();
     loadTarkaLine();
     loadDartmoorLine();
-    await loadAllData();
+    // EA station data + CSO data load in parallel — they touch disjoint
+    // file sets so there's no ordering dependency.
+    await Promise.all([loadAllData(), loadCsoData()]);
     loadFromLocalStorage(); // merge any cached data on top of CSVs
     createMarkers();
 

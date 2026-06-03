@@ -1,6 +1,6 @@
 # Testing
 
-104 tests cover the data pipeline, server logic, frontend utility functions, and UI interactions. The focus is on areas where bugs are most consequential: data merge/dedup logic (where errors silently corrupt charts), API retry behaviour (where failures lose data), atomic file writes (where interrupted writes could corrupt CSVs), filename sanitisation (where unsanitised input could create path traversal issues), HTML escaping (where station names could inject scripts), and DOM event wiring (where refactoring can silently break popup buttons or canvas rendering). No production dependencies are added — all test tooling is dev-only.
+181 tests cover the data pipeline, server logic, frontend utility functions, UI interactions, and the CSO event-log state machine. The focus is on areas where bugs are most consequential: data merge/dedup logic (where errors silently corrupt charts), API retry behaviour (where failures lose data), atomic file writes (where interrupted writes could corrupt CSVs), filename sanitisation (where unsanitised input could create path traversal issues), HTML escaping (where station names could inject scripts), DOM event wiring (where refactoring can silently break popup buttons or canvas rendering), and CSO event accumulation (where a misread API row could lose a spill or duplicate it). No production dependencies are added — all test tooling is dev-only.
 
 ## Prerequisites
 
@@ -9,13 +9,13 @@
 
 ## Running Tests
 
-**Python** (64 tests via pytest):
+**Python** (91 tests via pytest):
 
 ```bash
 pytest tests/ -v
 ```
 
-**JavaScript** (40 tests via Vitest + jsdom):
+**JavaScript** (90 tests via Vitest + jsdom):
 
 ```bash
 cd js-tests
@@ -195,9 +195,94 @@ The main application script (`js/floodwatch.js`) is loaded into jsdom via `eval(
 - `showForecast` calls `fillText` at `(190, 110)` for a 380×220 container
 - `showDischargeTab` calls `fillText` at `(190, 110)` for a 380×220 container
 
+## Python Tests — `test_fetch_cso.py` (27 tests)
+
+Tests the CSO (Combined Sewer Overflow) live fetcher in `fetch_data.py`. The interesting code is `update_cso_events` — the state machine that turns successive snapshots of the SWW live feed into an append-only per-site event log. All HTTP calls are mocked via captured FeatureServer responses in `tests/fixtures/`.
+
+**`_epoch_ms_to_iso`** (3 tests) — The ArcGIS feed returns timestamps as epoch milliseconds; we convert to ISO 8601 UTC for the event log. Tests verify:
+- `None` → empty string (so missing `latestEventEnd` for ongoing events is handled cleanly)
+- A known millisecond value (real Chulmleigh row) → expected ISO string
+- Epoch zero round-trips to `1970-01-01T00:00:00Z`
+
+**`_duration_minutes`** (4 tests) — Computes integer minutes between two ISO timestamps. Used to fill the `duration_min` column when an event closes. Tests verify:
+- A typical 80-minute event produces `"80"`
+- Empty start or end timestamps return `""` (so we never write garbage durations)
+- A buggy upstream feed reporting end < start clamps to `"0"` instead of producing a negative duration
+- Malformed ISO strings return `""` rather than crashing the fetcher
+
+**`_build_cso_where_clause`** (3 tests) — Constructs the SQL WHERE that filters the SWW FeatureServer to the Taw catchment. Tests verify:
+- Includes the `company='South West Water'` filter
+- Every river in `CSO_RIVER_ALLOWLIST` appears as a `LIKE '%name%'` clause
+- Every river in `CSO_RIVER_EXCLUDE` (Torridge, Venn, Dodscott, Bideford) appears as a `NOT LIKE` clause
+
+**`update_cso_events`** (9 tests) — The core state machine. Tests verify all transitions and edge cases:
+- Empty log + quiet site (recently ended spill) → one row recorded with end time and duration
+- Empty log + active site (status=1, no end time) → one row with `is_ongoing=true`, empty end_time
+- Empty log + offline/no-event site → empty list (no fabricated rows)
+- Offline site with no historical event → no append (we only log when we have an event start)
+- Identical poll twice → no duplicate (idempotent on unchanged state)
+- Ongoing event closes when status flips 1→0 → the existing row's `end_time` and `duration_min` get filled in-place, no new row appended
+- New event after a quiet period → previous row preserved, new row appended
+- Missed transition (poll N: A ongoing; poll N+1: B started) → A is best-effort closed at B's start time, B appended as ongoing
+- Function does not mutate the caller's `existing` list (functional purity)
+
+**`fetch_cso_catchment_sites`** (2 tests) — Uses the saved `cso_live_sample.json` fixture rather than a live API call. Tests verify:
+- The response is parsed into a list with a normalised `_river_title` field (title-cased from the SWW feed's ALL CAPS)
+- Output is sorted by site ID (so subsequent fetches produce deterministic file ordering)
+
+**CSV round-trip** (3 tests) — Verifies the per-site event log writes and reads cleanly:
+- `save_cso_events_csv` + `read_cso_events` round-trip preserves all fields
+- Reading a missing file returns an empty list (a brand-new site has no log yet)
+- `save_cso_sites_csv` writes the expected `id,river,lat,lon` columns
+
+**`save_cso_status_json`** (1 test) — The current-state snapshot JSON is what the frontend reads to colour markers. Tests verify all ms-epoch timestamps are converted to ISO Z strings and missing `latestEventEnd` (ongoing events) round-trips as empty string.
+
+**`process_cso`** (2 tests) — Top-level orchestration. Tests verify:
+- A successful run writes all expected files (`cso_sites.csv`, `cso_status.json`, one per-site CSV per fixture site)
+- An HTTP failure on the FeatureServer is non-fatal — `process_cso` logs the error and returns without raising, so the EA station fetchers above it aren't affected
+
+## JavaScript Tests — `floodwatch-cso.test.js` (36 tests)
+
+Tests the CSO frontend layer. Loaded via the same `setup-ui.js` harness as `floodwatch.test.js`, with floodwatch.js loaded into the global scope so CSO functions and globals (`csoStatus`, `STATIONS.cso`, etc.) are accessible directly.
+
+**`csoVisualState`** (7 tests) — Maps a status snapshot to one of `active` / `recent` / `quiet` / `offline` / `unknown`. The visual state drives marker colour AND tier-A/B classification. Tests verify:
+- No snapshot row → `unknown`
+- `status=1` → `active`
+- `status=-1` → `offline`
+- `status=0` and event ended within 48h → `recent`
+- Boundary case: event ended just under 48h ago → still `recent`
+- `status=0` and event ended >48h ago → `quiet`
+- `status=0` with no event end recorded → `quiet`
+
+**`csoIsTierA`** (5 tests) — Returns `true` for visual states that must remain visible at all zoom levels. Tests verify `active` and `recent` are tier-A; `quiet`, `offline`, and `unknown` are tier-B.
+
+**`titleCase`** (4 tests) — Title-cases site names from the EA register, preserving known acronyms uppercase. Tests verify ordinary words are title-cased, `STW`/`SSO`/`WWTW`/`CSO` stay uppercase, mixed-case input is normalised, and empty/null input returns empty string.
+
+**`computeCsoStats`** (6 tests) — Sums spill hours and counts events within a sliding window. Used for "This month" and "Last 30 days" cards. Tests verify:
+- Empty event log → zero hours, zero spills
+- Single fully-contained event → correct hours sum
+- Event spanning the window boundary → clamped to the window
+- Ongoing event (end=null) → treated as ending at window end
+- Events entirely outside the window → excluded
+- Multiple events → hours and counts both sum correctly
+
+**`createCsoMarker` icon classes** (6 tests) — Verifies the marker HTML class string drives the correct CSS rule. Tests verify:
+- `status=1` → `class="cso-marker active tier-a"`
+- Recent (ended within 48h) → `class="cso-marker recent tier-a"`
+- Quiet (older event) → `class="cso-marker quiet tier-b"`
+- `status=-1` → `class="cso-marker offline tier-b"`
+- No snapshot row → `class="cso-marker unknown tier-b"`
+- Marker `zIndexOffset` is 100, below the EA markers' 500 (so EA markers sit on top when overlapping)
+
+**`applyCsoZoomFade`** (2 tests) — The zoom-end listener that fades tier-B markers below zoom 11. Tests verify the function doesn't crash when `map` is uninitialised, and that tier-A markers never get an opacity override.
+
+**`distanceMeters`** (3 tests) — Haversine distance used to detect when a CSO marker would overlap an EA station marker. Tests verify identical points return 0, the real Chulmleigh EA-to-CSO distance is ~389m, and 1 degree of latitude is ~111km.
+
+**`csoOverlapsEAStation`** (3 tests) — Returns `true` when a CSO site is within 500m of any EA station (level/rainfall/tidal). Tests verify the real Chulmleigh CSO overlaps, a CSO 5km away doesn't, and an empty STATIONS list returns false without throwing.
+
 ## Test Architecture
 
-- **Python:** pytest with shared fixtures in `conftest.py`. `monkeypatch` replaces `urlopen` and `time.sleep` so HTTP and backoff tests run instantly without network access. `tmp_path` provides an isolated filesystem per test — each test gets its own empty `data/` directory. All 64 tests run in ~2 seconds.
+- **Python:** pytest with shared fixtures in `conftest.py`. `monkeypatch` replaces `urlopen` and `time.sleep` so HTTP and backoff tests run instantly without network access. `tmp_path` provides an isolated filesystem per test — each test gets its own empty `data/` directory. CSO tests reuse the same `data_dir` fixture and stub `api_post` with captured FeatureServer responses from `tests/fixtures/`. All 91 tests run in under 3 seconds.
 - **JavaScript (core):** Vitest with jsdom environment. jsdom is needed because `escapeHtml` uses `document.createElement` — pure Node has no DOM. The extracted functions accept dependencies as parameters (e.g. `getStation(id, stations)` instead of reading a global `STATIONS`) so tests can pass mock data without setting up the full app state.
 - **JavaScript (UI):** The same Vitest + jsdom environment, but `floodwatch.js` is loaded via `eval()` with global mocks for Leaflet, Chart.js, Papa Parse, and `fetch`. A `setup-ui.js` harness provides the minimal DOM scaffold and canvas 2D context stubs. This tests event delegation, DOM wiring, and canvas coordinate logic without refactoring the script to ES modules.
 - **CI:** Two parallel jobs in `.github/workflows/tests.yml` — Python (pytest on 3.12) and JavaScript (Vitest on Node 22). Actions are SHA-pinned to match the project's existing `update-data.yml` workflow. Tests run on push to `main` and on pull requests, with path filters so unrelated changes (like editing GeoJSON files) don't trigger unnecessary test runs.

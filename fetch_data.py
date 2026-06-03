@@ -15,6 +15,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 DATA_DIR: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
@@ -76,6 +77,52 @@ API_BASE: str = "https://environment.data.gov.uk/flood-monitoring"
 
 # Reading type — a single measurement from the API or loaded from CSV
 type Reading = dict[str, Any]
+
+
+# ============================================================
+# CSO (Combined Sewer Overflow) — South West Water EDM feed
+# ============================================================
+# Near-real-time spill status from South West Water's contribution to Water
+# UK's National Storm Overflow Hub. Open ArcGIS REST API — no auth, hit
+# directly. Updated within ~1h of an EDM sensor reporting state change.
+#
+# The feed only exposes the MOST RECENT event per site (latestEventStart /
+# latestEventEnd), so we accumulate a per-site event log by polling hourly
+# and detecting state transitions.
+
+# Layer 0 of the SWW Storm Overflow Activity FeatureServer (1,374 sites SWW-wide).
+CSO_LIVE_URL: str = "https://services-eu1.arcgis.com/OMdMOtfhATJPcHe3/arcgis/rest/services/NEH_outlets_PROD/FeatureServer/0/query"
+
+# Rivers in the Taw catchment that we monitor. Substring-matched against
+# the FeatureServer's `receivingWaterCourse` field, case-insensitive.
+# (Server-side filtering — keeps the response to ~75 sites.)
+CSO_RIVER_ALLOWLIST: list[str] = [
+    "TAW",
+    "MOLE",
+    "YEO",
+    "LITTLE DART",
+    "DALCH",
+    "BRAY",
+    "CROOKED OAK",
+    "NADRID",
+    "CASTLE HILL",
+    "MULLY",
+    "HAWKRIDGE",
+    "HAWKBRIDGE",
+    "BRYN BROOK",
+    "COMMON LAKE",
+    "GOODLEIGH",
+]
+# Substrings that EXCLUDE a site even if it matched above. Example: the
+# Bideford Yeo is a Torridge tributary, not part of our Taw catchment,
+# but shares the "YEO" substring with our Barnstaple Yeo.
+CSO_RIVER_EXCLUDE: list[str] = ["TORRIDGE", "VENN", "DODSCOTT", "BIDEFORD"]
+
+# CSO live-feed status values. -1 (offline) is treated as a distinct
+# visual state, not collapsed with "not discharging".
+CSO_STATUS_ACTIVE: int = 1
+CSO_STATUS_QUIET: int = 0
+CSO_STATUS_OFFLINE: int = -1
 
 
 def _atomic_write_csv(filepath: str, write_fn) -> None:
@@ -253,6 +300,249 @@ def get_station_filename(station: StationInfo) -> str:
     return f"level_{safe_id}_{safe_label}.csv"
 
 
+# ============================================================
+# CSO helpers
+# ============================================================
+
+
+def _epoch_ms_to_iso(ms: int | None) -> str:
+    """Convert ArcGIS epoch milliseconds to ISO 8601 UTC, or '' if None."""
+    if ms is None:
+        return ""
+    return datetime.fromtimestamp(ms / 1000, tz=UTC).isoformat().replace("+00:00", "Z")
+
+
+def _build_cso_where_clause() -> str:
+    """Build a server-side SQL WHERE filtering to South West Water sites in
+    the Taw catchment, matched by the receivingWaterCourse field."""
+    field = "receivingWaterCourse"
+    likes = " OR ".join(f"UPPER({field}) LIKE '%{r}%'" for r in CSO_RIVER_ALLOWLIST)
+    nots = " AND ".join(f"UPPER({field}) NOT LIKE '%{e}%'" for e in CSO_RIVER_EXCLUDE)
+    return f"company='South West Water' AND ({likes}) AND ({nots})"
+
+
+def api_post(url: str, params: dict[str, str], retries: int = 3) -> dict[str, Any]:
+    """POST form-encoded params to an ArcGIS REST endpoint.
+
+    Use POST (not GET) when the WHERE clause may exceed ~2KB — ArcGIS
+    silently returns 404 on URLs above its undocumented limit rather than
+    a clean 414, which is genuinely confusing to debug.
+    """
+    body = urlencode(params).encode()
+    for attempt in range(retries):
+        try:
+            req = Request(url, data=body, headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
+            with urlopen(req, timeout=60) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except (HTTPError, URLError, TimeoutError) as e:
+            print(f"  Attempt {attempt + 1}/{retries} failed for {url}: {e}")
+            if attempt < retries - 1:
+                time.sleep(2**attempt + random.uniform(0, 1))
+            else:
+                raise
+
+
+def fetch_cso_catchment_sites() -> list[dict[str, Any]]:
+    """Fetch all SWW CSO sites in the Taw catchment with current status.
+
+    Returns a list of attribute dicts as returned by the FeatureServer, with
+    one extra normalised field: `_river_title` (title-cased river name).
+    """
+    params = {
+        "where": _build_cso_where_clause(),
+        "outFields": "Id,company,receivingWaterCourse,status,statusStart,latestEventStart,latestEventEnd,lastUpdated,latitude,longitude",
+        "returnGeometry": "false",
+        "resultRecordCount": "2000",
+        "f": "json",
+    }
+    data = api_post(CSO_LIVE_URL, params)
+    sites = []
+    for feat in data.get("features", []):
+        attrs = feat.get("attributes", {})
+        attrs["_river_title"] = (attrs.get("receivingWaterCourse") or "").title()
+        sites.append(attrs)
+    sites.sort(key=lambda s: s.get("Id") or "")
+    return sites
+
+
+# CSO event log: per-site CSV recording each spill episode.
+# Columns: start_time (ISO-Z), end_time (ISO-Z or ''), duration_min (or ''), is_ongoing (true|false)
+CSO_EVENT_COLUMNS: list[str] = ["start_time", "end_time", "duration_min", "is_ongoing"]
+
+
+def _cso_events_path(site_id: str) -> str:
+    return os.path.join(DATA_DIR, f"cso_{site_id}.csv")
+
+
+def read_cso_events(site_id: str) -> list[dict[str, str]]:
+    """Load the existing event log for a site (empty list if absent)."""
+    path = _cso_events_path(site_id)
+    if not os.path.exists(path):
+        return []
+    with open(path) as f:
+        return list(csv.DictReader(f))
+
+
+def update_cso_events(site: dict[str, Any], existing: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Apply a new live-feed observation to the per-site event log.
+
+    The live feed exposes only the MOST RECENT event (latestEventStart /
+    latestEventEnd). We compare against our stored tail and:
+      - append a new event when latestEventStart is newer than our last,
+      - close an ongoing event when status flips to 0 (not discharging),
+      - leave the log unchanged when the API row matches our tail.
+
+    Sub-hour events between polls will be missed — this is an inherent
+    limitation of polling at hourly granularity, not a fixable bug.
+    """
+    events = [dict(e) for e in existing]  # don't mutate caller's list
+    api_start_iso = _epoch_ms_to_iso(site.get("latestEventStart"))
+    api_end_iso = _epoch_ms_to_iso(site.get("latestEventEnd"))
+    api_status = site.get("status")
+
+    if not api_start_iso:
+        # Site has never spilled (or EDM commissioned with no events yet)
+        return events
+
+    tail = events[-1] if events else None
+
+    if tail and tail["start_time"] == api_start_iso:
+        # Same event we already have — possibly newly ended
+        if tail.get("is_ongoing") == "true" and api_status == CSO_STATUS_QUIET:
+            tail["end_time"] = api_end_iso
+            tail["duration_min"] = _duration_minutes(api_start_iso, api_end_iso)
+            tail["is_ongoing"] = "false"
+        return events
+
+    # New event since our last poll.
+    if tail and tail.get("is_ongoing") == "true":
+        # Previous event finished without us seeing the transition. Best-effort:
+        # mark it ended at this new event's start time (the actual end could be
+        # any moment between our last poll and now).
+        tail["end_time"] = api_start_iso
+        tail["duration_min"] = _duration_minutes(tail["start_time"], api_start_iso)
+        tail["is_ongoing"] = "false"
+
+    new_event = {
+        "start_time": api_start_iso,
+        "end_time": api_end_iso if api_status == CSO_STATUS_QUIET else "",
+        "duration_min": _duration_minutes(api_start_iso, api_end_iso) if api_status == CSO_STATUS_QUIET else "",
+        "is_ongoing": "true" if api_status == CSO_STATUS_ACTIVE else "false",
+    }
+    events.append(new_event)
+    return events
+
+
+def _duration_minutes(start_iso: str, end_iso: str) -> str:
+    """Compute integer minutes between two ISO timestamps, as string. '' on bad input."""
+    if not start_iso or not end_iso:
+        return ""
+    try:
+        s = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
+        e = datetime.fromisoformat(end_iso.replace("Z", "+00:00"))
+        return str(max(0, int((e - s).total_seconds() / 60)))
+    except (ValueError, TypeError):
+        return ""
+
+
+def save_cso_events_csv(site_id: str, events: list[dict[str, str]]) -> None:
+    """Atomically write the per-site event log."""
+    path = _cso_events_path(site_id)
+
+    def write_fn(f):
+        writer = csv.DictWriter(f, fieldnames=CSO_EVENT_COLUMNS)
+        writer.writeheader()
+        writer.writerows(events)
+
+    _atomic_write_csv(path, write_fn)
+
+
+def save_cso_sites_csv(sites: list[dict[str, Any]]) -> None:
+    """Write the site metadata CSV (stable across runs, edited only when sites change)."""
+    filepath = os.path.join(DATA_DIR, "cso_sites.csv")
+
+    def write_fn(f):
+        writer = csv.writer(f)
+        writer.writerow(["id", "river", "lat", "lon"])
+        for s in sites:
+            writer.writerow([s.get("Id"), s.get("_river_title"), s.get("latitude"), s.get("longitude")])
+
+    _atomic_write_csv(filepath, write_fn)
+    print(f"  Saved {len(sites)} CSO sites to {filepath}")
+
+
+def save_cso_status_json(sites: list[dict[str, Any]]) -> None:
+    """Atomically write a current-snapshot JSON of all sites' status.
+
+    Frontend reads this once at startup to colour markers — saves loading
+    50+ per-site CSVs just to determine the initial marker colour.
+    """
+    filepath = os.path.join(DATA_DIR, "cso_status.json")
+    snapshot: dict[str, Any] = {
+        "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "sites": {
+            s.get("Id"): {
+                "status": s.get("status"),
+                "statusStart": _epoch_ms_to_iso(s.get("statusStart")),
+                "latestEventStart": _epoch_ms_to_iso(s.get("latestEventStart")),
+                "latestEventEnd": _epoch_ms_to_iso(s.get("latestEventEnd")),
+                "lastUpdated": _epoch_ms_to_iso(s.get("lastUpdated")),
+            }
+            for s in sites
+        },
+    }
+
+    dir_path = os.path.dirname(filepath) or "."
+    fd, tmp_path = tempfile.mkstemp(dir=dir_path, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(snapshot, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, filepath)
+    except BaseException:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+    print(f"  Saved status snapshot ({len(sites)} sites) to {filepath}")
+
+
+def process_cso() -> None:
+    """Top-level CSO fetcher orchestration. Non-fatal on failure — EA station
+    fetches must not depend on the CSO feed being up."""
+    print("\n=== CSO (Combined Sewer Overflow) feed ===")
+    try:
+        sites = fetch_cso_catchment_sites()
+    except Exception as e:
+        print(f"  ERROR fetching CSO live feed (skipping CSO update): {e}")
+        return
+
+    print(f"  Fetched {len(sites)} sites from SWW FeatureServer")
+    active = sum(1 for s in sites if s.get("status") == CSO_STATUS_ACTIVE)
+    offline = sum(1 for s in sites if s.get("status") == CSO_STATUS_OFFLINE)
+    print(f"  Currently discharging: {active}    Monitor offline: {offline}")
+
+    save_cso_sites_csv(sites)
+    save_cso_status_json(sites)
+
+    appended = 0
+    closed = 0
+    for site in sites:
+        site_id = site.get("Id")
+        if not site_id:
+            continue
+        existing = read_cso_events(site_id)
+        updated = update_cso_events(site, existing)
+        if len(updated) > len(existing):
+            appended += 1
+        elif existing and updated and existing[-1] != updated[-1]:
+            closed += 1
+        save_cso_events_csv(site_id, updated)
+    print(f"  Event logs: appended {appended} new events, closed {closed} ongoing events")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch EA flood monitoring data")
     parser.add_argument(
@@ -292,6 +582,10 @@ def main() -> None:
             readings = new_readings
 
         save_readings_csv(station, readings, filename)
+
+    # CSO live feed — runs every invocation. Failure is non-fatal so EA
+    # station fetches above don't get rolled back.
+    process_cso()
 
     print("\n=== Done ===")
     print(f"All data saved to {DATA_DIR}/")
