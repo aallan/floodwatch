@@ -38,11 +38,16 @@
     /**
      * Look up a station by ID across all station types.
      * @param {string} stationId - The station ID to find.
-     * @param {Object} stations - The STATIONS object with level, rainfall, tidal arrays.
+     * @param {Object} stations - The STATIONS object with level, rainfall, tidal, cso arrays.
      * @returns {Object|undefined} The station object, or undefined if not found.
      */
     function getStation(stationId, stations) {
-        const all = [...(stations.level || []), ...(stations.rainfall || []), ...(stations.tidal || [])];
+        const all = [
+            ...(stations.level || []),
+            ...(stations.rainfall || []),
+            ...(stations.tidal || []),
+            ...(stations.cso || []),
+        ];
         return all.find(s => s.id === stationId);
     }
 
@@ -94,7 +99,8 @@
         const allIds = [
             ...(stations.level || []),
             ...(stations.rainfall || []),
-            ...(stations.tidal || [])
+            ...(stations.tidal || []),
+            ...(stations.cso || [])
         ].map(s => s.id).sort().join(',');
 
         return allIds.split('').reduce(

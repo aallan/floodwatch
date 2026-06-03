@@ -75,15 +75,16 @@ In the App Platform dashboard:
 
 ### Data Transfer Estimate
 
-Each page load serves the HTML, 19 CSV data files, 7 GeoJSON river overlays, and 4 railway GeoJSON files (2 track + 2 station). CDN libraries (Leaflet, Chart.js, PapaParse) are loaded from external CDNs and don't count towards App Platform transfer.
+Each page load serves the HTML, 19 EA station CSV data files, 4 CSO aggregate files (sites, status snapshot, metadata, annual history), 7 GeoJSON river overlays, and 4 railway GeoJSON files (2 track + 2 station). Per-site CSO event logs (`cso_<permit_id>.csv`, ~75 files) are loaded lazily on popup open, not on page load. CDN libraries (Leaflet, Chart.js, PapaParse) are loaded from external CDNs and don't count towards App Platform transfer.
 
 | Asset | Raw size | Gzipped (approx) |
 |-------|----------|-------------------|
 | `index.html` | 65 KB | ~15 KB |
-| 19 CSV files | 2.7 MB | ~500 KB |
+| 19 EA CSV files | 2.7 MB | ~500 KB |
+| 4 CSO aggregate files | ~40 KB | ~10 KB |
 | 7 river GeoJSON files | 245 KB | ~65 KB |
 | 4 railway GeoJSON files | 80 KB | ~20 KB |
-| **Total per visit** | **~3.1 MB** | **~600 KB** |
+| **Total per visit** | **~3.1 MB** | **~610 KB** |
 
 App Platform serves static files with gzip compression, so actual transfer is roughly 600 KB per visit. CSV requests include a cache-busting query parameter (`?t=...`) to ensure the browser always fetches fresh data, which means the CDN may not cache CSVs between visits — but at ~500 KB this has negligible impact on transfer.
 

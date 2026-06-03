@@ -108,6 +108,7 @@ export function createMockMarker() {
         unbindPopup: vi.fn(function () { popup = null; return this; }),
         openPopup: vi.fn(function () { return this; }),
         getPopup: vi.fn(() => popup),
+        bindTooltip: vi.fn(function () { return this; }),
         on: vi.fn(function () { return this; }),
         setIcon: vi.fn(function () { return this; }),
         options: { zIndexOffset: 500 },

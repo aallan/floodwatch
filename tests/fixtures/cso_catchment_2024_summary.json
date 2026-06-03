@@ -1,0 +1,977 @@
+{
+  "objectIdFieldName": "OBJECTID",
+  "uniqueIdField": {
+    "name": "OBJECTID",
+    "isSystemMaintained": true
+  },
+  "globalIdFieldName": "",
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": {
+    "wkid": 102100,
+    "latestWkid": 3857
+  },
+  "fields": [
+    {
+      "name": "wasc_supplementary_permit_ref_opt",
+      "type": "esriFieldTypeString",
+      "alias": "WaSC Supplementary Permit Ref. [optional]",
+      "sqlType": "sqlTypeOther",
+      "length": 200,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "unique_id",
+      "type": "esriFieldTypeString",
+      "alias": "Unique ID",
+      "sqlType": "sqlTypeOther",
+      "length": 200,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "site_name_ea_condat",
+      "type": "esriFieldTypeString",
+      "alias": "Site Name (EA Consents Database)",
+      "sqlType": "sqlTypeOther",
+      "length": 200,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "total_spill_duration_hrs_calculated",
+      "type": "esriFieldTypeDouble",
+      "alias": "total_spill_duration_hrs_calculated",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null,
+      "description": "{\"value\":\"\",\"fieldValueType\":\"measurement\"}"
+    },
+    {
+      "name": "counted_spills_12_24hr_calculated",
+      "type": "esriFieldTypeSingle",
+      "alias": "counted_spills_12_24hr_calculated",
+      "sqlType": "sqlTypeOther",
+      "domain": null,
+      "defaultValue": null,
+      "description": "{\"value\":\"\",\"fieldValueType\":\"countOrAmount\"}"
+    },
+    {
+      "name": "storm_discharge_asset_type",
+      "type": "esriFieldTypeString",
+      "alias": "Storm Discharge Asset Type",
+      "sqlType": "sqlTypeOther",
+      "length": 200,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "shellfish_water",
+      "type": "esriFieldTypeString",
+      "alias": "Shellfish Water(s) (only populate for storm overflow with a Shellfish Water EDM requirement)",
+      "sqlType": "sqlTypeOther",
+      "length": 200,
+      "domain": null,
+      "defaultValue": null
+    },
+    {
+      "name": "bathing_water",
+      "type": "esriFieldTypeString",
+      "alias": "Bathing Water (only populate for storm overflow with a Bathing Water EDM requirement)",
+      "sqlType": "sqlTypeOther",
+      "length": 200,
+      "domain": null,
+      "defaultValue": null
+    }
+  ],
+  "features": [
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203281",
+        "unique_id": "SBB00044",
+        "site_name_ea_condat": "ANCHORWOOD PS",
+        "total_spill_duration_hrs_calculated": 57.75,
+        "counted_spills_12_24hr_calculated": 22,
+        "storm_discharge_asset_type": "Storm discharge at pumping station",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-1006",
+        "unique_id": "SBB00054",
+        "site_name_ea_condat": "ASHREIGNY WWTW CSO",
+        "total_spill_duration_hrs_calculated": 1317.449951171875,
+        "counted_spills_12_24hr_calculated": 128,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "2491",
+        "unique_id": "SBB00072",
+        "site_name_ea_condat": "BARNSTAPLE (ASHFORD) STW",
+        "total_spill_duration_hrs_calculated": 1613.2099609375,
+        "counted_spills_12_24hr_calculated": 113,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "201847/CS/01",
+        "unique_id": "SBB00074",
+        "site_name_ea_condat": "BARRIS CSO",
+        "total_spill_duration_hrs_calculated": 41.29999923706055,
+        "counted_spills_12_24hr_calculated": 6,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "EPR/DP3221GJ",
+        "unique_id": "SBB00096",
+        "site_name_ea_condat": "BELSTONE AND SOUTH TAWTON WWTW",
+        "total_spill_duration_hrs_calculated": 1441.010009765625,
+        "counted_spills_12_24hr_calculated": 90,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-6747/SO/01",
+        "unique_id": "SBB00109",
+        "site_name_ea_condat": "BISHOPS NYMPTON STW",
+        "total_spill_duration_hrs_calculated": 17.270000457763672,
+        "counted_spills_12_24hr_calculated": 47,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "DRA 1382",
+        "unique_id": "SBB00142",
+        "site_name_ea_condat": "BOW WASTEWATER TREATMENT WORKS",
+        "total_spill_duration_hrs_calculated": 6.019999980926514,
+        "counted_spills_12_24hr_calculated": 7,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "DRA 1538",
+        "unique_id": "SBB00147",
+        "site_name_ea_condat": "BRATTON FLEMING STW",
+        "total_spill_duration_hrs_calculated": 1822.0799560546875,
+        "counted_spills_12_24hr_calculated": 90,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "202187/CS/01",
+        "unique_id": "SBB00148",
+        "site_name_ea_condat": "BRAYFORD STW",
+        "total_spill_duration_hrs_calculated": 4512.43994140625,
+        "counted_spills_12_24hr_calculated": 205,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "202225/CS/01",
+        "unique_id": "SBB00193",
+        "site_name_ea_condat": "BURRINGTON CSO",
+        "total_spill_duration_hrs_calculated": 116.33000183105469,
+        "counted_spills_12_24hr_calculated": 6,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "DRA 1437",
+        "unique_id": "SBB00194",
+        "site_name_ea_condat": "BURRINGTON STW",
+        "total_spill_duration_hrs_calculated": 883.75,
+        "counted_spills_12_24hr_calculated": 144,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "201947/CS/01",
+        "unique_id": "SBB00217",
+        "site_name_ea_condat": "CATTLE MARKET CSO",
+        "total_spill_duration_hrs_calculated": 0.18000000715255737,
+        "counted_spills_12_24hr_calculated": 2,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-3839",
+        "unique_id": "SBB00238",
+        "site_name_ea_condat": "CHAWLEIGH STW",
+        "total_spill_duration_hrs_calculated": 895.8699951171875,
+        "counted_spills_12_24hr_calculated": 66,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "201951/CS/01",
+        "unique_id": "SBB00249",
+        "site_name_ea_condat": "CHITTLEHAMPTON CSO",
+        "total_spill_duration_hrs_calculated": 18.309999465942383,
+        "counted_spills_12_24hr_calculated": 37,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-7809",
+        "unique_id": "SBB00250",
+        "site_name_ea_condat": "CHITTLEHAMPTON WWTW",
+        "total_spill_duration_hrs_calculated": 724.0800170898438,
+        "counted_spills_12_24hr_calculated": 80,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203146",
+        "unique_id": "SBB00256",
+        "site_name_ea_condat": "CHULMLEIGH (GOLF COURSE)",
+        "total_spill_duration_hrs_calculated": 162.02999877929688,
+        "counted_spills_12_24hr_calculated": 71,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-1126",
+        "unique_id": "SBB00257",
+        "site_name_ea_condat": "CHULMLEIGH WWTW SSO",
+        "total_spill_duration_hrs_calculated": 1920.260009765625,
+        "counted_spills_12_24hr_calculated": 132,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203881",
+        "unique_id": "SBB00283",
+        "site_name_ea_condat": "COBBATON STW",
+        "total_spill_duration_hrs_calculated": 1985.93994140625,
+        "counted_spills_12_24hr_calculated": 109,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203290",
+        "unique_id": "SBB00296",
+        "site_name_ea_condat": "COMBREW LANE CSO",
+        "total_spill_duration_hrs_calculated": 38.70000076293945,
+        "counted_spills_12_24hr_calculated": 13,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "201846/CS/01",
+        "unique_id": "SBB00313",
+        "site_name_ea_condat": "COURT BARTON FARM CSO",
+        "total_spill_duration_hrs_calculated": 5.46999979019165,
+        "counted_spills_12_24hr_calculated": 22,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "200080",
+        "unique_id": "SBB00351",
+        "site_name_ea_condat": "DARTINGTON CLOSE PUMPING STATION",
+        "total_spill_duration_hrs_calculated": 12.25,
+        "counted_spills_12_24hr_calculated": 3,
+        "storm_discharge_asset_type": "Storm discharge at pumping station",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "EPR/MB3798AM",
+        "unique_id": "SBB00361",
+        "site_name_ea_condat": "DERBY ROAD COMBINED SEWER OVERFLOW",
+        "total_spill_duration_hrs_calculated": 0,
+        "counted_spills_12_24hr_calculated": 0,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "SWWA 108",
+        "unique_id": "SBB00392",
+        "site_name_ea_condat": "EAST KNOWSTONE STW",
+        "total_spill_duration_hrs_calculated": 480.3999938964844,
+        "counted_spills_12_24hr_calculated": 111,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "201948/CS/01",
+        "unique_id": "SBB00396",
+        "site_name_ea_condat": "EAST STREET CSO",
+        "total_spill_duration_hrs_calculated": 11.779999732971191,
+        "counted_spills_12_24hr_calculated": 25,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "201615/PC/01",
+        "unique_id": "SBB00397",
+        "site_name_ea_condat": "EAST STREET PSCSO/EO",
+        "total_spill_duration_hrs_calculated": 63.59000015258789,
+        "counted_spills_12_24hr_calculated": 36,
+        "storm_discharge_asset_type": "Storm discharge at pumping station",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "2494",
+        "unique_id": "SBB00437",
+        "site_name_ea_condat": "FAIR VIEW CAR PARK CSO",
+        "total_spill_duration_hrs_calculated": 0,
+        "counted_spills_12_24hr_calculated": 0,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203909",
+        "unique_id": "SBB00466",
+        "site_name_ea_condat": "FORD & FAIRY CROSS STW",
+        "total_spill_duration_hrs_calculated": 809.52001953125,
+        "counted_spills_12_24hr_calculated": 112,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-1255",
+        "unique_id": "SBB00489",
+        "site_name_ea_condat": "GEORGE NYMPTON WWTW SSO",
+        "total_spill_duration_hrs_calculated": 23.510000228881836,
+        "counted_spills_12_24hr_calculated": 21,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "200356",
+        "unique_id": "SBB00498",
+        "site_name_ea_condat": "GOODLEIGH WWTW",
+        "total_spill_duration_hrs_calculated": 2.4800000190734863,
+        "counted_spills_12_24hr_calculated": 8,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "201614/PC/01",
+        "unique_id": "SBB00516",
+        "site_name_ea_condat": "GREENACRE PSCSO/EO",
+        "total_spill_duration_hrs_calculated": 0.3100000023841858,
+        "counted_spills_12_24hr_calculated": 2,
+        "storm_discharge_asset_type": "Storm discharge at pumping station",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "200403/CS/01",
+        "unique_id": "SBB00597",
+        "site_name_ea_condat": "HORNS CROSS SEWAGE TREATMENT WORKS",
+        "total_spill_duration_hrs_calculated": 1602.56005859375,
+        "counted_spills_12_24hr_calculated": 229,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "201866/CS/01",
+        "unique_id": "SBB00623",
+        "site_name_ea_condat": "JEWSONS YARD CSO",
+        "total_spill_duration_hrs_calculated": 3.630000114440918,
+        "counted_spills_12_24hr_calculated": 12,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-1317",
+        "unique_id": "SBB00638",
+        "site_name_ea_condat": "KINGS NYMPTON (SOUTH) WWTW SSO",
+        "total_spill_duration_hrs_calculated": 195.8000030517578,
+        "counted_spills_12_24hr_calculated": 26,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "204041",
+        "unique_id": "SBB00640",
+        "site_name_ea_condat": "KINGS NYMPTON NORTH STW",
+        "total_spill_duration_hrs_calculated": 18.100000381469727,
+        "counted_spills_12_24hr_calculated": 13,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NPSWQD008007",
+        "unique_id": "SBB00670",
+        "site_name_ea_condat": "WWTW AT LAPFORD",
+        "total_spill_duration_hrs_calculated": 476.75,
+        "counted_spills_12_24hr_calculated": 111,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203010",
+        "unique_id": "SBB00699",
+        "site_name_ea_condat": "LITTLEHAM STW",
+        "total_spill_duration_hrs_calculated": 1236.699951171875,
+        "counted_spills_12_24hr_calculated": 99,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-0215",
+        "unique_id": "SBB00703",
+        "site_name_ea_condat": "LORDS MEADOW WWTW",
+        "total_spill_duration_hrs_calculated": 36.970001220703125,
+        "counted_spills_12_24hr_calculated": 39,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-0215",
+        "unique_id": "SBB00704",
+        "site_name_ea_condat": "LORDS MEADOW WWTW",
+        "total_spill_duration_hrs_calculated": 380.19000244140625,
+        "counted_spills_12_24hr_calculated": 33,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203288",
+        "unique_id": "SBB00818",
+        "site_name_ea_condat": "MUDDLEBRIDGE CSO",
+        "total_spill_duration_hrs_calculated": 448.45001220703125,
+        "counted_spills_12_24hr_calculated": 35,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "SWWA 224",
+        "unique_id": "SBB00842",
+        "site_name_ea_condat": "NORTH MOLTON STW",
+        "total_spill_duration_hrs_calculated": 1564.760009765625,
+        "counted_spills_12_24hr_calculated": 99,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "201668/PC/01",
+        "unique_id": "SBB00849",
+        "site_name_ea_condat": "NORTH TAWTON PSCSO/EO",
+        "total_spill_duration_hrs_calculated": 5.920000076293945,
+        "counted_spills_12_24hr_calculated": 1,
+        "storm_discharge_asset_type": "Storm discharge at pumping station",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-0005",
+        "unique_id": "SBB00850",
+        "site_name_ea_condat": "NORTH TAWTON WWTW",
+        "total_spill_duration_hrs_calculated": 52.5099983215332,
+        "counted_spills_12_24hr_calculated": 48,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-0005",
+        "unique_id": "SBB00851",
+        "site_name_ea_condat": "NORTH TAWTON WWTW",
+        "total_spill_duration_hrs_calculated": 2173.429931640625,
+        "counted_spills_12_24hr_calculated": 92,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203160",
+        "unique_id": "SBB00863",
+        "site_name_ea_condat": "OAKLAND PARK CSO",
+        "total_spill_duration_hrs_calculated": 2.359999895095825,
+        "counted_spills_12_24hr_calculated": 15,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-6627",
+        "unique_id": "SBB00907",
+        "site_name_ea_condat": "PARKHAM STW",
+        "total_spill_duration_hrs_calculated": 11.760000228881836,
+        "counted_spills_12_24hr_calculated": 13,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-6627",
+        "unique_id": "SBB00908",
+        "site_name_ea_condat": "PARKHAM STW",
+        "total_spill_duration_hrs_calculated": 278.92999267578125,
+        "counted_spills_12_24hr_calculated": 47,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203282",
+        "unique_id": "SBB00938",
+        "site_name_ea_condat": "PILTON QUAY CSO",
+        "total_spill_duration_hrs_calculated": 6.559999942779541,
+        "counted_spills_12_24hr_calculated": 11,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203283",
+        "unique_id": "SBB00970",
+        "site_name_ea_condat": "PORTMARSH CSO",
+        "total_spill_duration_hrs_calculated": 0,
+        "counted_spills_12_24hr_calculated": 0,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203284",
+        "unique_id": "SBB00976",
+        "site_name_ea_condat": "POTTINGTON PUMPING STATION",
+        "total_spill_duration_hrs_calculated": 110.06999969482422,
+        "counted_spills_12_24hr_calculated": 38,
+        "storm_discharge_asset_type": "Storm discharge at pumping station",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-1492",
+        "unique_id": "SBB01010",
+        "site_name_ea_condat": "RACKENFORD WWTW SSO",
+        "total_spill_duration_hrs_calculated": 320.8800048828125,
+        "counted_spills_12_24hr_calculated": 77,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "202173/PC/01",
+        "unique_id": "SBB01013",
+        "site_name_ea_condat": "RAILWAY PSCSO/EO",
+        "total_spill_duration_hrs_calculated": 52.040000915527344,
+        "counted_spills_12_24hr_calculated": 18,
+        "storm_discharge_asset_type": "Storm discharge at pumping station",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "200417",
+        "unique_id": "SBB01025",
+        "site_name_ea_condat": "RIDDLECOMBE WASTE WATER TREATMENT",
+        "total_spill_duration_hrs_calculated": 151.24000549316406,
+        "counted_spills_12_24hr_calculated": 43,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203285",
+        "unique_id": "SBB01036",
+        "site_name_ea_condat": "ROCK PARK CSO",
+        "total_spill_duration_hrs_calculated": 7.909999847412109,
+        "counted_spills_12_24hr_calculated": 23,
+        "storm_discharge_asset_type": "Storm discharge at pumping station",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "200076",
+        "unique_id": "SBB01038",
+        "site_name_ea_condat": "ROLLE ROAD COMBINED SEWER OVERFLOW",
+        "total_spill_duration_hrs_calculated": 129.52000427246094,
+        "counted_spills_12_24hr_calculated": 72,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203289",
+        "unique_id": "SBB01080",
+        "site_name_ea_condat": "SHIELING ROAD CSO",
+        "total_spill_duration_hrs_calculated": 0,
+        "counted_spills_12_24hr_calculated": 0,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-5654",
+        "unique_id": "SBB01100",
+        "site_name_ea_condat": "SOUTH MOLTON WWTW",
+        "total_spill_duration_hrs_calculated": 506.3699951171875,
+        "counted_spills_12_24hr_calculated": 108,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-5654",
+        "unique_id": "SBB01101",
+        "site_name_ea_condat": "SOUTH MOLTON WWTW",
+        "total_spill_duration_hrs_calculated": 2728.639892578125,
+        "counted_spills_12_24hr_calculated": 170,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "201941/CS/01",
+        "unique_id": "SBB01105",
+        "site_name_ea_condat": "SOUTH STREET CSO",
+        "total_spill_duration_hrs_calculated": 1.2899999618530273,
+        "counted_spills_12_24hr_calculated": 7,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203707",
+        "unique_id": "SBB01106",
+        "site_name_ea_condat": "SOUTH ZEAL PUMPING STATION",
+        "total_spill_duration_hrs_calculated": 188.72999572753906,
+        "counted_spills_12_24hr_calculated": 37,
+        "storm_discharge_asset_type": "Storm discharge at pumping station",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": null,
+        "unique_id": "SBB01121",
+        "site_name_ea_condat": null,
+        "total_spill_duration_hrs_calculated": 2664.239990234375,
+        "counted_spills_12_24hr_calculated": 158,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "201713/CS/01",
+        "unique_id": "SBB01171",
+        "site_name_ea_condat": "STICKLEPATH BRIDGE CSO",
+        "total_spill_duration_hrs_calculated": 172.58999633789062,
+        "counted_spills_12_24hr_calculated": 9,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "202208/CS/01",
+        "unique_id": "SBB01182",
+        "site_name_ea_condat": "STOKE RIVERS STW",
+        "total_spill_duration_hrs_calculated": 0,
+        "counted_spills_12_24hr_calculated": 0,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "200083",
+        "unique_id": "SBB01267",
+        "site_name_ea_condat": "TOWN PARK PUMPING STATION",
+        "total_spill_duration_hrs_calculated": 140.05999755859375,
+        "counted_spills_12_24hr_calculated": 88,
+        "storm_discharge_asset_type": "Storm discharge at pumping station",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "200077",
+        "unique_id": "SBB01321",
+        "site_name_ea_condat": "WATERY LANE CSO",
+        "total_spill_duration_hrs_calculated": 40.869998931884766,
+        "counted_spills_12_24hr_calculated": 83,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "200078",
+        "unique_id": "SBB01322",
+        "site_name_ea_condat": "WATERY LANE CSO",
+        "total_spill_duration_hrs_calculated": 0,
+        "counted_spills_12_24hr_calculated": 0,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "202999",
+        "unique_id": "SBB01333",
+        "site_name_ea_condat": "WEST ANSTEY STW",
+        "total_spill_duration_hrs_calculated": 1.100000023841858,
+        "counted_spills_12_24hr_calculated": 3,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "202213/CS/01",
+        "unique_id": "SBB01336",
+        "site_name_ea_condat": "WEST BUCKLAND STW",
+        "total_spill_duration_hrs_calculated": 1090.0999755859375,
+        "counted_spills_12_24hr_calculated": 102,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "201619",
+        "unique_id": "SBB01347",
+        "site_name_ea_condat": "WEST STREET PUMPING STATION",
+        "total_spill_duration_hrs_calculated": 40.68000030517578,
+        "counted_spills_12_24hr_calculated": 10,
+        "storm_discharge_asset_type": "Storm discharge at pumping station",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "202184/PC/01",
+        "unique_id": "SBB01368",
+        "site_name_ea_condat": "WINSFORD PARK PSCSO/EO",
+        "total_spill_duration_hrs_calculated": 6.789999961853027,
+        "counted_spills_12_24hr_calculated": 3,
+        "storm_discharge_asset_type": "Storm discharge at pumping station",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "203126",
+        "unique_id": "SBB01388",
+        "site_name_ea_condat": "YELLAND PUMPING STATION",
+        "total_spill_duration_hrs_calculated": 21.469999313354492,
+        "counted_spills_12_24hr_calculated": 42,
+        "storm_discharge_asset_type": "Storm discharge at pumping station",
+        "shellfish_water": "Taw-Torridge Estuary",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-6626",
+        "unique_id": "SBB01390",
+        "site_name_ea_condat": "YEOFORD WASTEWATER TREATMENT WORKS",
+        "total_spill_duration_hrs_calculated": 1489.68994140625,
+        "counted_spills_12_24hr_calculated": 123,
+        "storm_discharge_asset_type": "Storm tank at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "301899/CS/01",
+        "unique_id": "SBB01391",
+        "site_name_ea_condat": "YEOLMBRIDGE CSO",
+        "total_spill_duration_hrs_calculated": 455.7099914550781,
+        "counted_spills_12_24hr_calculated": 59,
+        "storm_discharge_asset_type": "SO on sewer network",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "NRA-SW-3519",
+        "unique_id": "SBB01393",
+        "site_name_ea_condat": "ZEAL MONACHORUM STW",
+        "total_spill_duration_hrs_calculated": 1414.2900390625,
+        "counted_spills_12_24hr_calculated": 83,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    },
+    {
+      "attributes": {
+        "wasc_supplementary_permit_ref_opt": "SWWA 533",
+        "unique_id": "SBB01434",
+        "site_name_ea_condat": "WWTW AT ALSWEAR NO. 1",
+        "total_spill_duration_hrs_calculated": 58.560001373291016,
+        "counted_spills_12_24hr_calculated": 31,
+        "storm_discharge_asset_type": "Inlet SO at WwTW",
+        "shellfish_water": "Not Applicable",
+        "bathing_water": "Not Applicable"
+      }
+    }
+  ]
+}
