@@ -285,7 +285,7 @@ The Tarka and Dartmoor lines share track from Exeter to Coleford Junction (near 
 
 ### Map Tiles
 
-Uses [CartoDB Positron](https://carto.com/basemaps/) — a light, muted basemap that keeps the focus on the data overlays.
+Uses [Esri World Light Gray](https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer) — a light, muted basemap that keeps the focus on the data overlays. Stacked as two layers: `World_Light_Gray_Base` for terrain and boundaries, `World_Light_Gray_Reference` for place-name and road-number labels on top. (Previously CartoDB Positron; switched September 2026 after CARTO began watermarking unauthenticated tile requests.)
 
 ### Mobile Responsiveness
 
@@ -636,7 +636,7 @@ floodwatch/
 | Component | Technology |
 |-----------|-----------|
 | Map | [Leaflet.js](https://leafletjs.com/) 1.9.4 |
-| Basemap tiles | [CartoDB Positron](https://carto.com/basemaps/) |
+| Basemap tiles | [Esri World Light Gray](https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer) (Base + Reference) |
 | Charts | [Chart.js](https://www.chartjs.org/) 4.4.1 with date-fns adapter |
 | CSV parsing | [PapaParse](https://www.papaparse.com/) 5.4.1 |
 | River geometry | [OpenStreetMap](https://www.openstreetmap.org/) via [Overpass API](https://overpass-api.de/) |

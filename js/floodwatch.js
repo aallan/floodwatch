@@ -139,11 +139,20 @@ function initMap() {
         tap: true
     });
 
-    // CartoDB Positron (light, muted style as requested)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a> | <a href="https://environment.data.gov.uk/flood-monitoring/doc/reference">EA</a> | <a href="https://open-meteo.com/">Open-Meteo</a>',
-        subdomains: 'abcd',
-        maxZoom: 19
+    // Basemap: Esri "World Light Gray" — light, muted style similar to
+    // CartoDB Positron. Switched away from CARTO in Sept 2026 because
+    // CARTO began watermarking unauthenticated tile requests. Esri
+    // serves the same style split into two layers: a "Base" (terrain
+    // and boundaries) and a "Reference" overlay (place names and road
+    // numbers). We stack both so the map keeps its labels.
+    // Note: Esri uses {z}/{y}/{x} tile order (swapped from OSM/CARTO's
+    // {z}/{x}/{y}), and maxZoom is 16 (was 19 with CARTO).
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '&copy; <a href="https://www.esri.com/">Esri</a> | <a href="https://environment.data.gov.uk/flood-monitoring/doc/reference">EA</a> | <a href="https://open-meteo.com/">Open-Meteo</a>',
+        maxZoom: 16
+    }).addTo(map);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 16
     }).addTo(map);
 
     addLegend();

@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Changed
+- Switched basemap tiles from CartoDB Positron to Esri World Light Gray (Base + Reference layers) — CARTO began watermarking unauthenticated tile requests in late Aug 2026, requiring an API key to remove the watermark. Esri's raster tiles remain free without a key and match Positron's muted aesthetic. Maximum zoom drops from 19 to 16, sufficient for catchment monitoring at street-detail.
+
 ## [1.5.0] — 2026-06-03
 
 ### Added
