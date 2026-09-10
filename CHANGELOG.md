@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [1.5.1] — 2026-09-10
+
 ### Changed
 - Switched basemap tiles from CartoDB Positron to Esri World Light Gray (Base + Reference layers) — CARTO began watermarking unauthenticated tile requests in late Aug 2026, requiring an API key to remove the watermark. Esri's raster tiles remain free without a key and match Positron's muted aesthetic. Maximum zoom drops from 19 to 16, sufficient for catchment monitoring at street-detail.
 
@@ -199,7 +201,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Text overflow in popup boxes
 - GitHub Actions deprecation warning
 
-[Unreleased]: https://github.com/aallan/floodwatch/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/aallan/floodwatch/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/aallan/floodwatch/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/aallan/floodwatch/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/aallan/floodwatch/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/aallan/floodwatch/compare/v1.3.1...v1.4.0
