@@ -1,264 +1,264 @@
 {
-  "generated_at": "2026-11-18T03:48:09.011726Z",
+  "generated_at": "2026-11-18T13:17:29.361492Z",
   "sites": {
     "SBB00044": {
       "status": 0,
       "statusStart": "2026-11-17T06:57:21Z",
       "latestEventStart": "2026-11-17T02:39:11Z",
       "latestEventEnd": "2026-11-17T06:57:21Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00054": {
       "status": 1,
       "statusStart": "2026-11-16T22:37:30.200000Z",
       "latestEventStart": "2026-11-16T22:37:30.200000Z",
       "latestEventEnd": "",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00072": {
       "status": 1,
-      "statusStart": "2026-11-17T20:31:18Z",
-      "latestEventStart": "2026-11-17T20:31:18Z",
+      "statusStart": "2026-11-18T06:58:24Z",
+      "latestEventStart": "2026-11-18T06:58:24Z",
       "latestEventEnd": "",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00074": {
       "status": 0,
       "statusStart": "2026-10-22T21:50:00.100000Z",
       "latestEventStart": "2026-10-22T21:42:20.200000Z",
       "latestEventEnd": "2026-10-22T21:50:00.100000Z",
-      "lastUpdated": "2026-11-17T12:00:00Z"
+      "lastUpdated": "2026-11-18T12:00:00Z"
     },
     "SBB00096": {
       "status": 0,
       "statusStart": "2026-11-17T23:40:03Z",
       "latestEventStart": "2026-11-17T23:33:20Z",
       "latestEventEnd": "2026-11-17T23:40:03Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00109": {
       "status": 0,
-      "statusStart": "2026-11-17T21:25:31Z",
-      "latestEventStart": "2026-11-17T20:57:11Z",
-      "latestEventEnd": "2026-11-17T21:25:31Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "statusStart": "2026-11-18T05:40:31Z",
+      "latestEventStart": "2026-11-18T05:34:31Z",
+      "latestEventEnd": "2026-11-18T05:40:31Z",
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00142": {
       "status": 0,
       "statusStart": "2026-02-13T13:32:07Z",
       "latestEventStart": "2026-02-13T12:24:05Z",
       "latestEventEnd": "2026-02-13T13:32:07Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00147": {
       "status": 0,
       "statusStart": "2026-10-29T10:54:11Z",
       "latestEventStart": "2026-10-24T13:37:41Z",
       "latestEventEnd": "2026-10-29T10:54:11Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00148": {
       "status": 1,
       "statusStart": "2026-11-17T02:34:31Z",
       "latestEventStart": "2026-11-17T02:34:31Z",
       "latestEventEnd": "",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00193": {
       "status": 0,
       "statusStart": "2026-08-30T19:45:20.200000Z",
       "latestEventStart": "2026-08-30T19:40:50.200000Z",
       "latestEventEnd": "2026-08-30T19:45:20.200000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00194": {
       "status": 0,
-      "statusStart": "2026-11-18T03:03:00.600000Z",
-      "latestEventStart": "2026-11-18T02:26:40.600000Z",
-      "latestEventEnd": "2026-11-18T03:03:00.600000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "statusStart": "2026-11-18T12:26:50.600000Z",
+      "latestEventStart": "2026-11-18T12:18:10.600000Z",
+      "latestEventEnd": "2026-11-18T12:26:50.600000Z",
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00217": {
       "status": 0,
       "statusStart": "2026-11-17T20:58:00.100000Z",
       "latestEventStart": "2026-11-17T20:54:50.100000Z",
       "latestEventEnd": "2026-11-17T20:58:00.100000Z",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00238": {
-      "status": 0,
-      "statusStart": "2026-11-18T00:20:31Z",
-      "latestEventStart": "2026-11-17T20:58:41Z",
-      "latestEventEnd": "2026-11-18T00:20:31Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "status": 1,
+      "statusStart": "2026-11-18T05:43:31Z",
+      "latestEventStart": "2026-11-18T05:43:31Z",
+      "latestEventEnd": "",
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00249": {
       "status": 0,
       "statusStart": "2026-11-17T21:17:30.400000Z",
       "latestEventStart": "2026-11-17T21:08:40.400000Z",
       "latestEventEnd": "2026-11-17T21:17:30.400000Z",
-      "lastUpdated": "2026-11-18T03:15:00Z"
+      "lastUpdated": "2026-11-18T12:45:00Z"
     },
     "SBB00250": {
       "status": 1,
       "statusStart": "2026-11-17T02:12:00.200000Z",
       "latestEventStart": "2026-11-17T02:12:00.200000Z",
       "latestEventEnd": "",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00256": {
       "status": 0,
-      "statusStart": "2026-11-17T22:12:05.170000Z",
-      "latestEventStart": "2026-11-17T21:58:05.170000Z",
-      "latestEventEnd": "2026-11-17T22:12:05.170000Z",
-      "lastUpdated": "2026-11-18T00:00:00Z"
+      "statusStart": "2026-11-18T05:48:05.170000Z",
+      "latestEventStart": "2026-11-18T05:34:05.170000Z",
+      "latestEventEnd": "2026-11-18T05:48:05.170000Z",
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00257": {
       "status": 1,
       "statusStart": "2026-11-16T22:31:30.300000Z",
       "latestEventStart": "2026-11-16T22:31:30.300000Z",
       "latestEventEnd": "",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00283": {
       "status": 1,
       "statusStart": "2026-11-17T04:33:31Z",
       "latestEventStart": "2026-11-17T04:33:31Z",
       "latestEventEnd": "",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00296": {
       "status": 0,
       "statusStart": "2026-11-17T08:14:41Z",
       "latestEventStart": "2026-11-17T04:33:42Z",
       "latestEventEnd": "2026-11-17T08:14:41Z",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "lastUpdated": "2026-11-18T11:30:00Z"
     },
     "SBB00313": {
       "status": 0,
       "statusStart": "2026-11-17T05:06:05.170000Z",
       "latestEventStart": "2026-11-17T04:44:05.170000Z",
       "latestEventEnd": "2026-11-17T05:06:05.170000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00351": {
       "status": 0,
       "statusStart": "2026-11-17T02:40:20Z",
       "latestEventStart": "2026-11-17T02:27:30Z",
       "latestEventEnd": "2026-11-17T02:40:20Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00361": {
       "status": 0,
       "statusStart": "2026-11-15T14:19:20.200000Z",
       "latestEventStart": "2026-11-15T14:11:10.200000Z",
       "latestEventEnd": "2026-11-15T14:19:20.200000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00392": {
       "status": 0,
-      "statusStart": "2026-11-17T22:22:05.170000Z",
-      "latestEventStart": "2026-11-17T22:02:05.170000Z",
-      "latestEventEnd": "2026-11-17T22:22:05.170000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "statusStart": "2026-11-18T09:12:05.170000Z",
+      "latestEventStart": "2026-11-18T08:50:05.170000Z",
+      "latestEventEnd": "2026-11-18T09:12:05.170000Z",
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00396": {
       "status": 0,
       "statusStart": "2026-11-17T21:29:30.100000Z",
       "latestEventStart": "2026-11-17T21:19:40.100000Z",
       "latestEventEnd": "2026-11-17T21:29:30.100000Z",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00397": {
       "status": 0,
       "statusStart": "2026-11-17T12:13:01Z",
       "latestEventStart": "2026-11-17T11:58:41Z",
       "latestEventEnd": "2026-11-17T12:13:01Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00437": {
       "status": 0,
       "statusStart": "2026-11-15T14:29:30.100000Z",
       "latestEventStart": "2026-11-15T14:08:30.200000Z",
       "latestEventEnd": "2026-11-15T14:29:30.100000Z",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00466": {
       "status": 0,
-      "statusStart": "2026-11-18T01:51:05.300000Z",
-      "latestEventStart": "2026-11-17T19:57:05.300000Z",
-      "latestEventEnd": "2026-11-18T01:51:05.300000Z",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "statusStart": "2026-11-18T05:49:05.300000Z",
+      "latestEventStart": "2026-11-18T05:21:05.300000Z",
+      "latestEventEnd": "2026-11-18T05:49:05.300000Z",
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00489": {
       "status": 0,
       "statusStart": "2026-11-17T08:12:10.100000Z",
       "latestEventStart": "2026-11-17T07:45:10.100000Z",
       "latestEventEnd": "2026-11-17T08:12:10.100000Z",
-      "lastUpdated": "2026-11-18T03:15:00Z"
+      "lastUpdated": "2026-11-18T12:45:00Z"
     },
     "SBB00498": {
       "status": 0,
       "statusStart": "2026-11-17T04:56:31Z",
       "latestEventStart": "2026-11-17T04:40:01Z",
       "latestEventEnd": "2026-11-17T04:56:31Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00516": {
       "status": 0,
       "statusStart": "2026-10-22T21:48:21Z",
       "latestEventStart": "2026-10-22T21:37:21Z",
       "latestEventEnd": "2026-10-22T21:48:21Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00597": {
-      "status": 1,
-      "statusStart": "2026-11-17T19:41:50.300000Z",
-      "latestEventStart": "2026-11-17T19:41:50.300000Z",
-      "latestEventEnd": "",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "status": 0,
+      "statusStart": "2026-11-18T12:41:20.300000Z",
+      "latestEventStart": "2026-11-18T12:36:30.300000Z",
+      "latestEventEnd": "2026-11-18T12:41:20.300000Z",
+      "lastUpdated": "2026-11-18T12:41:20.300000Z"
     },
     "SBB00623": {
       "status": 0,
       "statusStart": "2026-11-17T04:04:10.200000Z",
       "latestEventStart": "2026-11-17T03:52:50.200000Z",
       "latestEventEnd": "2026-11-17T04:04:10.200000Z",
-      "lastUpdated": "2026-11-18T03:15:00Z"
+      "lastUpdated": "2026-11-18T12:45:00Z"
     },
     "SBB00638": {
       "status": 0,
       "statusStart": "2026-11-17T08:42:05.260000Z",
       "latestEventStart": "2026-11-17T07:44:05.260000Z",
       "latestEventEnd": "2026-11-17T08:42:05.260000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00640": {
       "status": 0,
       "statusStart": "2026-11-17T05:03:11Z",
       "latestEventStart": "2026-11-17T04:45:31Z",
       "latestEventEnd": "2026-11-17T05:03:11Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00670": {
       "status": 0,
-      "statusStart": "2026-11-17T22:12:00Z",
-      "latestEventStart": "2026-11-17T22:06:58Z",
-      "latestEventEnd": "2026-11-17T22:12:00Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "statusStart": "2026-11-18T08:51:06Z",
+      "latestEventStart": "2026-11-18T08:46:04Z",
+      "latestEventEnd": "2026-11-18T08:51:06Z",
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00699": {
       "status": 1,
       "statusStart": "2026-11-16T22:27:10Z",
       "latestEventStart": "2026-11-16T22:27:10Z",
       "latestEventEnd": "",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00703": {
       "status": 0,
       "statusStart": "2026-08-30T15:50:05.170000Z",
       "latestEventStart": "2026-08-30T15:46:05.170000Z",
       "latestEventEnd": "2026-08-30T15:50:05.170000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00704": {
       "status": 0,
@@ -268,88 +268,88 @@
       "lastUpdated": "2026-11-09T09:45:00Z"
     },
     "SBB00818": {
-      "status": 1,
-      "statusStart": "2026-11-17T04:57:21Z",
-      "latestEventStart": "2026-11-17T04:57:21Z",
-      "latestEventEnd": "",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "status": 0,
+      "statusStart": "2026-11-18T11:06:21Z",
+      "latestEventStart": "2026-11-18T10:56:41Z",
+      "latestEventEnd": "2026-11-18T11:06:21Z",
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00842": {
       "status": 0,
-      "statusStart": "2026-11-18T02:29:07Z",
-      "latestEventStart": "2026-11-18T00:59:00Z",
-      "latestEventEnd": "2026-11-18T02:29:07Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "statusStart": "2026-11-18T10:52:31Z",
+      "latestEventStart": "2026-11-18T05:09:58Z",
+      "latestEventEnd": "2026-11-18T10:52:31Z",
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00849": {
       "status": 0,
       "statusStart": "2026-11-17T05:08:20Z",
       "latestEventStart": "2026-11-17T04:37:01Z",
       "latestEventEnd": "2026-11-17T05:08:20Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00850": {
       "status": 0,
       "statusStart": "2026-11-17T21:25:57Z",
       "latestEventStart": "2026-11-17T20:56:41Z",
       "latestEventEnd": "2026-11-17T21:25:57Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00851": {
       "status": 0,
       "statusStart": "2026-11-17T06:40:15.870000Z",
       "latestEventStart": "2026-11-17T05:36:30.490000Z",
       "latestEventEnd": "2026-11-17T06:40:15.870000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00863": {
       "status": 0,
       "statusStart": "2026-11-17T04:51:10.300000Z",
       "latestEventStart": "2026-11-17T04:39:00.300000Z",
       "latestEventEnd": "2026-11-17T04:51:10.300000Z",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00907": {
       "status": 0,
       "statusStart": "2026-11-17T04:36:40.200000Z",
       "latestEventStart": "2026-11-17T04:32:20.200000Z",
       "latestEventEnd": "2026-11-17T04:36:40.200000Z",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00908": {
       "status": 0,
-      "statusStart": "2026-11-18T00:43:50.300000Z",
-      "latestEventStart": "2026-11-18T00:38:50.300000Z",
-      "latestEventEnd": "2026-11-18T00:43:50.300000Z",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "statusStart": "2026-11-18T10:08:30.300000Z",
+      "latestEventStart": "2026-11-18T10:06:10.300000Z",
+      "latestEventEnd": "2026-11-18T10:08:30.300000Z",
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB00938": {
       "status": 0,
       "statusStart": "2026-11-17T05:04:30.300000Z",
       "latestEventStart": "2026-11-17T04:36:40.900000Z",
       "latestEventEnd": "2026-11-17T05:04:30.300000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00970": {
       "status": 0,
       "statusStart": "2026-11-15T14:29:55Z",
       "latestEventStart": "2026-11-15T14:14:01Z",
       "latestEventEnd": "2026-11-15T14:29:55Z",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB00976": {
       "status": 0,
       "statusStart": "2026-10-09T09:58:41Z",
       "latestEventStart": "2026-10-09T09:57:11Z",
       "latestEventEnd": "2026-10-09T09:58:41Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01010": {
       "status": 0,
-      "statusStart": "2026-11-17T05:16:05.170000Z",
-      "latestEventStart": "2026-11-17T04:54:05.170000Z",
-      "latestEventEnd": "2026-11-17T05:16:05.170000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "statusStart": "2026-11-18T05:18:05.170000Z",
+      "latestEventStart": "2026-11-18T05:12:05.170000Z",
+      "latestEventEnd": "2026-11-18T05:18:05.170000Z",
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB01013": {
       "status": 0,
@@ -363,63 +363,63 @@
       "statusStart": "2026-10-24T14:06:30.100000Z",
       "latestEventStart": "2026-10-24T13:53:40.300000Z",
       "latestEventEnd": "2026-10-24T14:06:30.100000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01036": {
       "status": 0,
       "statusStart": "2026-11-17T06:20:15Z",
       "latestEventStart": "2026-11-17T06:19:37Z",
       "latestEventEnd": "2026-11-17T06:20:15Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01038": {
       "status": 0,
       "statusStart": "2026-11-17T07:52:05.170000Z",
       "latestEventStart": "2026-11-17T07:28:05.170000Z",
       "latestEventEnd": "2026-11-17T07:52:05.170000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB01080": {
       "status": 0,
       "statusStart": "2026-11-15T13:49:10Z",
       "latestEventStart": "2026-11-15T13:42:39Z",
       "latestEventEnd": "2026-11-15T13:49:10Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01100": {
       "status": 0,
-      "statusStart": "2026-11-18T02:55:25Z",
-      "latestEventStart": "2026-11-18T02:51:24Z",
-      "latestEventEnd": "2026-11-18T02:55:25Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "statusStart": "2026-11-18T06:17:04Z",
+      "latestEventStart": "2026-11-18T05:33:56Z",
+      "latestEventEnd": "2026-11-18T06:17:04Z",
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01101": {
-      "status": 0,
-      "statusStart": "2026-11-18T03:22:19Z",
-      "latestEventStart": "2026-11-18T03:13:18Z",
-      "latestEventEnd": "2026-11-18T03:22:19Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "status": 1,
+      "statusStart": "2026-11-18T10:11:29Z",
+      "latestEventStart": "2026-11-18T10:11:29Z",
+      "latestEventEnd": "",
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01105": {
       "status": 0,
       "statusStart": "2026-11-17T21:02:40.200000Z",
       "latestEventStart": "2026-11-17T20:55:50.200000Z",
       "latestEventEnd": "2026-11-17T21:02:40.200000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01106": {
       "status": 0,
       "statusStart": "2026-10-24T14:59:41Z",
       "latestEventStart": "2026-10-24T14:23:11Z",
       "latestEventEnd": "2026-10-24T14:59:41Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01171": {
       "status": 0,
       "statusStart": "2026-02-19T11:59:40.300000Z",
       "latestEventStart": "2026-02-19T11:58:20.300000Z",
       "latestEventEnd": "2026-02-19T11:59:40.300000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01172": {
       "status": -1,
@@ -433,49 +433,49 @@
       "statusStart": "2026-10-24T16:52:20.200000Z",
       "latestEventStart": "2026-10-24T15:39:10.200000Z",
       "latestEventEnd": "2026-10-24T16:52:20.200000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01267": {
       "status": 0,
-      "statusStart": "2026-11-17T21:00:30.200000Z",
-      "latestEventStart": "2026-11-17T20:45:20.200000Z",
-      "latestEventEnd": "2026-11-17T21:00:30.200000Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "statusStart": "2026-11-18T08:38:50.100000Z",
+      "latestEventStart": "2026-11-18T08:29:30.200000Z",
+      "latestEventEnd": "2026-11-18T08:38:50.100000Z",
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01321": {
       "status": 0,
-      "statusStart": "2026-11-17T07:34:10.200000Z",
-      "latestEventStart": "2026-11-17T07:24:00.200000Z",
-      "latestEventEnd": "2026-11-17T07:34:10.200000Z",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "statusStart": "2026-11-18T08:26:20.200000Z",
+      "latestEventStart": "2026-11-18T08:21:20.200000Z",
+      "latestEventEnd": "2026-11-18T08:26:20.200000Z",
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB01322": {
       "status": 0,
       "statusStart": "2023-11-25T10:00:14Z",
       "latestEventStart": "2023-11-25T09:58:58Z",
       "latestEventEnd": "2023-11-25T10:00:14Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01323": {
       "status": 0,
       "statusStart": "2026-03-06T22:34:27Z",
       "latestEventStart": "2026-03-06T22:32:35Z",
       "latestEventEnd": "2026-03-06T22:34:27Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01333": {
       "status": 0,
       "statusStart": "2026-01-27T05:30:00Z",
       "latestEventStart": "2026-01-27T05:15:00Z",
       "latestEventEnd": "2026-01-27T05:30:00Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01336": {
       "status": 1,
       "statusStart": "2026-11-16T22:38:05.260000Z",
       "latestEventStart": "2026-11-16T22:38:05.260000Z",
       "latestEventEnd": "",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01347": {
       "status": 0,
@@ -489,42 +489,42 @@
       "statusStart": "2026-11-12T10:28:11Z",
       "latestEventStart": "2026-11-12T10:15:11Z",
       "latestEventEnd": "2026-11-12T10:28:11Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01388": {
       "status": 0,
-      "statusStart": "2026-11-18T03:27:08Z",
-      "latestEventStart": "2026-11-18T03:26:28Z",
-      "latestEventEnd": "2026-11-18T03:27:08Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "statusStart": "2026-11-18T08:10:30Z",
+      "latestEventStart": "2026-11-18T08:10:00Z",
+      "latestEventEnd": "2026-11-18T08:10:30Z",
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01390": {
       "status": 0,
       "statusStart": "2026-09-24T11:12:41Z",
       "latestEventStart": "2026-09-24T11:06:11Z",
       "latestEventEnd": "2026-09-24T11:12:41Z",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01391": {
-      "status": 1,
-      "statusStart": "2026-11-17T01:41:20.200000Z",
+      "status": 0,
+      "statusStart": "2026-11-18T06:50:50.300000Z",
       "latestEventStart": "2026-11-17T01:41:20.200000Z",
-      "latestEventEnd": "",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "latestEventEnd": "2026-11-18T06:50:50.300000Z",
+      "lastUpdated": "2026-11-18T12:30:00Z"
     },
     "SBB01393": {
       "status": 1,
       "statusStart": "2026-11-17T03:39:00.600000Z",
       "latestEventStart": "2026-11-17T03:39:00.600000Z",
       "latestEventEnd": "",
-      "lastUpdated": "2026-11-18T03:30:00Z"
+      "lastUpdated": "2026-11-18T13:00:00Z"
     },
     "SBB01434": {
       "status": 0,
       "statusStart": "2026-11-18T02:59:40.100000Z",
       "latestEventStart": "2026-11-18T02:57:00.100000Z",
       "latestEventEnd": "2026-11-18T02:59:40.100000Z",
-      "lastUpdated": "2026-11-18T03:00:00Z"
+      "lastUpdated": "2026-11-18T12:30:00Z"
     }
   }
 }
