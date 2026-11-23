@@ -7,9 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 ## [Unreleased]
 
 ### Added
+- The River Bray in its own colour, raspberry, with its own entry in the legend.
+- The streams the Environment Agency gauges are drawn with the rivers, so their gauges no longer sit on nothing with the streams layer off: Landkey Brook at Swimbridge, Halford Stream at Landkey, Bradiford Water and Coney Gut.
 - Diagrams in the README of how the site is put together, the poll cycle, the spill log, the archive and the server, and figures of how the catchment's outline is made and of the flow forecast's scaling, drawn by `make figures`.
 
 ### Changed
+- The Taw runs on through its tidal reach to Barnstaple's Long Bridge, rather than stopping at Bishops Tawton, where OpenStreetMap marks it tidal.
 - The README's screenshot is captured with Chrome's viewport fixed before the page loads, so no basemap tiles go missing.
 - The documentation and the About page are brought up to date with the server as deployed: the setup steps in the order they work, the ruleset that lets the nightly archive push, and what the first export did to v1's files.
 - The first nightly export rewrote v1's archive files once, to v2's format: spill times to the second, spill durations rounded to the nearest minute, Barnstaple's tidal gauge labelled "Barnstaple", and `stations.csv` sorted by ID. No readings or spills changed. Each night since only adds lines.

@@ -36,6 +36,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from monitor.ea import CENTRE as EA_CENTRE, RADIUS_KM as EA_RADIUS_KM  # noqa: E402
 from monitor.geo import LandMask, perp_dist, simplify  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -192,6 +193,35 @@ def geojson_features(label, url, data=None, source=""):
             time.sleep(delay)
             delay *= 2
     sys.exit(f"{source} download failed after retries: {label}")
+
+
+def fetch_gauges():
+    """The Environment Agency's river level gauges around the catchment, as
+    (lon, lat, river name), cached like the Overpass queries. The streams
+    they sit on are drawn with the rivers (promote_gauge_streams)."""
+    items = cached("gauges")
+    if items is None:
+        url = ("https://environment.data.gov.uk/flood-monitoring/id/stations?" + urllib.parse.urlencode(
+            {"parameter": "level", "lat": EA_CENTRE[0], "long": EA_CENTRE[1], "dist": EA_RADIUS_KM, "_limit": 2000}))
+        delay = 5
+        for attempt in range(5):
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+                with urllib.request.urlopen(req, timeout=120) as r:
+                    items = json.loads(r.read())["items"]
+                print(f"  gauges: {len(items)} stations (Environment Agency)")
+                keep("gauges", items)
+                break
+            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError) as e:
+                print(f"  gauges: attempt {attempt + 1} failed ({e}); retrying in {delay}s", file=sys.stderr)
+                time.sleep(delay)
+                delay *= 2
+        else:
+            sys.exit("Environment Agency station list failed after retries")
+    else:
+        print(f"  gauges: {len(items)} stations (cached)")
+    return [(i["long"], i["lat"], i.get("riverName") or "") for i in items
+            if isinstance(i.get("lat"), (int, float)) and isinstance(i.get("long"), (int, float))]
 
 
 # --------------------------------------------------------------------------
@@ -533,11 +563,117 @@ SAME_NAME = {
 # these are tagged as streams, but they're the size of the rivers here.
 PROMOTED_STREAMS = {"Hollocombe Water"}
 
+# Where a river meets its estuary, for a river whose tidal reach is still a
+# river channel. OSM marks the Taw tidal from Bishops Tawton, three
+# kilometres above Barnstaple, so without this it would stop well short of
+# the town; it runs on, tidal ways and all, to the nearest point to its
+# mouth, Barnstaple's Long Bridge, where the estuary opens out.
+RIVER_MOUTHS = {"River Taw": (-4.0617, 51.0779)}
+
+
+# How close a line must pass to a river's mouth to be the line that reaches it.
+MOUTH_REACH_M = 300
+
+
+def cut_at_mouth(line, mouth, tidal):
+    """A river line, source first, ended at its mouth: a line that passes
+    within MOUTH_REACH_M of it runs up to its nearest point, and a line made
+    only of tidal ways that never reaches it is below it, in the estuary, and
+    is dropped. Any other line is left whole."""
+    k = math.cos(math.radians(mouth[1]))
+    d = [math.hypot((p[0] - mouth[0]) * k, p[1] - mouth[1]) * 111_000 for p in line]
+    i = min(range(len(line)), key=d.__getitem__)
+    if d[i] <= MOUTH_REACH_M:
+        return line[:i + 1]
+    return [] if all(p in tidal for p in line) else line
+
 
 def nearest_name(line, places):
     def dist(p, q):
         return math.hypot((p[0] - q[0]) * math.cos(math.radians(q[1])), p[1] - q[1])
     return min(places, key=lambda nq: min(dist(p, nq[1]) for p in line[::5] + [line[-1]]))[0]
+
+
+# A gauge this close to a drawn river is on it; one this close to a stream,
+# and not to a river, is on the stream, which is then drawn with the rivers.
+GAUGE_ON_WATER_M = 50
+# The most stream ways followed downstream from a gauge to the river below,
+# and how far the stream is followed upstream of it.
+MAX_GAUGE_CHAIN = 60
+GAUGE_UPSTREAM_KM = 3
+
+
+def metres(p, q):
+    return math.hypot((p[0] - q[0]) * 111_320 * math.cos(math.radians(q[1])), (p[1] - q[1]) * 110_540)
+
+
+
+def near_box(at, line, margin=0.002):
+    """Whether a point is within a line's bounding box, widened by about 200 m:
+    a quick test before measuring to each of its segments."""
+    xs, ys = [p[0] for p in line], [p[1] for p in line]
+    return min(xs) - margin <= at[0] <= max(xs) + margin and min(ys) - margin <= at[1] <= max(ys) + margin
+
+
+def promote_gauge_streams(by_name, streams, gauges):
+    """Draw the streams the Environment Agency gauges with the rivers.
+
+    Around Barnstaple the Agency gauges streams OSM tags as streams, often
+    unnamed, such as Landkey Brook at Swimbridge; with the streams layer off,
+    their gauges would sit on nothing. For each gauge within GAUGE_ON_WATER_M
+    of a stream and not of a river, the stream's way, the chain below it down
+    to the river it joins, up to GAUGE_UPSTREAM_KM of it above the gauge (the
+    longest branch at each fork), and any ways sharing its name are moved
+    into by_name, under OSM's name for it or else the Agency's. Each gauge's
+    own way is claimed first, so one chain stops where it meets another's.
+    Returns the names promoted.
+    """
+    rivers = [line for lines in by_name.values() for line in lines]
+    claimed = {}  # stream index -> name
+    for lon, lat, river in gauges:
+        at = (lon, lat)
+        if metres_to_line(at, [ln for ln in rivers if near_box(at, ln)], GAUGE_ON_WATER_M) < math.inf:
+            continue
+        best = min(((metres_to_line(at, [pts], GAUGE_ON_WATER_M), i)
+                    for i, (_, pts) in enumerate(streams) if len(pts) >= 2 and near_box(at, pts)),
+                   default=(math.inf, None))
+        if best[0] > GAUGE_ON_WATER_M or best[1] in claimed:
+            continue
+        osm_name = streams[best[1]][0]
+        claimed[best[1]] = osm_name or river_name(river) or "Stream"
+    if not claimed:
+        return set()
+    starts, ends = defaultdict(list), defaultdict(list)
+    for i, (_, pts) in enumerate(streams):
+        if pts:
+            starts[pts[0]].append(i)
+            ends[pts[-1]].append(i)
+    for i, name in list(claimed.items()):
+        start, km = streams[i][1][0], 0.0
+        while km < GAUGE_UPSTREAM_KM:
+            above = [j for j in ends.get(start, ()) if j not in claimed]
+            if not above:
+                break
+            j = max(above, key=lambda j: length_km(streams[j][1]))
+            claimed[j] = name
+            start, km = streams[j][1][0], km + length_km(streams[j][1])
+    river_points = {p for line in rivers for p in line}
+    for i, name in list(claimed.items()):
+        end, steps = streams[i][1][-1], 0
+        while end not in river_points and steps < MAX_GAUGE_CHAIN:
+            nxt = [j for j in starts.get(end, ()) if j not in claimed]
+            if not nxt:
+                break
+            claimed[nxt[0]] = name
+            end, steps = streams[nxt[0]][1][-1], steps + 1
+    names = set(claimed.values())
+    for i, (nm, _) in enumerate(streams):
+        if nm and nm in names:
+            claimed.setdefault(i, nm)
+    for i, name in claimed.items():
+        by_name.setdefault(name, []).append(streams[i][1])
+    streams[:] = [st for i, st in enumerate(streams) if i not in claimed]
+    return names
 
 
 # The most unnamed ways a gap in a river is bridged across: enough for the
@@ -602,7 +738,7 @@ def bridge_gaps(by_name, streams):
     streams[:] = [(nm, t) for nm, t in ((nm, trim(pts)) for nm, pts in streams) if t]
 
 
-def fetch_waterways(land, coast, bbox):
+def fetch_waterways(land, coast, bbox, gauges=()):
     box = ",".join(map(str, bbox))
     river_ways = overpass(f'[out:json][timeout:240];way["waterway"~"^(river|canal)$"]({box});out tags geom;', "rivers")
     pause()
@@ -615,17 +751,21 @@ def fetch_waterways(land, coast, bbox):
         # below it is cut where it crosses the coastline, which in UK OSM
         # closes across each river there. The catchment stops at the
         # estuary's banks too, so either way a river ends where it meets
-        # the estuary rather than running down the middle of it.
-        return t.get("tidal") != "yes"
+        # the estuary rather than running down the middle of it. A river
+        # with a mouth in RIVER_MOUTHS keeps its tidal ways, down to there.
+        return t.get("tidal") != "yes" or river_name(t.get("name", "")) in RIVER_MOUTHS
 
     by_name = defaultdict(list)
     kind_of = {}
+    tidal = set()  # points on the tidal ways kept for a river with a mouth
     for w in river_ways:
         t = w.get("tags", {})
         if usable(t):
             name = river_name(t["name"]) if t.get("name") else ""
             by_name[name].append(coords_of(w))
             kind_of.setdefault(name, t.get("waterway"))
+            if t.get("tidal") == "yes":
+                tidal.update(coords_of(w))
     # A stream that shares a river's name, such as a headwater of the Mole
     # tagged as a stream, is drawn as part of the river.
     streams_left = []
@@ -640,12 +780,15 @@ def fetch_waterways(land, coast, bbox):
         else:
             streams_left.append((name, coords_of(w)))
     bridge_gaps(by_name, streams_left)
+    for name in promote_gauge_streams(by_name, streams_left, gauges):
+        kind_of.setdefault(name, "river")
 
     named_lines = defaultdict(list)
     for name, lines in by_name.items():
         for l in merge_lines(lines):
             label = nearest_name(l, SAME_NAME[name]) if name in SAME_NAME else name
-            named_lines[label] += [run for run in land.clip(coast.cut(l)) if len(run) >= 2]
+            end = cut_at_mouth(l, RIVER_MOUTHS[name], tidal) if name in RIVER_MOUTHS else coast.cut(l)
+            named_lines[label] += [run for run in land.clip(end) if len(run) >= 2]
             kind_of.setdefault(label, kind_of[name])
     rivers = []
     for name, merged in named_lines.items():
@@ -891,7 +1034,8 @@ def main():
     box = ",".join(map(str, bbox))
     coast = Coastline(overpass(f'[out:json][timeout:240];way["natural"="coastline"]({box});out geom;', "coastline"))
     pause()
-    rivers, streams = fetch_waterways(land, coast, bbox)
+    gauges = fetch_gauges()
+    rivers, streams = fetch_waterways(land, coast, bbox, gauges)
     pause()
     rails, stations = fetch_railways(land)
     pause()

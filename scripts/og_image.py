@@ -37,7 +37,7 @@ CHROME = [
 # Floodwatch's teal, and each layer's own colour.
 BG, TEXT, SECONDARY, ACCENT = "#eceef2", "#2c3345", "#5d6782", "#1a8a7d"
 WATER = "#7fa9c9"
-RIVER_COLOURS = {"River Taw": "#1a8a7d", "River Mole": "#2e7dab", "Little Dart River": "#8a6e1a",
+RIVER_COLOURS = {"River Taw": "#1a8a7d", "River Mole": "#2e7dab", "River Bray": "#b5476e", "Little Dart River": "#8a6e1a",
                  "River Yeo": "#7a4a8a", "Lapford Yeo": "#ab5e2e", "Crooked Oak": "#5a8a3a",
                  "Hollocombe Water": "#6a7a3a"}
 BANDS = [("River levels", "#1a8a7d"), ("Rain", "#4f6fc0"),
