@@ -15,7 +15,7 @@ Floodwatch is one Python process serving a static page and a small read-only API
 - The page: everything taken from an outside feed, a station name, a warning's message, a power cut's postcodes, is escaped before it goes into the page.
 - The libraries: Leaflet and Leaflet.markercluster are served from the site itself, at versions pinned in the `Makefile` and checked against `libs.sha256` when they're downloaded.
 - The poller's handling of what the feeds send, which is parsed as data and never run.
-- The nightly archive: the server holds a deploy key with write access to this repository, which it uses only to push `archive/`. A way to use the server to push anything else, or to read the key, is in scope.
+- The nightly archive: the server holds a deploy key with write access to this repository, which `main`'s ruleset lets push without a pull request, and which the server uses only to push `archive/`, from a separate worktree. The key sits in the checkout's `.ssh/`, which git ignores. A way to use the server to push anything else, or to read the key, is in scope.
 - The GitHub Actions workflow, whose actions are pinned to commit SHAs and which runs with read-only permissions.
 
 ## What isn't

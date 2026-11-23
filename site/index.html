@@ -76,7 +76,9 @@
           what flood and weather warnings are in force, where the power is off, and what the rain and the river
           are forecast to do next, across the Taw's catchment in north Devon, from Dartmoor to Barnstaple. All of it
           is public data, published by the Environment Agency, South West Water, the Met Office and others on their
-          own sites; here it's on one map, and most of it is checked every five minutes.</p>
+          own sites; here it's on one map, and most of it is checked every five minutes. Those sites keep only the
+          latest weeks, or the latest spill, so Floodwatch keeps its own copy of every river and rain reading since
+          January 2026, and every storm overflow spill since June.</p>
       </div>
     </div>
     <div class="section">
@@ -85,7 +87,7 @@
         <dl class="about-list">
           <dt>Flood warnings</dt>
           <dd>The Environment Agency's flood warnings and alerts in force in the Taw catchment, outlined on the map,
-            with a banner across the top of the page while any are in force, and a pill in the header saying so while
+            with a banner across the top of the page while any are in force, and a tag in the header saying so while
             none are.</dd>
           <dt>Weather warnings</dt>
           <dd>The Met Office's yellow, amber and red warnings of severe weather that name Devon, in a banner of the
@@ -93,17 +95,20 @@
             and links to it on the Met Office site.</dd>
           <dt>Drought</dt>
           <dd>The Environment Agency's drought status for its Devon, Cornwall and Isles of Scilly area from its weekly
-            report, and South West Water's hosepipe ban, in a pill in the header that opens to show each stage as the
+            report, and South West Water's hosepipe ban, in a tag in the header that opens to show each stage as the
             report words it, with a link to the report.</dd>
           <dt>Power cuts</dt>
           <dd>National Grid Electricity Distribution's power cuts in the catchment, each with the customers off, the
             postcodes affected and when power is expected back on. To report a power cut, call 105.</dd>
           <dt>Rivers and rain</dt>
           <dd>The Environment Agency's river level, tidal and rain gauges in the catchment, and the rain gauges just
-            over its watershed, reporting every 15 minutes. River gauges are green within their typical range and red
-            above it, with an arrow while the level is rising or falling. Rain gauges have a 48-hour rain forecast,
-            and the gauge at Umberleigh a fortnight's river flow forecast for the Taw, scaled to start from the flow
-            measured there.</dd>
+            over its watershed, reporting every 15 minutes, each with its latest reading on it. River gauges are teal
+            within their typical range, amber near the top of it and red above it, with an arrow showing whether the
+            level is rising, falling or steady, and grey once they've sent nothing for three hours. Gauges close
+            together are grouped until you zoom in. Each gauge's chart goes back to January 2026, and every reading
+            it has can be downloaded as a CSV file. Rain gauges have a 48-hour rain forecast, and the gauge at
+            Umberleigh a fortnight's river flow forecast for the Taw, scaled to start from the flow measured
+            there.</dd>
           <dt>Storm overflows</dt>
           <dd>South West Water's storm overflows in the catchment, which release storm sewage into the rivers and the
             estuary when heavy rain overloads the sewers. The map opens on those spilling now; those that spilled in
@@ -129,7 +134,7 @@
             <tr><td>River, tidal and rain gauges</td><td>Environment Agency real-time flood-monitoring API, checked every 5 minutes. This uses Environment Agency flood and river level data from the real-time data API (Beta).</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
             <tr><td>Rain forecast</td><td><a href="https://open-meteo.com/" rel="noopener">Open-Meteo</a> weather forecast API, hourly rainfall for the next 48 hours at each rain gauge, fetched when a forecast is opened and kept for 15 minutes</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a></td></tr>
             <tr><td>River flow forecast</td><td>GloFAS river discharge from the Copernicus Emergency Management Service, through <a href="https://open-meteo.com/en/docs/flood-api" rel="noopener">Open-Meteo's flood API</a>, for the Taw at Umberleigh. GloFAS models rivers on a grid about 5 km across, so its flows are scaled to match the river's long-run mean flow and to start from the flow measured at Umberleigh. Its forecasts are a guide to the days ahead rather than a measurement.</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a></td></tr>
-            <tr><td>Measured river flow</td><td>Environment Agency <a href="https://environment.data.gov.uk/hydrology/doc/reference" rel="noopener">Hydrology API</a>, a reading every 15 minutes at Umberleigh, fetched when the flow forecast is opened and kept for 15 minutes. Recent readings are provisional.</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
+            <tr><td>Measured river flow</td><td>Environment Agency <a href="https://environment.data.gov.uk/hydrology/doc/reference" rel="noopener">Hydrology API</a>, a reading every 15 minutes at Umberleigh, fetched when the flow forecast is opened and kept for 15 minutes; recent readings are provisional.</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
             <tr><td>Mean river flows</td><td>Data from the UK National River Flow Archive, used to scale the modelled flows</td><td><a href="https://nrfa.ceh.ac.uk/help/costs-terms-and-conditions" rel="noopener">NRFA terms</a></td></tr>
             <tr><td>Storm overflows</td><td>South West Water's storm overflow activity feed, checked every 5 minutes</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a></td></tr>
             <tr><td>Storm overflow yearly totals</td><td>Event Duration Monitoring annual returns. © Environment Agency copyright and/or database right.</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
