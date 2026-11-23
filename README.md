@@ -1,6 +1,6 @@
 # Floodwatch
 
-![Floodwatch: the River Taw catchment in north Devon, with river level gauges as teal circles showing their readings in metres, rain gauges as drops, storm overflows spilling now as dark purple dots, clusters of gauges as white circles with a count, the Tarka and Dartmoor lines, a flood alert banner under the header and the layers legend open at the bottom left](docs/screenshot.jpg)
+![Floodwatch in a Safari window: the River Taw catchment in north Devon, with river level gauges as teal circles showing their readings in metres, rain gauges as drops, storm overflows spilling now as dark purple dots, clusters of gauges as white circles with a count, the Tarka and Dartmoor lines, a flood alert banner under the header and the layers legend open at the bottom left](docs/screenshot.png)
 
 Floodwatch shows what the River Taw is doing: how high each gauge is and whether it's rising, how much rain has fallen in the last hour, which storm overflows are spilling, and what flood and weather warnings are in force across the catchment, from Dartmoor to Barnstaple. It runs at [tawriver.watch](https://tawriver.watch).
 
@@ -116,6 +116,7 @@ The other targets:
 make poll     # run one poll of every feed, without the server
 make test     # run the Python and JavaScript tests
 make og       # redraw the link preview card, site/img/og-image.png (needs Google Chrome and make data)
+make screenshot  # retake docs/screenshot.png, the map in a Safari window, from the running server (needs Google Chrome)
 make clean    # remove the libraries, overlays and download cache; the database stays
 ```
 
@@ -240,6 +241,7 @@ scripts/fetch_geodata.py   the catchment, its neighbours and the map's overlays
 scripts/archive.py         export, restore and push the archive
 scripts/calibrate_flow.py  finds the GloFAS cell that carries a river past a gauge
 scripts/og_image.py        draws site/img/og-image.png, the link preview card
+scripts/screenshot.py      takes docs/screenshot.png, the map in a Safari window
 archive/                   every reading and spill, in v1's CSV format
 site/index.html            the page
 site/css/style.css         layout and theme, light and dark

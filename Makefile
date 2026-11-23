@@ -4,7 +4,7 @@ PORT    := 8090
 LEAFLET := 1.9.4
 MARKERCLUSTER := 1.5.3
 
-.PHONY: help libs data poll serve test test-py test-js og clean
+.PHONY: help libs data poll serve test test-py test-js og screenshot clean
 
 help:
 	@echo "make libs    download Leaflet $(LEAFLET) and Leaflet.markercluster $(MARKERCLUSTER) into site/lib and verify them"
@@ -13,6 +13,7 @@ help:
 	@echo "make serve   run the server, which also polls every 5 minutes"
 	@echo "make test    run the Python and JavaScript tests (needs Node 22 or later)"
 	@echo "make og      redraw the link preview image (needs Google Chrome and make data)"
+	@echo "make screenshot  retake the README's screenshot (needs Google Chrome and make serve)"
 	@echo "make clean   remove downloaded libraries, overlays and the download cache"
 	@echo "             (the readings database in data/ is kept)"
 
@@ -47,6 +48,9 @@ test-js:
 
 og:
 	$(PYTHON) scripts/og_image.py
+
+screenshot:
+	$(PYTHON) scripts/screenshot.py --url http://localhost:$(PORT)/
 
 clean:
 	rm -rf site/lib site/data .cache data/places.json

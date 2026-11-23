@@ -884,9 +884,28 @@ const FloodMap = (() => {
   // itself from the container, which has no size while the view is hidden.
   // The whole catchment is fitted into the part of the map the legend leaves
   // clear, so none of it starts out hidden behind the legend.
+  // The legend fills in as the overlays and counts arrive, and the window may
+  // still be settling, so the view is fitted again whenever the legend or the
+  // map changes size, until the visitor first moves the map themselves.
   let fitted = false;
   function fitIfVisible() {
     if (fitted || !map || map.getSize().x === 0) return;
+    fitOpeningView();
+    fitted = true;
+    const legend = map.getContainer().querySelector('.map-legend');
+    const watch = legend && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => fitOpeningView()) : null;
+    if (watch) watch.observe(legend);
+    map.on('resize', fitOpeningView);
+    const stop = () => {
+      if (watch) watch.disconnect();
+      map.off('resize', fitOpeningView);
+      ['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(e => map.getContainer().removeEventListener(e, stop));
+    };
+    ['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(e => map.getContainer().addEventListener(e, stop));
+  }
+
+  function fitOpeningView() {
+    if (map.getSize().x === 0) return;
     const box = map.getContainer().getBoundingClientRect();
     const legend = map.getContainer().querySelector('.map-legend');
     const r = legend ? legend.getBoundingClientRect() : null;
@@ -898,7 +917,6 @@ const FloodMap = (() => {
     // On a phone the whole catchment only fits at zoom 9, where the gauges
     // crowd together; zoom 10 on the Taw reads better, with the edges just off.
     if (map.getZoom() < 10) map.setView(L.latLngBounds(CATCHMENT_BOUNDS).getCenter(), 10, { animate: false });
-    fitted = true;
   }
 
   function resize() {
