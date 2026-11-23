@@ -9,6 +9,8 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
+# A oneshot unit has no time limit of its own: the public Overpass servers can be slow; a run that hangs is stopped, and next week's tries again.
+TimeoutStartSec=1h
 User=floodwatch
 Group=floodwatch
 WorkingDirectory=/srv/floodwatch
