@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
-## [2.0.0] — unreleased
+## [2.0.0] — 2026-11-23
 
 Floodwatch is rewritten from scratch, keeping only v1's data. The site moves from DigitalOcean's App Platform, where an hourly GitHub Actions job committed CSVs that the page downloaded and parsed on every visit, to its own server, which polls every feed every five minutes, keeps the readings in SQLite and sends the page about 10 KB of current readings, with each gauge's history fetched only when its popup opens.
 
@@ -232,7 +232,8 @@ Floodwatch is rewritten from scratch, keeping only v1's data. The site moves fro
 - Text overflow in popup boxes
 - GitHub Actions deprecation warning
 
-[Unreleased]: https://github.com/aallan/floodwatch/compare/v1.5.1...HEAD
+[Unreleased]: https://github.com/aallan/floodwatch/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/aallan/floodwatch/compare/v1.5.1...v2.0.0
 [1.5.1]: https://github.com/aallan/floodwatch/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/aallan/floodwatch/compare/v1.4.1...v1.5.0
 [1.4.1]: https://github.com/aallan/floodwatch/compare/v1.4.0...v1.4.1
