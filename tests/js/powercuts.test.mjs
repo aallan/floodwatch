@@ -16,12 +16,12 @@ test("NGED's categories read as words", () => {
 });
 
 test('postcodes are grouped by district', () => {
-  assert.equal(districts(['PL13 2DN', 'PL13 2DJ', 'PL14 1AA']), 'PL13 (2 postcodes), PL14 (1 postcode)');
+  assert.equal(districts(['EX36 3DN', 'EX36 3DJ', 'EX37 9AA']), 'EX36 (2 postcodes), EX37 (1 postcode)');
   assert.equal(districts([]), '');
 });
 
 test('a power cut is named after its nearest place', () => {
-  assert.equal(PowerCuts.title({ place: 'Looe' }), 'Power cut near Looe');
+  assert.equal(PowerCuts.title({ place: 'South Molton' }), 'Power cut near South Molton');
   assert.equal(PowerCuts.title({}), 'Power cut');
 });
 

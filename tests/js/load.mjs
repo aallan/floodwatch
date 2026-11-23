@@ -7,8 +7,11 @@ import vm from 'node:vm';
 
 const SITE = new URL('../../site/js/', import.meta.url);
 
+// A first argument that isn't a file name is a set of globals to provide,
+// such as stand-ins for Leaflet and the window.
 export function load(...files) {
-  const context = vm.createContext({ console });
+  const globals = typeof files[0] === 'object' ? files.shift() : {};
+  const context = vm.createContext({ console, ...globals });
   for (const f of files) {
     vm.runInContext(readFileSync(new URL(f, SITE), 'utf8'), context, { filename: f });
   }

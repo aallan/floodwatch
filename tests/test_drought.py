@@ -1,4 +1,4 @@
-"""Drought status: finding the latest weekly report and reading Cornwall's.
+"""Drought status: finding the latest weekly report and reading Devon's.
 
 The fixtures are trimmed from GOV.UK's answers on 2 November 2026: the
 search for the series, the series with its four latest reports, and the

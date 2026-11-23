@@ -86,7 +86,7 @@ def tidy_site_name(raw):
 
 
 def tidy_water(raw):
-    """'CAMEL ESTUARY (E)' -> 'Camel Estuary'. The bracketed suffixes mark the
+    """'TAW ESTUARY (E)' -> 'Taw Estuary'. The bracketed suffixes mark the
     water's type: (E) estuarine, (C) coastal."""
     text = str(raw or "").split("(")[0].strip()
     words = [w.lower() if i and w.lower() in SMALL_WORDS else w.capitalize() for i, w in enumerate(text.split())]

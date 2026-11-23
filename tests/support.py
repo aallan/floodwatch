@@ -35,7 +35,7 @@ class DBTestCase(QuietTestCase):
         cache.clear()
         self.addCleanup(cache.clear)
 
-    def add_station(self, sid, kind="level", measure=None, name="Somewhere", lat=50.4, lon=-4.9,
+    def add_station(self, sid, kind="level", measure=None, name="Somewhere", lat=50.99, lon=-3.98,
                     unit="m", typical=(0.2, 1.0), record=2.0, river="River Test"):
         measure = measure or f"{sid}-level-stage-i-15_min-m"
         self.con.execute(
@@ -53,7 +53,7 @@ class DBTestCase(QuietTestCase):
         self.con.commit()
 
     def add_overflow(self, oid, status=0, asset_type="SO on sewer network", status_start=None,
-                     name="Test CSO", water="River Test", lat=50.4, lon=-4.9):
+                     name="Test CSO", water="River Test", lat=50.99, lon=-3.98):
         self.con.execute(
             """INSERT INTO overflows (id, name, asset_type, water, lat, lon, status, status_start, updated)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",

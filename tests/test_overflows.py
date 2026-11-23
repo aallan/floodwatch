@@ -78,7 +78,7 @@ class States(unittest.TestCase):
     def test_tidy_names(self):
         self.assertEqual(overflows.tidy_site_name("ALLOTMENT CSO"), "Allotment CSO")
         self.assertEqual(overflows.tidy_site_name("LAND OF THE PS"), "Land of the PS")
-        self.assertEqual(overflows.tidy_water("CAMEL ESTUARY (E)"), "Camel Estuary")
+        self.assertEqual(overflows.tidy_water("TAW ESTUARY (E)"), "Taw Estuary")
         self.assertEqual(overflows.tidy_water("RIVER OF THE NORTH"), "River of the North")
         self.assertIsNone(overflows.tidy_water(None))
 

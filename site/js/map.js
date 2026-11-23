@@ -446,20 +446,28 @@ const FloodMap = (() => {
     clearLayers() { if (this._shown) this._getCluster().removeLayers(this._markers); this._markers = []; return this; },
   });
 
+  // What a cluster of gauges shows: how many, the most urgent river level
+  // among them, and whether any river is rising or any rain gauge has rain.
   const LEVEL_RANK = { high: 3, approach: 2 };
-  function gaugeClusterIcon(cluster) {
-    const stations = cluster.getAllChildMarkers().map(m => m.station).filter(Boolean);
+  function clusterSummary(stations) {
     const worst = stations.reduce((w, s) => {
       const st = gaugeState(s);
       return (LEVEL_RANK[st] || 0) > (LEVEL_RANK[w] || 0) ? st : w;
     }, 'normal');
-    const rising = stations.some(s => s.kind !== 'rain' && s.trend === 'rising' && s.state !== 'stale');
-    const raining = stations.some(s => s.kind === 'rain' && s.h1 > 0);
+    return {
+      count: stations.length, worst,
+      rising: stations.some(s => s.kind !== 'rain' && s.trend === 'rising' && s.state !== 'stale'),
+      raining: stations.some(s => s.kind === 'rain' && s.state !== 'stale' && s.h1 > 0),
+    };
+  }
+
+  function gaugeClusterIcon(cluster) {
+    const c = clusterSummary(cluster.getAllChildMarkers().map(m => m.station).filter(Boolean));
     const size = parseFloat(cssVar('--gauge-size')) || 36;
     return L.divIcon({
       className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2],
-      html: `<span class="gcluster is-${worst}${raining ? ' is-raining' : ''}"><span class="gcluster-n">${stations.length}</span></span>` +
-        (rising ? '<span class="gauge-trend is-rising">↑</span>' : ''),
+      html: `<span class="gcluster is-${c.worst}${c.raining ? ' is-raining' : ''}"><span class="gcluster-n">${c.count}</span></span>` +
+        (c.rising ? '<span class="gauge-trend is-rising">↑</span>' : ''),
     });
   }
 
@@ -922,5 +930,9 @@ const FloodMap = (() => {
   }
 
   // `map` is exposed read-only for debugging from the console.
-  return { init, restyle, resize, setFloodWarnings, focusFlood, get map() { return map; } };
+  return {
+    init, restyle, resize, setFloodWarnings, focusFlood, get map() { return map; },
+    // The marker logic, for tests/js.
+    _internals: { gaugeState, gaugeText, clusterSummary, gaugeScale, APPROACH },
+  };
 })();

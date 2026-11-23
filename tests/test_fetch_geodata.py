@@ -157,3 +157,24 @@ class Gaps(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Lines(unittest.TestCase):
+    def test_lines_join_end_to_start_and_keep_their_direction(self):
+        a, b = [(0, 0), (1, 0)], [(1, 0), (2, 0)]
+        self.assertEqual(fg.merge_lines([b, a]), [[(0, 0), (1, 0), (2, 0)]])
+        # Two lines that meet end to end, both flowing in: not joined, since
+        # one would have to run backwards.
+        self.assertEqual(len(fg.merge_lines([[(0, 0), (1, 0)], [(2, 0), (1, 0)]])), 2)
+
+    def test_a_river_is_cut_where_it_first_crosses_the_coastline(self):
+        coast = fg.Coastline([{"geometry": [{"lon": 2, "lat": -1}, {"lon": 2, "lat": 1}]}])
+        line = [(0, 0), (1, 0), (3, 0), (4, 0)]
+        self.assertEqual(coast.cut(line), [(0, 0), (1, 0), (2.0, 0.0)])
+        self.assertEqual(coast.cut([(0, 5), (1, 5)]), [(0, 5), (1, 5)])   # never crosses it
+
+    def test_touches_the_catchment(self):
+        from monitor.geo import LandMask
+        land = LandMask([[(0, 50), (0.1, 50), (0.1, 50.1), (0, 50.1), (0, 50)]], 0)
+        self.assertTrue(fg.touches([[(0.05, 50.05), (0.5, 50.05)]], land))
+        self.assertFalse(fg.touches([[(0.5, 50.05), (0.6, 50.05)]], land))

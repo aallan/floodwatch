@@ -10,11 +10,11 @@ from tests.support import DBTestCase, measure_item
 
 class PickMeasure(unittest.TestCase):
     def test_prefers_the_series_still_reporting(self):
-        # Gunnislake lists its old stage series beside the one that replaced it.
-        station = {"measures": [measure_item("47117-level-stage-i-15_min-m", unit="m"),
-                                measure_item("47117-level-stage-i-15_min-mASD", unit="mASD")]}
-        self.assertEqual(ea.pick_measure(station, "level", frozenset({"47117-level-stage-i-15_min-mASD"})),
-                         ("level", "47117-level-stage-i-15_min-mASD", "mASD"))
+        # A station can list an old stage series beside the one that replaced it.
+        station = {"measures": [measure_item("50140-level-stage-i-15_min-m", unit="m"),
+                                measure_item("50140-level-stage-i-15_min-mASD", unit="mASD")]}
+        self.assertEqual(ea.pick_measure(station, "level", frozenset({"50140-level-stage-i-15_min-mASD"})),
+                         ("level", "50140-level-stage-i-15_min-mASD", "mASD"))
 
     def test_falls_back_to_unit_order_when_nothing_is_known_to_report(self):
         station = {"measures": [measure_item("x-mAOD", unit="mAOD"), measure_item("x-m", unit="m")]}

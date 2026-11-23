@@ -120,5 +120,5 @@ const FloodWarnings = (() => {
     setInterval(load, REFRESH_MS);
   }
 
-  return { init, detail };
+  return { init, detail, _internals: { summaryText } };
 })();

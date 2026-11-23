@@ -232,33 +232,30 @@ def merge_lines(lines):
     """Join line strings end-to-start where they meet, keeping direction.
 
     OSM waterways are drawn source-to-mouth, so joining only end->start keeps
-    the flow direction intact for the arrows on the map.
+    the flow direction intact for the arrows on the map. Each chain starts
+    from a line nothing flows into, so the pieces of a river join up whatever
+    order they come in.
     """
     lines = [list(l) for l in lines if len(l) >= 2]
-    merged = True
-    while merged:
-        merged = False
-        starts = {}
-        for i, l in enumerate(lines):
-            starts.setdefault(l[0], []).append(i)
-        used = set()
-        out = []
-        for i, l in enumerate(lines):
-            if i in used:
-                continue
-            used.add(i)
-            cur = l
-            while True:
-                nxt = [j for j in starts.get(cur[-1], []) if j not in used]
-                if not nxt:
-                    break
-                j = nxt[0]
-                used.add(j)
-                cur = cur + lines[j][1:]
-                merged = True
-            out.append(cur)
-        lines = out
-    return lines
+    starts = defaultdict(list)
+    for i, l in enumerate(lines):
+        starts[l[0]].append(i)
+    ends = {l[-1] for l in lines}
+    used, out = set(), []
+    # Heads first: lines whose start isn't another line's end.
+    for i in sorted(range(len(lines)), key=lambda i: lines[i][0] in ends):
+        if i in used:
+            continue
+        used.add(i)
+        cur = lines[i]
+        while True:
+            nxt = [j for j in starts.get(cur[-1], ()) if j not in used]
+            if not nxt:
+                break
+            used.add(nxt[0])
+            cur = cur + lines[nxt[0]][1:]
+        out.append(cur)
+    return out
 
 
 class Spans:

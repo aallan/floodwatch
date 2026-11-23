@@ -47,29 +47,29 @@ class RefreshAreas(DBTestCase):
 class PollWarnings(DBTestCase):
     def setUp(self):
         super().setUp()
-        for aid, kind in (("112WAFTAMAR", "alert"), ("112FWFCAMEL", "warning")):
+        for aid, kind in (("113WAFTW12", "alert"), ("113FWF2E1B", "warning")):
             self.con.execute("INSERT INTO flood_areas (id, kind, label, active, updated) VALUES (?, ?, ?, 1, 0)",
                              (aid, kind, aid.lower()))
         self.con.commit()
 
-    def test_keeps_cornish_warnings_in_force_most_severe_first(self):
+    def test_keeps_the_catchments_warnings_in_force_most_severe_first(self):
         items = [
-            {"floodAreaID": "112WAFTAMAR", "severityLevel": 3, "description": "Tamar", "message": " Alert "},
-            {"floodAreaID": "112FWFCAMEL", "severityLevel": 2, "description": "Camel",
+            {"floodAreaID": "113WAFTW12", "severityLevel": 3, "description": "North Dartmoor Rivers", "message": " Alert "},
+            {"floodAreaID": "113FWF2E1B", "severityLevel": 2, "description": "River Taw (Lower)",
              "timeSeverityChanged": "2026-10-30T09:00:00"},
-            {"floodAreaID": "112WAFTAMAR", "severityLevel": 4},     # no longer in force
-            {"floodAreaID": "DEVON", "severityLevel": 1},           # not one of Cornwall's areas
+            {"floodAreaID": "113WAFTW12", "severityLevel": 4},     # no longer in force
+            {"floodAreaID": "113FWFTORR01", "severityLevel": 1},   # not one of the catchment's areas
         ]
         with mock.patch.object(floods, "get", return_value={"items": items}), \
                 mock.patch.object(floods, "fetch_outline", return_value=None):
             out = floods.poll_warnings(self.con)
         self.assertEqual([(w["id"], w["label"]) for w in out],
-                         [("112FWFCAMEL", "Flood warning"), ("112WAFTAMAR", "Flood alert")])
+                         [("113FWF2E1B", "Flood warning"), ("113WAFTW12", "Flood alert")])
         self.assertEqual(out[1]["message"], "Alert")
         self.assertEqual(out[0]["since"], floods.uk_ts("2026-10-30T09:00:00"))
 
     def test_a_failed_outline_still_shows_the_warning(self):
-        items = [{"floodAreaID": "112FWFCAMEL", "severityLevel": 2}]
+        items = [{"floodAreaID": "113FWF2E1B", "severityLevel": 2}]
         with mock.patch.object(floods, "get", return_value={"items": items}), \
                 mock.patch.object(floods, "fetch_outline", side_effect=OSError("timed out")):
             out = floods.poll_warnings(self.con)
@@ -78,7 +78,7 @@ class PollWarnings(DBTestCase):
 
     def test_an_outline_is_fetched_once_and_kept(self):
         square = {"type": "MultiPolygon", "coordinates": [[[[-4.8, 50.5], [-4.7, 50.5], [-4.7, 50.6], [-4.8, 50.5]]]]}
-        items = [{"floodAreaID": "112FWFCAMEL", "severityLevel": 2}]
+        items = [{"floodAreaID": "113FWF2E1B", "severityLevel": 2}]
         with mock.patch.object(floods, "get", return_value={"items": items}), \
                 mock.patch.object(floods, "fetch_outline", return_value=square) as fetch:
             floods.poll_warnings(self.con)

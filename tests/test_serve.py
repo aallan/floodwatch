@@ -126,7 +126,7 @@ class Forecasts(Server):
         self.assertEqual(self.request("/api/forecast/rain/LEVEL")[0], 404)
         with mock.patch.object(forecast, "rain", return_value={"hours": []}) as rain:
             self.assertEqual(self.get_json("/api/forecast/rain/RAIN"), (200, {"hours": []}))
-        rain.assert_called_once_with(50.4, -4.9)
+        rain.assert_called_once_with(50.99, -3.98)
 
     def test_flow_forecast_only_for_known_outlets(self):
         self.assertEqual(self.request("/api/forecast/flow/12345")[0], 404)
