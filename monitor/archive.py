@@ -27,11 +27,12 @@ ARCHIVE = ROOT / "archive"
 READING_COLUMNS = ["dateTime", "value", "unit", "station_id", "station_label"]
 STATION_COLUMNS = ["id", "label", "lat", "lon", "river", "type", "rloi", "measure_id"]
 SPILL_COLUMNS = ["start_time", "end_time", "duration_min", "is_ongoing"]
-OVERFLOW_FILE = re.compile(r"^cso_([A-Z0-9]+)\.csv$")
+OVERFLOW_FILE = re.compile(r"cso_([A-Z0-9]+)\.csv")
 # Station and overflow IDs come from outside feeds and go into file names,
 # which the nightly push commits, so anything but a plain ID is skipped.
-STATION_ID = re.compile(r"^[A-Za-z0-9_-]{1,24}$")
-OVERFLOW_ID = re.compile(r"^[A-Z0-9]{1,24}$")
+# fullmatch, not match: '$' would let a trailing newline through.
+STATION_ID = re.compile(r"[A-Za-z0-9_-]{1,24}")
+OVERFLOW_ID = re.compile(r"[A-Z0-9]{1,24}")
 
 
 def iso(ts):
@@ -96,7 +97,7 @@ def export(con, directory=ARCHIVE):
     try:
         stations = con.execute("SELECT * FROM stations ORDER BY id").fetchall()
         for s in stations:
-            if not STATION_ID.match(s["id"] or ""):
+            if not STATION_ID.fullmatch(s["id"] or ""):
                 continue
             rows = con.execute("SELECT ts, value FROM readings WHERE measure = ? ORDER BY ts", (s["measure"],)).fetchall()
             if not rows:
@@ -112,12 +113,12 @@ def export(con, directory=ARCHIVE):
         # v1 recorded it for its gauges, and it's kept.
         listed = {s["id"]: [s["id"], s["name"], s["lat"], s["lon"], s["river"] or "", station_type(s["kind"]),
                             archived.get(s["id"], {}).get("rloi", ""), s["measure"]]
-                  for s in stations if STATION_ID.match(s["id"] or "")}
+                  for s in stations if STATION_ID.fullmatch(s["id"] or "")}
         for sid, r in archived.items():
             listed.setdefault(sid, [r.get(c, "") for c in STATION_COLUMNS])
         changed += write_csv(old, STATION_COLUMNS, (listed[k] for k in sorted(listed)))
         for (oid,) in con.execute("SELECT DISTINCT id FROM overflow_events ORDER BY id").fetchall():
-            if not OVERFLOW_ID.match(oid or ""):
+            if not OVERFLOW_ID.fullmatch(oid or ""):
                 continue
             events = con.execute("SELECT started, ended FROM overflow_events WHERE id = ? ORDER BY started", (oid,)).fetchall()
             changed += write_csv(directory / f"cso_{oid}.csv", SPILL_COLUMNS, (
@@ -138,7 +139,7 @@ def restore_readings(con, directory=ARCHIVE):
     loaded, skipped = {}, {}
     for s in read_csv(directory / "stations.csv"):
         sid = s["id"]
-        if not STATION_ID.match(sid or ""):
+        if not STATION_ID.fullmatch(sid or ""):
             skipped[str(sid)] = "not a plain station ID"
             continue
         if sid not in measures:
@@ -175,7 +176,7 @@ def restore_spills(con, directory=ARCHIVE):
     ours = {r["id"] for r in con.execute("SELECT id FROM overflows")}
     loaded = {}
     for path in sorted(directory.glob("cso_*.csv")):
-        m = OVERFLOW_FILE.match(path.name)
+        m = OVERFLOW_FILE.fullmatch(path.name)
         if not m or m.group(1) not in ours:
             continue
         oid, rows = m.group(1), []

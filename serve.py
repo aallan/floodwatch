@@ -42,7 +42,7 @@ VERSION = git_version()
 DEFAULT_PORT = 8090
 # A chart can ask for up to ten years by number of days, or for all time.
 MAX_HISTORY_DAYS = 3650
-STATION_ID = re.compile(r"^[A-Za-z0-9_-]{1,24}$")
+STATION_ID = re.compile(r"[A-Za-z0-9_-]{1,24}")
 
 # Basemap tiles are the only third-party origin the page may load.
 TILE_HOST = "https://server.arcgisonline.com"
@@ -101,7 +101,7 @@ class Handler(SimpleHTTPRequestHandler):
         if parts == ["api", "version"]:
             return self.send_json({"version": VERSION})
         # /api/overflows/<id>
-        if len(parts) == 3 and parts[:2] == ["api", "overflows"] and STATION_ID.match(parts[2]):
+        if len(parts) == 3 and parts[:2] == ["api", "overflows"] and STATION_ID.fullmatch(parts[2]):
             con = db.connect(read_only=True)
             try:
                 found = overflows.detail(con, parts[2])
@@ -109,7 +109,7 @@ class Handler(SimpleHTTPRequestHandler):
                 con.close()
             return self.send_json(found) if found else self.send_json({"error": "no such overflow"}, 404)
         # /api/forecast/rain/<station id>: the next 48 hours at a rain gauge
-        if len(parts) == 4 and parts[:3] == ["api", "forecast", "rain"] and STATION_ID.match(parts[3]):
+        if len(parts) == 4 and parts[:3] == ["api", "forecast", "rain"] and STATION_ID.fullmatch(parts[3]):
             con = db.connect(read_only=True)
             try:
                 s = con.execute("SELECT lat, lon FROM stations WHERE id = ? AND kind = 'rain'", (parts[3],)).fetchone()
@@ -122,7 +122,7 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception:  # noqa: BLE001 - the popup says the forecast is unavailable
                 return self.send_json({"error": "forecast unavailable"}, 502)
         # /api/forecast/flow/<station id>: modelled river flow at a level gauge
-        if len(parts) == 4 and parts[:3] == ["api", "forecast", "flow"] and STATION_ID.match(parts[3]):
+        if len(parts) == 4 and parts[:3] == ["api", "forecast", "flow"] and STATION_ID.fullmatch(parts[3]):
             if parts[3] not in forecast.FLOW_OUTLETS:
                 return self.send_json({"error": "no flow forecast for this gauge"}, 404)
             try:
@@ -131,11 +131,11 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json({"error": "forecast unavailable"}, 502)
         # /api/stations/<id>/readings.csv: every reading, for download
         if len(parts) == 4 and parts[:2] == ["api", "stations"] and parts[3] == "readings.csv" \
-                and STATION_ID.match(parts[2]):
+                and STATION_ID.fullmatch(parts[2]):
             return self.send_csv(parts[2])
         # /api/stations/<id>/readings?days=N, or days=all
         if len(parts) != 4 or parts[:2] != ["api", "stations"] or parts[3] != "readings" \
-                or not STATION_ID.match(parts[2]):
+                or not STATION_ID.fullmatch(parts[2]):
             return self.send_json({"error": "not found"}, 404)
         asked = urllib.parse.parse_qs(url.query).get("days", ["7"])[0]
         if asked == "all":

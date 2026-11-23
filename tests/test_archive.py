@@ -100,6 +100,7 @@ class Archive(DBTestCase):
         m = self.add_station("../../serve", name="Nowhere")
         self.add_readings(m, [(1_793_361_600, 0.5)])
         self.con.execute("INSERT INTO overflow_events VALUES ('../X', 1793361600, 1793365200)")
+        self.con.execute("INSERT INTO overflow_events VALUES ('SBB1\n', 1793361600, 1793365200)")
         self.con.commit()
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "archive"
@@ -108,6 +109,7 @@ class Archive(DBTestCase):
             self.assertNotIn("serve", " ".join(names))
             self.assertFalse(any("X" in n for n in names if n.startswith("cso_")))
             self.assertTrue(all(p.parent == out for p in Path(tmp).rglob("*.csv")))
+            self.assertFalse(any("\n" in n for n in names))
 
     def test_no_archive_restores_nothing(self):
         self.assertEqual(archive.restore(self.con, self.dir), (0, 0, {}))
