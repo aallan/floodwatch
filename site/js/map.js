@@ -1,15 +1,15 @@
 'use strict';
 
-// The Taw catchment map: basemap, Devon's mask, the catchment, waterways,
-// railways, legend.
+// The Taw catchment map: the gauges and their readings first, then storm
+// overflows and flood warnings, over quiet waterways, roads and railways.
 // Colours come from CSS variables so the map follows light/dark mode.
 
 const FloodMap = (() => {
   const DATA = 'data/';
 
-  // The opening view, as Floodwatch has always opened: the catchment from
-  // Dartmoor to Barnstaple, with the legend over the land to its west.
-  const OPENING_VIEW = { centre: [50.92, -3.88], zoom: 10 };
+  // The opening view takes in the whole catchment, from Dartmoor to
+  // Braunton, in the space beside the legend.
+  const CATCHMENT_BOUNDS = [[50.65, -4.22], [51.19, -3.59]];
   // Devon and a wide margin round it, so its edges can be panned to the
   // middle of the screen.
   const MAX_BOUNDS = [[49.6, -5.9], [51.9, -1.8]];
@@ -51,8 +51,7 @@ const FloodMap = (() => {
 
   // Legend toggles. Each map part belongs to one toggle and may have a min zoom.
   const toggles = {
-    boundary:  { on: true },
-    catchment: { on: true },
+    catchment: { on: false },
     rivers:    { on: true },
     streams:   { on: false },
     passenger: { on: true },
@@ -204,8 +203,11 @@ const FloodMap = (() => {
   // Marker size multiplier, read by the stylesheet as --mk: markers grow as
   // the map zooms in, where there are fewer of them on screen at once.
   const markerScale = z => (z >= 14 ? 2 : z >= 13 ? 1.75 : z >= 12 ? 1.5 : z >= 11 ? 1.3 : z >= 10 ? 1.15 : 1);
+  // Gauges are a little smaller zoomed out, where they crowd each other.
+  const gaugeScale = z => (z <= 9 ? 0.75 : z === 10 ? 0.9 : 1);
   function sizeMarkers() {
     map.getContainer().style.setProperty('--mk', markerScale(map.getZoom()));
+    map.getContainer().style.setProperty('--gs', gaugeScale(map.getZoom()));
   }
 
   // Zoom-dependent line weight multiplier.
@@ -214,35 +216,12 @@ const FloodMap = (() => {
     return z >= 13 ? 1.7 : z >= 12 ? 1.45 : z >= 11 ? 1.2 : z >= 10 ? 1.05 : 0.9;
   };
 
-  // ---------------------------------------------------------------- boundary
-  function addBoundary(fc) {
-    const rings = fc.features.flatMap(f => f.geometry.coordinates.map(poly => toLatLngs(poly[0])));
-    const world = [[-89, -179], [-89, 179], [89, 179], [89, -179]];
-
-    // Dim everything outside Devon.
-    const mask = L.polygon([world, ...rings], {
-      renderer: renderers.mask, interactive: false, stroke: false, fillRule: 'evenodd',
-    });
-    const outline = L.polygon(rings, { renderer: renderers.boundary, interactive: false, fill: false });
-
-    const style = () => {
-      mask.setStyle({ fillColor: cssVar('--mask'), fillOpacity: parseFloat(cssVar('--mask-opacity')) || 0.5 });
-      outline.setStyle({ color: cssVar('--text-tertiary'), weight: 1, opacity: 0.6 });
-    };
-    style();
-    restylers.push(style);
-    addPart(mask, 'boundary', Z.mask);
-    addPart(outline, 'boundary', Z.boundary);
-  }
-
-  // The Taw catchment, which everything on the map is drawn for: an outline
-  // in the accent colour, with a faint tint inside.
+  // ---------------------------------------------------------------- catchment
+  // The Taw catchment's outline, off at first: the map is about the gauges.
   function addCatchment(fc) {
     const rings = fc.features.flatMap(f => f.geometry.coordinates.map(poly => toLatLngs(poly[0])));
-    const area = L.polygon(rings, { renderer: renderers.catchment, interactive: false });
-    const style = () => area.setStyle({
-      color: cssVar('--accent'), weight: 1.8, opacity: 0.85, fillColor: cssVar('--accent'), fillOpacity: 0.04,
-    });
+    const area = L.polygon(rings, { renderer: renderers.catchment, interactive: false, fill: false });
+    const style = () => area.setStyle({ color: cssVar('--accent'), weight: 1.5, opacity: 0.7, dashArray: '6 4' });
     style();
     restylers.push(style);
     addPart(area, 'catchment', Z.catchment);
@@ -256,10 +235,10 @@ const FloodMap = (() => {
     const style = f => {
       const km = f.properties.length_km || 0;
       const own = RIVER_COLOURS[f.properties.name];
-      const base = !f.properties.name ? 1.0 : own ? (km >= MAJOR_RIVER_KM ? 3.2 : 2.6) : km >= MAJOR_RIVER_KM ? 2.0 : 1.4;
+      const base = own ? (km >= MAJOR_RIVER_KM ? 3.2 : 2.6) : f.properties.name ? 1.4 : 1.0;
       return {
-        color: cssVar(own || '--water'), weight: base * zoomScale(),
-        opacity: f.properties.name ? 0.95 : 0.65, lineCap: 'round', lineJoin: 'round',
+        color: cssVar(own || '--water-minor'), weight: base * zoomScale(),
+        opacity: own ? 0.95 : 0.8, lineCap: 'round', lineJoin: 'round',
       };
     };
 
@@ -275,15 +254,13 @@ const FloodMap = (() => {
       renderer: renderers.rivers, style, interactive: false,
     });
 
-    // Labels: long rivers always, short ones once zoomed in.
+    // Labels for the coloured rivers only; the rest are named on hover.
     const major = L.layerGroup(), minor = L.layerGroup();
     for (const f of named) {
-      const line = longestPart(f.geometry);
-      if (!line || line.length < 2) continue;
       const own = RIVER_COLOURS[f.properties.name];
-      const isMajor = Boolean(own) || f.properties.length_km >= MAJOR_RIVER_KM;
-      const mark = label(pointAlong(line, 0.5), f.properties.name, `river${isMajor ? ' major' : ''}`, own);
-      mark.addTo(isMajor ? major : minor);
+      const line = longestPart(f.geometry);
+      if (!own || !line || line.length < 2) continue;
+      label(pointAlong(line, 0.5), f.properties.name, 'river', own).addTo(major);
     }
 
     // Flow arrows: OSM waterways are drawn source to mouth.
@@ -350,9 +327,8 @@ const FloodMap = (() => {
       const group = L.layerGroup();
       const labels = L.layerGroup();
 
-      // Passenger lines get the classic map casing: a solid line with a dashed
-      // inner stripe. Freight branches are a plain thin dash.
-      const cased = kind !== 'freight';
+      // A thin dashed line, as Floodwatch has always drawn the railways.
+      const cased = false;
       const base = L.geoJSON(feats, {
         renderer: renderers.rail,
         onEachFeature: (f, layer) => layer.bindTooltip(tip(f.properties.line || RAIL_KIND[kind].sub, f.properties.line ? RAIL_KIND[kind].sub : ''), TIP_OPTS),
@@ -365,7 +341,7 @@ const FloodMap = (() => {
           base.setStyle({ color: cssVar(RAIL_KIND[kind].colour), weight: 3.4 * s, opacity: 0.95, lineCap: 'butt', lineJoin: 'round' });
           inner.setStyle({ color: cssVar('--bg-card'), weight: 1.5 * s, opacity: 1, dashArray: `${5 * s} ${5 * s}`, lineCap: 'butt' });
         } else {
-          base.setStyle({ color: cssVar(RAIL_KIND[kind].colour), weight: 1.6 * s, opacity: 0.9, dashArray: '4 4', lineCap: 'butt' });
+          base.setStyle({ color: cssVar(RAIL_KIND[kind].colour), weight: 1.5 * s, opacity: 0.75, dashArray: '6 4', lineCap: 'butt' });
         }
       };
       style();
@@ -392,8 +368,8 @@ const FloodMap = (() => {
     });
     const style = () => layer.eachLayer(m => {
       m.setStyle({
-        radius: 3.6 * zoomScale(),
-        color: cssVar('--rail'), weight: 1.6,
+        radius: 3 * zoomScale(),
+        color: cssVar('--rail'), weight: 1.4,
         fillColor: cssVar('--hollow-fill'), fillOpacity: 1, opacity: 1,
       });
     });
@@ -418,8 +394,8 @@ const FloodMap = (() => {
     const fill = L.geoJSON(fc, { renderer: renderers.roads, interactive: false }).addTo(group);
     const style = () => {
       const s = zoomScale();
-      edge.setStyle({ color: cssVar('--road-edge'), weight: 4 * s, opacity: 0.9, lineCap: 'round', lineJoin: 'round' });
-      fill.setStyle({ color: cssVar('--road'), weight: 2.2 * s, opacity: 1, lineCap: 'round', lineJoin: 'round' });
+      edge.setStyle({ color: cssVar('--road-edge'), weight: 3.2 * s, opacity: 0.7, lineCap: 'round', lineJoin: 'round' });
+      fill.setStyle({ color: cssVar('--road'), weight: 1.8 * s, opacity: 1, lineCap: 'round', lineJoin: 'round' });
     };
     style();
     restylers.push(style);
@@ -453,6 +429,31 @@ const FloodMap = (() => {
   const liveGroups = { level: L.layerGroup(), tidal: L.layerGroup(), rain: L.layerGroup() };
   let liveRegistered = false;
 
+  // A river level within 30% of the top of its typical range is getting
+  // close, and its marker turns amber before it turns red.
+  const APPROACH = 0.7;
+  function gaugeState(s) {
+    if (s.kind === 'rain') return s.state === 'stale' ? 'stale' : s.h1 > 0 ? 'raining' : 'dry';
+    if (s.kind === 'level' && s.state !== 'high' && s.state !== 'stale' && s.typical && s.typical[1] != null
+        && s.value >= APPROACH * s.typical[1]) return 'approach';
+    return s.state;
+  }
+
+  function gaugeText(s) {
+    if (s.kind === 'rain') return s.h1 == null ? '–' : s.h1.toFixed(1);
+    return s.value == null ? '–' : s.value.toFixed(2);
+  }
+
+  function gaugeIcon(s) {
+    const size = parseFloat(cssVar('--gauge-size')) || 36;
+    const trend = s.trend && s.kind !== 'rain' && s.state !== 'stale'
+      ? `<span class="gauge-trend is-${esc(s.trend)}">${{ rising: '↑', falling: '↓', steady: '→' }[s.trend] || ''}</span>` : '';
+    return L.divIcon({
+      className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2],
+      html: `<span class="gauge gauge-${s.kind} is-${esc(gaugeState(s))}"><span class="gauge-value">${esc(gaugeText(s))}</span></span>${trend}`,
+    });
+  }
+
   function renderLive(live) {
     if (!liveRegistered) {
       addPart(liveGroups.level, 'levels', Z.markers);
@@ -465,14 +466,8 @@ const FloodMap = (() => {
     for (const s of live.stations) {
       if (!liveGroups[s.kind]) continue;
       counts[s.kind]++;
-      const icon = L.divIcon({
-        className: '', iconSize: [14, 14], iconAnchor: [7, 7],
-        // River and tidal gauges carry a small badge for their trend.
-        html: `<span class="stn stn-${s.kind} is-${esc(s.state)}"></span>` +
-          (s.trend && s.state !== 'stale' ? `<span class="trend for-${s.kind} is-${esc(s.trend)}"></span>` : ''),
-      });
-      L.marker([s.lat, s.lon], { icon, title: s.name, riseOnHover: true })
-        .bindTooltip(tip(s.name, StationPopup.summary(s)), { ...TIP_OPTS, sticky: false, offset: [0, -10] })
+      L.marker([s.lat, s.lon], { icon: gaugeIcon(s), title: s.name, riseOnHover: true, zIndexOffset: 500 })
+        .bindTooltip(tip(s.name, StationPopup.summary(s)), { ...TIP_OPTS, sticky: false, offset: [0, -20] })
         .on('click', () => StationPopup.open(map, s))
         .addTo(liveGroups[s.kind]);
     }
@@ -502,12 +497,13 @@ const FloodMap = (() => {
       const group = CSO_GROUP[o.state];
       if (!group) continue;
       counts[group]++;
+      // A 32 px tap target round the visible dot.
       const icon = L.divIcon({
-        className: '', iconSize: [12, 12], iconAnchor: [6, 6],
+        className: '', iconSize: [32, 32], iconAnchor: [16, 16],
         html: `<span class="cso is-${esc(o.state)}${o.works ? ' is-works' : ''}"></span>`,
       });
       L.marker([o.lat, o.lon], { icon, title: o.name || o.id, riseOnHover: true,
-        zIndexOffset: group === 'now' ? 400 : group === 'recent' ? 200 : 0 })
+        zIndexOffset: group === 'now' ? 300 : group === 'recent' ? 200 : 100 })
         .bindTooltip(tip(o.name || `Storm overflow ${o.id}`, StationPopup.overflowSummary(o)),
           { ...TIP_OPTS, sticky: false, offset: [0, -8] })
         .on('click', () => StationPopup.openOverflow(map, o))
@@ -573,8 +569,11 @@ const FloodMap = (() => {
 
   function floodStyle(w) {
     const colour = cssVar(`--flood-${FLOOD_CLASS[w.severity]}`);
-    return { color: colour, fillColor: colour, weight: 2 * zoomScale(), opacity: 0.95,
-      fillOpacity: w.severity === 3 ? 0.2 : 0.35, lineJoin: 'round' };
+    // An alert covers a wide area and says only that flooding is possible, so
+    // its area is a faint tint; a warning's is outlined.
+    return w.severity === 3
+      ? { color: colour, fillColor: colour, weight: 0.8, opacity: 0.45, fillOpacity: 0.12, lineJoin: 'round' }
+      : { color: colour, fillColor: colour, weight: 2 * zoomScale(), opacity: 0.95, fillOpacity: 0.3, lineJoin: 'round' };
   }
 
   function drawFloods() {
@@ -653,9 +652,11 @@ const FloodMap = (() => {
         ${title('power', 'Power cuts')}
         ${item('powercuts', 'pcut-swatch', '--power-bg', 'Live power cuts', '<span class="count" id="legend-count-powercuts"></span>')}
         ${title('live', 'Live readings')}
-        ${item('levels', 'gauge level', '--level-normal', 'River levels', '<span class="count" id="legend-count-levels"></span>')}
-        ${item('tidal', 'gauge tidal', '--tidal', 'Tidal levels', '<span class="count" id="legend-count-tidal"></span>')}
-        ${item('rain', 'gauge rain', '--rain', 'Rain gauges', '<span class="count" id="legend-count-rain"></span>')}
+        ${item('levels', 'gauge-swatch level', '--gauge-normal', 'River level (m)', '<span class="count" id="legend-count-levels"></span>')}
+        <div class="legend-key gauge-key"><span class="swatch gauge-swatch level" style="--c: var(--gauge-approach)"></span>near the top of its range
+          <span class="swatch gauge-swatch level" style="--c: var(--gauge-high)"></span>above it</div>
+        ${item('tidal', 'gauge-swatch tidal', '--gauge-tidal', 'Tidal level (m AOD)', '<span class="count" id="legend-count-tidal"></span>')}
+        ${item('rain', 'gauge-swatch rain', '--gauge-rain', 'Rain in the last hour (mm)', '<span class="count" id="legend-count-rain"></span>')}
         <div class="legend-key" aria-label="Trend badges on river and tidal gauges">
           <span class="trend-key is-rising"></span>rising
           <span class="trend-key is-falling"></span>falling
@@ -665,8 +666,7 @@ const FloodMap = (() => {
         ${item('csoNow', 'cso-swatch is-spilling', '--cso', 'Spilling now', '<span class="count" id="legend-count-csoNow"></span>')}
         ${item('csoRecent', 'cso-swatch is-recent', '--cso-recent', 'Spilled in last 48 h', '<span class="count" id="legend-count-csoRecent"></span>')}
         ${item('csoQuiet', 'cso-swatch is-quiet', '--cso-quiet', 'Quiet or offline', '<span class="count"><span id="legend-cso-quiet-hint">zoom in · </span><span id="legend-count-csoQuiet"></span></span>')}
-        <div class="legend-key"><span class="works-key"></span>at a treatment works</div>
-        <div class="legend-key"><span class="works-key is-network"></span>on the sewer network</div>
+        <div class="legend-key"><span class="works-key"></span>treatment works<span class="works-key is-network"></span>sewer network</div>
         </div>
         <div class="legend-col">
         ${title('waterways', 'Waterways')}
@@ -679,9 +679,8 @@ const FloodMap = (() => {
         ${item('stations', 'dot', '--rail', 'Stations', '<span class="count" id="legend-count-stations"></span>')}
         ${title('roads', 'Roads')}
         ${item('roads', 'road', '--road', 'Major roads')}
-        <div class="legend-title">Boundaries</div>
-        ${item('catchment', 'area', '--accent', 'Taw catchment')}
-        ${item('boundary', 'area', '--text-tertiary', 'Devon')}
+        <div class="legend-title">Boundary</div>
+        ${item('catchment', 'dash', '--accent', 'Taw catchment')}
         </div>
         </div>`;
       syncLegend(div);
@@ -767,7 +766,6 @@ const FloodMap = (() => {
     const layer = (name, add) => getJSON(DATA + name)
       .then(fc => { add(fc); updateVisibility(); })
       .catch(e => console.warn(e));
-    layer('boundary.geojson', addBoundary);
     layer('catchment.geojson', addCatchment);
     layer('rivers.geojson', fc => setCount('rivers', addRivers(fc)));
     layer('roads.geojson', addRoads);
@@ -795,10 +793,22 @@ const FloodMap = (() => {
 
   // Set the opening view the first time the map is visible: Leaflet sizes
   // itself from the container, which has no size while the view is hidden.
+  // The whole catchment is fitted into the part of the map the legend leaves
+  // clear, so none of it starts out hidden behind the legend.
   let fitted = false;
   function fitIfVisible() {
     if (fitted || !map || map.getSize().x === 0) return;
-    map.setView(OPENING_VIEW.centre, OPENING_VIEW.zoom, { animate: false });
+    const box = map.getContainer().getBoundingClientRect();
+    const legend = map.getContainer().querySelector('.map-legend');
+    const r = legend ? legend.getBoundingClientRect() : null;
+    // Beside the legend if there's room for the catchment there, else above it.
+    const beside = r && box.width - (r.right - box.left) > box.width * 0.45;
+    const padTL = [beside ? r.right - box.left + 12 : 16, 16];
+    const padBR = [16, !beside && r ? box.bottom - r.top + 12 : 16];
+    map.fitBounds(CATCHMENT_BOUNDS, { paddingTopLeft: padTL, paddingBottomRight: padBR, animate: false });
+    // On a phone the whole catchment only fits at zoom 9, where the gauges
+    // crowd together; zoom 10 on the Taw reads better, with the edges just off.
+    if (map.getZoom() < 10) map.setView(L.latLngBounds(CATCHMENT_BOUNDS).getCenter(), 10, { animate: false });
     fitted = true;
   }
 

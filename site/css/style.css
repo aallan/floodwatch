@@ -1,6 +1,7 @@
-/* Monitoring Cornwall stylesheet. A warm-neutral palette held in CSS custom
-   properties, with light and dark values; hairline borders rather than
-   shadows; one brand accent (--accent). */
+/* Floodwatch stylesheet. Colours are CSS custom properties, with light and
+   dark values for the cards, popups and charts. The page around the map is
+   dark slate in both, as Floodwatch has always been, so the map is the
+   brightest thing on screen. */
 
 :root {
     --bg: #faf9f7;
@@ -36,10 +37,10 @@
     --river-hollocombe: #6a7a3a;
     --rail: #5c5853;
     --rail-freight: #9e998f;
-    --road: #8fbf8f;
-    --road-edge: #4f7d58;
-    --road-badge: #2f6a45;
-    --road-badge-text: #f6e7a6;
+    --road: #b4bac4;
+    --road-edge: #ffffff;
+    --road-badge: #7d8494;
+    --road-badge-text: #ffffff;
     --level-normal: #4f9a6c;
     --level-high: #c4564a;
     --level-low: #8db0c8;
@@ -66,7 +67,31 @@
     --hollow-fill: #fcf8ef;  /* hollow markers show the county's land colour */
     --mask: #d9d5cd;
     --mask-opacity: 0.55;
-    --tile-filter: sepia(0.18) saturate(0.85) brightness(1.02);
+    --tile-filter: none;
+
+    /* The page around the map: dark slate in both themes */
+    --chrome-bg: #2c3345;
+    --chrome-bar: #343b50;
+    --chrome-raised: #3d4560;
+    --chrome-border: #48506a;
+    --chrome-text: #e8ecf4;
+    --chrome-muted: #9aa2b8;
+
+    /* Gauge markers, white-edged so they read on light and dark basemaps */
+    --gauge-normal: #1a8a7d;
+    --gauge-approach: #e0892b;
+    --gauge-high: #d94a4a;
+    --gauge-stale: #8a90a2;
+    --gauge-rain: #4f6fc0;
+    --gauge-rain-dry: #8c9fcf;
+    --gauge-tidal: #c47a2a;
+    --gauge-size: 36px;
+    --cso-major: 20px;
+    --cso-minor: 13px;
+}
+/* Fingers need bigger targets than pointers do */
+@media (hover: none), (max-width: 640px) {
+    :root { --gauge-size: 40px; --cso-major: 22px; --cso-minor: 15px; }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -126,7 +151,7 @@
         --hollow-fill: #4d4b49;
         --mask: #0e0d0c;
         --mask-opacity: 0.5;
-        --tile-filter: sepia(0.25) saturate(0.7);
+        --tile-filter: none;
     }
 }
 :root[data-theme="dark"] {
@@ -185,7 +210,7 @@
     --hollow-fill: #4d4b49;
     --mask: #0e0d0c;
     --mask-opacity: 0.5;
-    --tile-filter: sepia(0.25) saturate(0.7);
+    --tile-filter: none;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -193,7 +218,7 @@
 html, body { height: 100%; }
 body {
     font-family: var(--font);
-    background: var(--bg);
+    background: var(--chrome-bg);
     color: var(--text);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
@@ -207,11 +232,11 @@ body {
    right, with the active tab's underline on the header's bottom edge.
    Header, main and footer share one full-width left edge on every tab, so
    nothing shifts sideways when switching between Map and About. */
-header { padding: 0 2rem; width: 100%; border-bottom: 1px solid var(--border); }
+header { padding: 0 2rem; width: 100%; background: var(--chrome-bar); border-bottom: 1px solid var(--chrome-border); color: var(--chrome-text); }
 .header-row { display: flex; align-items: stretch; gap: 1.5rem; min-height: 3.25rem; }
 .header-row > h1, .header-row > .header-buttons, .header-row > .status-line { align-self: center; }
 header h1 {
-    font-size: 1.1rem; font-weight: 600; letter-spacing: 0.02em; color: var(--text);
+    font-size: 1.1rem; font-weight: 600; letter-spacing: 0.02em; color: var(--chrome-text);
     display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; flex: none;
 }
 header h1 .ticker {
@@ -220,11 +245,11 @@ header h1 .ticker {
 }
 .header-buttons { display: flex; gap: 0.4rem; align-items: center; flex: none; }
 .header-btn, .theme-toggle {
-    background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px;
-    width: 2.25rem; height: 2.25rem; cursor: pointer; font-size: 1.1rem; color: var(--text-secondary);
+    background: transparent; border: 1px solid var(--chrome-border); border-radius: 20px;
+    width: 2.25rem; height: 2.25rem; cursor: pointer; font-size: 1.1rem; color: var(--chrome-muted);
     display: flex; align-items: center; justify-content: center; transition: background 0.15s; padding: 0;
 }
-.header-btn:hover, .theme-toggle:hover { background: var(--bg-hover); }
+.header-btn:hover, .theme-toggle:hover { background: var(--chrome-raised); color: var(--chrome-text); }
 .theme-toggle { font-size: 1rem; }
 .theme-toggle::after { content: '\263e'; }
 :root[data-theme="dark"] .theme-toggle::after { content: '\2600'; }
@@ -232,7 +257,7 @@ header h1 .ticker {
     :root:not([data-theme="light"]) .theme-toggle::after { content: '\2600'; }
 }
 .status-line {
-    font-size: 0.78rem; color: var(--text-tertiary); font-variant-numeric: tabular-nums;
+    font-size: 0.78rem; color: var(--chrome-muted); font-variant-numeric: tabular-nums;
     margin-left: auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -241,12 +266,12 @@ nav { display: flex; gap: 0.25rem; overflow-x: auto; scrollbar-width: none; flex
 nav::-webkit-scrollbar { display: none; }
 .nav-btn {
     background: none; border: none; padding: 0.5rem 0.75rem; font: inherit; font-size: 0.875rem;
-    color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent;
+    color: var(--chrome-muted); cursor: pointer; border-bottom: 2px solid transparent;
     margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; white-space: nowrap;
     flex-shrink: 0; text-decoration: none; display: flex; align-items: center;
 }
-.nav-btn:hover { color: var(--text); }
-.nav-btn.active { color: var(--text); border-bottom-color: var(--text); }
+.nav-btn:hover { color: var(--chrome-text); }
+.nav-btn.active { color: var(--chrome-text); border-bottom-color: var(--chrome-text); }
 
 /* ---------- Layout ---------- */
 main { width: 100%; padding: 1.5rem 2rem 1.5rem; flex: 1 0 auto; display: flex; flex-direction: column; }
@@ -276,7 +301,7 @@ body.map-mode footer { display: none; }
 
 /* ---------- Sections / panels ---------- */
 .section { margin-bottom: 2rem; }
-.section > h2 { font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.75rem; }
+.section > h2 { font-size: 0.875rem; font-weight: 500; color: var(--chrome-muted); margin-bottom: 0.75rem; }
 .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
 .panel p { font-size: 0.875rem; margin-bottom: 0.75rem; }
 .panel p:last-child { margin-bottom: 0; }
@@ -352,18 +377,21 @@ body.map-mode footer { display: none; }
     font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
     text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 6px var(--bg);
 }
-.map-label.river { color: var(--label-colour, var(--water)); font-style: italic; font-weight: 500; font-size: 10.5px; }
-.map-label.river.major { font-size: 11.5px; font-weight: 600; }
+/* The coloured rivers' names, in tinted pills as Floodwatch has always shown them */
+.map-label.river {
+    color: var(--label-colour, var(--water)); font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+    background: color-mix(in srgb, var(--label-colour, var(--water)) 10%, var(--bg-card));
+    border: 1px solid color-mix(in srgb, var(--label-colour, var(--water)) 30%, transparent);
+    border-radius: 4px; padding: 2px 8px; text-shadow: none;
+}
 .map-label.rail {
     color: var(--text-secondary); background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 4px; padding: 1px 6px; font-size: 9.5px; text-shadow: none; letter-spacing: 0.05em;
-    text-transform: uppercase;
+    border-radius: 4px; padding: 1px 6px; font-size: 9.5px; text-shadow: none; letter-spacing: 0.03em;
 }
-/* Road numbers in the green-and-yellow of UK primary-route signs */
+/* Road numbers: small and grey, so they don't compete with the gauges */
 .map-label.road {
     background: var(--road-badge); color: var(--road-badge-text); text-shadow: none;
-    border-radius: 3px; padding: 1px 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.02em;
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55);
+    border-radius: 3px; padding: 0 4px; font-size: 9px; font-weight: 600; letter-spacing: 0.02em; opacity: 0.85;
 }
 .flow-arrow { color: var(--water); font-size: 9px; line-height: 1; opacity: 0.75; pointer-events: none; }
 
@@ -474,15 +502,61 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
    size times --mk, which map.js raises as the map zooms in, so they stay easy
    to see and to tap on a close-up map. Rotation and the hover enlargement are
    variables too, so the shapes keep them as they grow. */
-.stn, .cso {
+.cso {
     position: absolute; left: 50%; top: 50%; box-sizing: border-box;
-    width: calc(var(--size) * var(--mk, 1)); height: calc(var(--size) * var(--mk, 1));
-    transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) scale(var(--hover, 1));
-    border: 1.5px solid var(--station-fill); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
-    cursor: pointer; transition: transform 0.15s, width 0.2s, height 0.2s;
+    width: var(--size); height: var(--size);
+    transform: translate(-50%, -50%) scale(var(--hover, 1));
+    border: 2px solid rgba(255, 255, 255, 0.85); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+    cursor: pointer; transition: transform 0.15s;
 }
-.leaflet-marker-icon:hover .stn, .leaflet-marker-icon:focus .stn,
 .leaflet-marker-icon:hover .cso, .leaflet-marker-icon:focus .cso { --hover: 1.25; }
+
+/* ---------- Gauges ---------- */
+/* The map's main readings: a river level in a circle, rain in the last hour
+   in a drop, and the tide's height in a diamond, each with the number
+   printed on it and, for rivers and tides, a badge for the trend. Large
+   enough to read at a glance and to tap on a phone. */
+#map { --g: calc(var(--gauge-size) * var(--gs, 1)); }  /* map.js sets --gs by zoom */
+.gauge {
+    position: absolute; left: 50%; top: 50%; box-sizing: border-box;
+    width: var(--g); height: var(--g);
+    transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) scale(var(--hover, 1));
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid rgba(255, 255, 255, 0.9); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    color: #fff; cursor: pointer; transition: transform 0.15s;
+}
+.leaflet-marker-icon:hover .gauge, .leaflet-marker-icon:focus .gauge { --hover: 1.15; }
+.gauge-value {
+    transform: rotate(calc(-1 * var(--rot, 0deg)));
+    font-size: calc(var(--g) * 0.31); font-weight: 700; letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45); line-height: 1;
+}
+.gauge-level { border-radius: 50%; background: var(--gauge-normal); }
+.gauge-level.is-approach { background: var(--gauge-approach); }
+.gauge-level.is-high { background: var(--gauge-high); }
+/* A drop, pointing down */
+.gauge-rain { --rot: -45deg; border-radius: 50% 50% 50% 0; background: var(--gauge-rain); }
+/* No rain in the last hour isn't news: a small, pale drop with no number,
+   so the gauges where it is raining stand out. */
+.gauge-rain.is-dry { background: var(--gauge-rain-dry); width: calc(var(--g) * 0.5); height: calc(var(--g) * 0.5); border-width: 1.5px; }
+.gauge-rain.is-dry .gauge-value { display: none; }
+.gauge-tidal { --rot: 45deg; border-radius: 5px; background: var(--gauge-tidal); width: calc(var(--g) * 0.86); height: calc(var(--g) * 0.86); }
+/* A reading that's hours old is smaller and grey: it's no longer the river now. */
+.gauge.is-stale, .gauge.is-no-data { background: var(--gauge-stale); width: calc(var(--g) * 0.78); height: calc(var(--g) * 0.78); }
+.gauge.is-stale .gauge-value { opacity: 0.8; font-size: calc(var(--g) * 0.26); }
+
+/* The trend badge, on the gauge's lower right */
+.gauge-trend {
+    position: absolute; left: 50%; top: 50%; pointer-events: none;
+    width: calc(var(--g) * 0.5); height: calc(var(--g) * 0.5);
+    transform: translate(calc(var(--g) * 0.18), calc(var(--g) * 0.14));
+    border-radius: 50%; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: calc(var(--g) * 0.34); font-weight: 800; line-height: 1;
+}
+.gauge-trend.is-rising { background: var(--gauge-high); }
+.gauge-trend.is-falling { background: #3f9e4f; }
+.gauge-trend.is-steady { background: #737a8c; }
 
 /* ---------- Power cuts ---------- */
 /* A dark disc with a yellow bolt, reversed in dark mode */
@@ -502,23 +576,14 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 .pcut-postcodes { font-size: 0.78rem; color: var(--text-secondary); margin: 0.25rem 0; }
 .pcut-postcodes summary { cursor: pointer; }
 .pcut-postcode-list { margin-top: 0.25rem; line-height: 1.5; font-variant-numeric: tabular-nums; }
-.stn { --size: 14px; }
-.stn-level { border-radius: 50%; background: var(--level-normal); }
-.stn-level.is-high { background: var(--level-high); }
-.stn-level.is-low { background: var(--level-low); }
-.stn-level.is-unknown { background: var(--level-unknown); }
-.stn-tidal { --size: 12px; --rot: 45deg; border-radius: 2px; background: var(--tidal); }
-/* A drop: a rounded square with one sharp corner, pointing down */
-.stn-rain { --rot: -45deg; border-radius: 50% 50% 50% 0; background: var(--hollow-fill); border-color: var(--rain); border-width: 2px; }
-.stn-rain.is-raining { background: var(--rain); border-color: var(--station-fill); border-width: 1.5px; }
-.stn.is-stale, .stn.is-no-data { background: var(--hollow-fill); border-color: var(--text-tertiary); box-shadow: none; }
 
 /* Legend swatches for the station kinds */
-.swatch.gauge::before { left: 6px; right: auto; width: 10px; height: 10px; }
-.swatch.gauge.level::before { border-radius: 50%; background: var(--level-normal); }
-.swatch.gauge.tidal::before { width: 8px; height: 8px; left: 7px; border-radius: 1px; transform: translateY(-50%) rotate(45deg); background: var(--tidal); }
-.swatch.gauge.rain::before { border-radius: 50% 50% 50% 0; transform: translateY(-50%) rotate(-45deg); background: var(--rain); }
-.legend-item.off .swatch.gauge::before { opacity: 0.3; }
+.swatch.gauge-swatch { height: 14px; }
+.swatch.gauge-swatch::before { left: 4px; right: auto; width: 13px; height: 13px; box-sizing: border-box; border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2); }
+.swatch.gauge-swatch.level::before { border-radius: 50%; background: var(--c); }
+.swatch.gauge-swatch.tidal::before { width: 11px; height: 11px; left: 5px; border-radius: 2px; transform: translateY(-50%) rotate(45deg); background: var(--gauge-tidal); }
+.swatch.gauge-swatch.rain::before { border-radius: 50% 50% 50% 0; transform: translateY(-50%) rotate(-45deg); background: var(--gauge-rain); }
+.legend-item.off .swatch.gauge-swatch::before { opacity: 0.3; }
 
 /* Station popup: a house-style card */
 .stn-popup .leaflet-popup-content-wrapper {
@@ -582,19 +647,13 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 .btn-toggle.active { background: var(--text); color: var(--bg); border-color: var(--text); }
 
 /* ---------- Storm overflows ---------- */
-.cso { --size: 12px; border-radius: 50%; background: var(--cso-quiet); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15); }
-.cso.is-spilling { background: var(--cso); animation: cso-pulse 1.8s ease-in-out infinite; }
-.cso.is-recent { background: var(--cso-recent); }
-.cso.is-quiet { --size: 10px; }
-.cso.is-offline { --size: 10px; background: var(--hollow-fill); border-color: var(--text-tertiary); box-shadow: none; }
-@keyframes cso-pulse {
-    0%, 100% { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15), 0 0 0 0 var(--cso); }
-    50% { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15), 0 0 0 4px rgba(123, 63, 160, 0.25); }
-}
-/* Overflows at sewage treatment works are diamonds; those on the sewer
-   network or at pumping stations are circles. */
-.cso.is-works { --rot: 45deg; border-radius: 2px; }
-@media (prefers-reduced-motion: reduce) { .cso.is-spilling { animation: none; } }
+/* One purple, shaded by state; larger at sewage treatment works, smaller
+   on the sewer network and at pumping stations. */
+.cso { --size: var(--cso-minor); border-radius: 50%; background: #c9b4dd; }
+.cso.is-works { --size: var(--cso-major); }
+.cso.is-spilling { background: #5b2a8a; box-shadow: 0 0 0 3px rgba(91, 42, 138, 0.28), 0 1px 4px rgba(0, 0, 0, 0.4); }
+.cso.is-recent { background: #9b6cc4; }
+.cso.is-offline { background: transparent; border-color: #888; box-shadow: none; }
 
 .swatch.cso-swatch::before { left: 6px; right: auto; width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
 .legend-item.off .swatch.cso-swatch::before { opacity: 0.3; }
@@ -617,17 +676,18 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 /* Quiet indicator in the header when nothing is in force, which opens to say so */
 .flood-pill {
     display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.7rem 0.3rem 0.6rem;
-    border-radius: 999px; font: inherit; font-size: 0.78rem; color: var(--up); background: var(--up-light);
-    border: 1px solid rgba(90, 158, 111, 0.3); white-space: nowrap; cursor: pointer;
+    border-radius: 999px; font: inherit; font-size: 0.78rem; color: color-mix(in srgb, var(--up) 55%, white);
+    background: color-mix(in srgb, var(--up) 16%, var(--chrome-bar));
+    border: 1px solid color-mix(in srgb, var(--up) 45%, transparent); white-space: nowrap; cursor: pointer;
 }
-.flood-pill:hover { background: color-mix(in srgb, var(--up) 22%, var(--bg-card)); }
+.flood-pill:hover { background: color-mix(in srgb, var(--up) 26%, var(--chrome-bar)); }
 .flood-pill-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
 /* Banner under the header while any warning or alert is in force */
 .flood-banner {
     --tone: var(--flood-alert);
-    border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
-    background: color-mix(in srgb, var(--tone) 12%, var(--bg-card));
+    border: 1px solid color-mix(in srgb, var(--tone) 50%, transparent); border-left: 4px solid var(--tone);
+    background: color-mix(in srgb, var(--tone) 14%, var(--chrome-bar));
     border-radius: var(--radius); margin-bottom: 0.6rem; position: relative;
 }
 .flood-banner[hidden] { display: none; }
@@ -636,13 +696,13 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 .flood-summary {
     display: flex; align-items: center; gap: 0.6rem; width: 100%; padding: 0.55rem 0.85rem;
     background: none; border: none; font: inherit; font-size: 0.875rem; font-weight: 500;
-    color: var(--text); text-align: left; cursor: pointer;
+    color: var(--chrome-text); text-align: left; cursor: pointer;
 }
 .flood-icon { width: 10px; height: 10px; border-radius: 50%; background: var(--tone); flex: none; }
 .flood-banner.is-severe .flood-icon { animation: pill-pulse 1.8s ease-in-out infinite; }
 @keyframes pill-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 .flood-summary-text { flex: 1; }
-.flood-chevron::after { content: '\25BE'; color: var(--text-secondary); }
+.flood-chevron::after { content: '\25BE'; color: var(--chrome-muted); }
 .flood-summary[aria-expanded="true"] .flood-chevron::after { content: '\25B4'; }
 /* The list drops down over the map, like a menu, rather than pushing it down */
 .flood-details {
@@ -717,10 +777,10 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 .drought-pill {
     display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.7rem 0.3rem 0.6rem;
     border-radius: 999px; font: inherit; font-size: 0.78rem; white-space: nowrap; cursor: pointer;
-    color: var(--tone); background: color-mix(in srgb, var(--tone) 12%, var(--bg-card));
-    border: 1px solid color-mix(in srgb, var(--tone) 40%, transparent);
+    color: color-mix(in srgb, var(--tone) 55%, white); background: color-mix(in srgb, var(--tone) 18%, var(--chrome-bar));
+    border: 1px solid color-mix(in srgb, var(--tone) 50%, transparent);
 }
-.drought-pill:hover { background: color-mix(in srgb, var(--tone) 20%, var(--bg-card)); }
+.drought-pill:hover { background: color-mix(in srgb, var(--tone) 28%, var(--chrome-bar)); }
 .drought-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .drought-item { --tone: var(--drought); margin-bottom: 0.6rem; }
 .drought-item.is-severe { --tone: var(--drought-severe); }
@@ -763,23 +823,12 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 /* ---------- Trend badges ---------- */
 /* A small badge at the bottom right of a river or tidal gauge: red rising,
    green falling, grey steady. Sized, like the marker, by --mk. */
-.trend {
-    --size: 14px;
-    position: absolute; left: 50%; top: 50%; box-sizing: border-box;
-    width: calc(9px * var(--mk, 1)); height: calc(9px * var(--mk, 1));
-    transform: translate(calc(var(--size) * var(--mk, 1) * 0.5 - 45%), calc(var(--size) * var(--mk, 1) * 0.5 - 45%));
-    border-radius: 50%; border: 1px solid var(--station-fill); pointer-events: none;
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: calc(7px * var(--mk, 1)); font-weight: 700; line-height: 1;
-    transition: width 0.2s, height 0.2s;
-}
-.trend.for-tidal { --size: 13px; }
-.trend.is-rising, .trend-key.is-rising { background: var(--level-high); }
-.trend.is-falling, .trend-key.is-falling { background: var(--level-normal); }
-.trend.is-steady, .trend-key.is-steady { background: var(--level-unknown); }
-.trend.is-rising::after, .trend-key.is-rising::after { content: '↑'; }
-.trend.is-falling::after, .trend-key.is-falling::after { content: '↓'; }
-.trend.is-steady::after, .trend-key.is-steady::after { content: '→'; }
+.trend-key.is-rising { background: var(--gauge-high); }
+.trend-key.is-falling { background: #3f9e4f; }
+.trend-key.is-steady { background: #737a8c; }
+.trend-key.is-rising::after { content: '↑'; }
+.trend-key.is-falling::after { content: '↓'; }
+.trend-key.is-steady::after { content: '→'; }
 
 .legend-key {
     display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap;
@@ -790,8 +839,8 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
     display: inline-flex; align-items: center; justify-content: center; margin-left: 0.25rem;
 }
 .trend-key:first-child { margin-left: 0; }
-.works-key { width: 8px; height: 8px; margin: 0 3px 0 1px; border-radius: 1px; transform: rotate(45deg); background: var(--cso-recent); flex: none; }
-.works-key.is-network { width: 9px; height: 9px; margin: 0 2px 0 0; border-radius: 50%; transform: none; }
+.works-key { width: 12px; height: 12px; margin: 0 3px 0 0; border-radius: 50%; background: #9b6cc4; flex: none; }
+.works-key.is-network { width: 8px; height: 8px; margin: 0 5px 0 2px; }
 
 .stn-pop-trend { font-size: 0.8rem; font-weight: 500; }
 .stn-pop-trend.is-rising { color: var(--level-high); }

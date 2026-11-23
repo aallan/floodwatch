@@ -6,7 +6,6 @@ catchments and Catchment Data Explorer; everything else comes from
 OpenStreetMap through the Overpass API. Writes simplified GeoJSON overlays
 to site/data/:
 
-    boundary.geojson   Devon, with Plymouth and Torbay: the map dims the land outside it
     catchment.geojson  the Taw catchment, which the data is drawn for
     rivers.geojson     the catchment's rivers and canals, one feature per named river
     streams.geojson    the catchment's streams (minor waterways), simplified
@@ -103,8 +102,8 @@ SIMPLIFY_BOUNDARY = 0.0001
 EDGE_TOLERANCE_M = 60
 PRECISION = 5  # decimal places, ~1 m
 
-# Devon, which the map highlights: the county council's area with the two
-# unitary authorities inside it, Plymouth and Torbay.
+# Devon: the county council's area with the two unitary authorities inside
+# it, Plymouth and Torbay. Roads are drawn across it and end at its edge.
 DEVON_GSS = ("E10000008", "E06000026", "E06000027")
 SIMPLIFY_DEVON = 0.0003  # ~20-30 m: it's drawn only as the edge of the dimmed land
 
@@ -875,7 +874,6 @@ def main():
     places = fetch_places(bbox)
 
     print("Writing overlays…")
-    write("boundary.geojson", devon)
     write("catchment.geojson", catchment)
     write("rivers.geojson", rivers)
     write("streams.geojson", streams)
