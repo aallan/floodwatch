@@ -14,7 +14,9 @@ Writes simplified GeoJSON overlays to site/data/:
     meta.json          when the snapshot was taken, and feature counts
 
 and, for the server only, data/places.json (the towns, villages and hamlets
-around the catchment, used to name rain gauges and power cuts).
+around the catchment, used to name rain gauges and power cuts) and
+data/neighbours.geojson (the catchments around the Taw's, used to tell its
+storm overflows, power cuts and flood areas from theirs).
 
 Standard library only. Run occasionally (``make data``; add ``--refresh`` to bypass the cache, or
 ``--cached`` to reprocess the cached downloads without fetching); the overlays change
@@ -70,7 +72,10 @@ OUTLINE_URL = ("https://services3.arcgis.com/Bb8lfThdhugyc4G3/ArcGIS/rest/servic
 OPERATIONAL_CATCHMENT = "3441"
 CATCHMENT_URL = f"https://environment.data.gov.uk/catchment-planning/OperationalCatchment/{OPERATIONAL_CATCHMENT}.geojson"
 TAW_WATER_BODIES = "GB108050"
-ESTUARY_LAND = (-4.21, 51.03, -4.00, 51.115)  # west, south, east, north
+# The box stops short of Instow and Westleigh: they're in the operational
+# catchment, but their outfalls and streams run into the Torridge's side of
+# the estuary.
+ESTUARY_LAND = (-4.172, 51.03, -4.00, 51.115)  # west, south, east, north
 GRID_DY = 0.00005  # degrees of latitude, ~5.5 m, the height of each row of the grid
 MIN_PART_KM2 = 0.05  # smaller pieces of the outline are slivers, not land
 
@@ -471,12 +476,39 @@ def fetch_boundary():
     rings = [r for r in trace(covered, y0) if area_km2(r) >= MIN_PART_KM2]
     if not rings:
         sys.exit("The Taw's catchment outline came out empty")
+    # The rest of the operational catchment, the Exmoor coast, is one of the
+    # catchment's neighbours.
+    rest = [xor_spans(inside.row(j), covered[j]) for j in range(rows)]
+    north_coast = [simplify(r, SIMPLIFY_BOUNDARY) for r in trace(rest, y0) if area_km2(r) >= MIN_PART_KM2]
     outline = [simplify(r, SIMPLIFY_RAIL) for r in rings]
     polys = [[rnd(r)] for r in (simplify(r, SIMPLIFY_BOUNDARY) for r in outline) if len(r) >= 4]
     xs = [p[0] for r in outline for p in r]
     ys = [p[1] for r in outline for p in r]
     bbox = (round(min(ys) - PAD_DEG, 3), round(min(xs) - PAD_DEG, 3), round(max(ys) + PAD_DEG, 3), round(max(xs) + PAD_DEG, 3))
-    return [feature("MultiPolygon", polys, name="River Taw catchment")], outline, bbox
+    return [feature("MultiPolygon", polys, name="River Taw catchment")], outline, bbox, north_coast
+
+
+# The estuary's own catchment is water, not a neighbour: outfalls in it can
+# belong to the Taw.
+ESTUARY_CATCHMENT = "3442"
+
+
+def fetch_neighbours(bbox, north_coast):
+    """The land around the catchment, for telling the Taw's storm overflows,
+    power cuts and flood areas from their neighbours': the other operational
+    catchments that reach into the bounding box, such as the Torridge, and
+    the Exmoor coast."""
+    s, w, n, e = bbox
+    features = geojson_features(
+        "neighbours", OUTLINE_URL, source="EA WFD operational catchments",
+        data={"where": f"Operation0 NOT IN ('{OPERATIONAL_CATCHMENT}', '{ESTUARY_CATCHMENT}')",
+              "geometry": f"{w},{s},{e},{n}", "geometryType": "esriGeometryEnvelope", "inSR": "4326",
+              "spatialRel": "esriSpatialRelIntersects", "outFields": "Operation0,Operationa",
+              "returnGeometry": "true", "outSR": "4326", "maxAllowableOffset": "0.0002", "f": "geojson"})
+    polys = [[rnd(simplify(r, SIMPLIFY_BOUNDARY))] for r in outer_rings(features) + north_coast]
+    names = sorted({f["properties"].get("Operationa", "") for f in features} - {""})
+    return [feature("MultiPolygon", [p for p in polys if len(p[0]) >= 4],
+                    name="Around the Taw: " + ", ".join(names + ["the Exmoor coast"]))]
 
 
 def river_name(raw):
@@ -725,7 +757,8 @@ def main():
     sys.stdout.reconfigure(line_buffering=True)  # show progress when piped
     OUT.mkdir(parents=True, exist_ok=True)
     print("Fetching the catchment (Catchment Data Explorer) and map data (OpenStreetMap, Overpass API)…")
-    boundary, rings, bbox = fetch_boundary()
+    boundary, rings, bbox, north_coast = fetch_boundary()
+    neighbours = fetch_neighbours(bbox, north_coast)
     land = LandMask(rings, EDGE_TOLERANCE_M)
     box = ",".join(map(str, bbox))
     coast = Coastline(overpass(f'[out:json][timeout:240];way["natural"="coastline"]({box});out geom;', "coastline"))
@@ -748,6 +781,9 @@ def main():
     SERVER_DATA.mkdir(exist_ok=True)
     (SERVER_DATA / "places.json").write_text(json.dumps(places, ensure_ascii=False))
     print(f"  wrote data/places.json ({len(places)} places)")
+    (SERVER_DATA / "neighbours.geojson").write_text(json.dumps(
+        {"type": "FeatureCollection", "features": neighbours}, separators=(",", ":")))
+    print(f"  wrote data/neighbours.geojson ({len(neighbours[0]['geometry']['coordinates'])} polygons)")
     meta = {
         "generated": datetime.fromtimestamp(min(FETCHED), timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source": "Environment Agency Catchment Data Explorer (OGL); OpenStreetMap contributors, via the Overpass API (ODbL)",

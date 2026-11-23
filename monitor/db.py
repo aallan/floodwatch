@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS overflow_annual (
     PRIMARY KEY (id, year)
 ) WITHOUT ROWID;
 
--- Environment Agency flood warning and alert areas that cover Cornwall.
+-- Environment Agency flood warning and alert areas in the Taw catchment.
 -- Polygons are fetched only once an area has had a warning, then kept.
 CREATE TABLE IF NOT EXISTS flood_areas (
     id          TEXT PRIMARY KEY,        -- EA flood area notation

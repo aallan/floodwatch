@@ -1,4 +1,4 @@
-"""Environment Agency flood warnings and alerts for Cornwall.
+"""Environment Agency flood warnings and alerts for the Taw catchment.
 
 The Agency issues flood warnings (severity 1, severe, and 2) for specific
 places, and flood alerts (severity 3) for wider areas. Each is tied to a flood
@@ -13,37 +13,45 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from .ea import get, log
-from .geo import simplify
+from .ea import CENTRE, get, log
+from .geo import in_region, simplify
+from .region import membership
 
 UK = ZoneInfo("Europe/London")
 
 ROOT = Path(__file__).resolve().parent.parent
 SUMMARY = ROOT / "site" / "data" / "warnings.json"
 
-# Areas are listed in a circle around the county, and kept if their county
-# list includes Cornwall or Scilly: areas shared with Devon, such as the
-# Tamar's, are listed as 'Cornwall, Devon' and a county filter misses them.
-CENTRE = (50.40, -4.95)
-RADIUS_KM = 110
-COUNTIES = ("Cornwall", "Isles of Scilly")
+# Areas are listed in a circle around the catchment, and kept if their
+# centre passes the same test as the storm overflows: inside the catchment,
+# or near it and nearer to it than to its neighbours. That takes in the
+# areas along the estuary at Barnstaple, whose centres can sit on the water,
+# and leaves out the Torridge's and the Exmoor coast's. An area the Agency
+# lists on the Taw by name is kept wherever its centre falls, since an alert
+# area can reach over the watershed.
+RADIUS_KM = 60
+RIVER = "Taw"
+EDGE_M = 1000
 
 SEVERITY = {1: "Severe flood warning", 2: "Flood warning", 3: "Flood alert"}
 SIMPLIFY_TOL = 0.00025  # degrees, about 20-30 m: enough for an outline on the map
 
 
 def refresh_areas(con):
-    """Rebuild the list of flood areas that cover the county. Daily."""
+    """Rebuild the list of flood areas in the catchment. Daily."""
+    belongs = membership(EDGE_M)
     now = int(time.time())
     items = get("/id/floodAreas", {"lat": CENTRE[0], "long": CENTRE[1], "dist": RADIUS_KM, "_limit": 5000})["items"]
     seen = []
     for a in items:
         county = a.get("county") or ""
-        if not a.get("notation") or not any(c in county for c in COUNTIES):
+        lat, lon = a.get("lat"), a.get("long")
+        river = a.get("riverOrSea")
+        named = isinstance(river, str) and RIVER in river
+        if not a.get("notation") or not (named or (in_region(lat, lon) and belongs(lon, lat))):
             continue
         # Notations carry the type: FW.. warning areas, WA.. alert areas.
         kind = "alert" if a["notation"][3:5] == "WA" else "warning"
-        river = a.get("riverOrSea")
         con.execute(
             """INSERT INTO flood_areas (id, kind, label, description, river, county, active, updated)
                VALUES (?, ?, ?, ?, ?, ?, 1, ?)
@@ -92,7 +100,7 @@ def fetch_outline(area_id):
 
 
 def poll_warnings(con):
-    """Warnings and alerts in force in Cornwall's flood areas, with outlines."""
+    """Warnings and alerts in force in the catchment's flood areas, with outlines."""
     areas = {r["id"]: r for r in con.execute("SELECT * FROM flood_areas WHERE active = 1")}
     active = []
     for w in get("/id/floods")["items"]:

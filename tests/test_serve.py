@@ -96,7 +96,7 @@ class Overflows(Server):
         self.assertEqual(self.request("/api/overflows/MISSING")[0], 404)
 
 
-class Bathing(Server):
+class Forecasts(Server):
     def test_rain_forecast_only_for_rain_gauges(self):
         self.add_station("LEVEL")
         self.add_station("RAIN", kind="rain", measure="RAIN-rainfall", unit="mm", typical=None)
@@ -108,11 +108,11 @@ class Bathing(Server):
     def test_flow_forecast_only_for_known_outlets(self):
         self.assertEqual(self.request("/api/forecast/flow/12345")[0], 404)
         with mock.patch.object(forecast, "flow", return_value={"days": []}):
-            self.assertEqual(self.get_json("/api/forecast/flow/47117"), (200, {"days": []}))
+            self.assertEqual(self.get_json("/api/forecast/flow/50140"), (200, {"days": []}))
 
     def test_an_upstream_failure_is_a_502(self):
         with mock.patch.object(forecast, "flow", side_effect=OSError("down")):
-            self.assertEqual(self.request("/api/forecast/flow/47117")[0], 502)
+            self.assertEqual(self.request("/api/forecast/flow/50140")[0], 502)
 
 
 if __name__ == "__main__":

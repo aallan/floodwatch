@@ -65,9 +65,9 @@ class Build(DBTestCase):
         self.assertEqual(self.state_of("W")["state"], "tidal")
 
     def test_flow_forecast_flag(self):
-        self.add_readings(self.add_station("47117"), [(NOW - 600, 0.8)])
+        self.add_readings(self.add_station("50140"), [(NOW - 600, 0.8)])
         self.add_readings(self.add_station("99999"), [(NOW - 600, 0.8)])
-        self.assertTrue(self.state_of("47117").get("flow"))
+        self.assertTrue(self.state_of("50140").get("flow"))
         self.assertNotIn("flow", self.state_of("99999"))
 
 

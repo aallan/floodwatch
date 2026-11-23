@@ -91,13 +91,13 @@ def poll_floods(con, fresh=False):
 def poll_weather(con, fresh=False):
     """The Met Office feed is a few hundred bytes, so it's read every cycle."""
     warnings = weather.poll()
-    ea.log(f"weather warnings: {len(warnings)} for Cornwall")
+    ea.log(f"weather warnings: {len(warnings)} for Devon")
 
 
 def poll_powercuts(con, fresh=False):
     """NGED's file of live power cuts is a few kilobytes, so it's read every cycle."""
     cuts = powercuts.poll()
-    ea.log(f"power cuts: {len(cuts)} in Cornwall, {sum(c['off'] for c in cuts)} customers off")
+    ea.log(f"power cuts: {len(cuts)} in the catchment, {sum(c['off'] for c in cuts)} customers off")
 
 
 def poll_drought(con, fresh=False):

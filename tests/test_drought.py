@@ -44,7 +44,7 @@ class Parse(unittest.TestCase):
         self.assertIn({"stage": "Prolonged dry weather", "text": "Devon, Cornwall and Isles of Scilly"}, stages)
 
     def test_out_of_drought(self):
-        body = (BODY.replace("Cornwall", "Elsewhere").replace("Isles of Scilly", "Elsewhere")
+        body = (BODY.replace("Devon", "Elsewhere")
                 .replace("South West Water –", "Another Water –"))
         self.assertEqual(drought.parse(body), {"stages": [], "bans": []})
 

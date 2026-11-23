@@ -88,6 +88,48 @@ class Helpers(unittest.TestCase):
         self.assertIsNone(ea.nearest_place(50.4, -4.9, []))
 
 
+class RefreshStations(DBTestCase):
+    def station(self, ref, label, lat, lon, parameter="level"):
+        if parameter == "level":
+            measures = [measure_item(f"{ref}-level-stage-i-15_min-m")]
+        else:
+            measures = [measure_item(f"{ref}-rainfall-tipping_bucket_raingauge-t-15_min-mm", qualifier="Tipping Bucket Raingauge",
+                                     unit="mm", parameter="rainfall")]
+        return {"stationReference": ref, "label": label, "lat": lat, "long": lon, "measures": measures}
+
+    def refresh(self, level, rain, level_belongs, rain_keeps):
+        def get(path, params=None):
+            if path == "/data/readings":
+                return {"items": []}
+            if path == "/id/stations":
+                return {"items": level if params["parameter"] == "level" else rain}
+            return {"items": {}}  # a station with no stage scale
+        land = mock.Mock(keep=lambda p: rain_keeps(*p))
+        with mock.patch.object(ea, "get", side_effect=get), \
+                mock.patch.object(ea.region, "membership", return_value=level_belongs), \
+                mock.patch.object(ea, "load_land", return_value=land), \
+                mock.patch.object(ea, "load_places", return_value=[{"name": "Chulmleigh", "place": "town",
+                                                                   "lat": 50.91, "lon": -3.87}]), \
+                mock.patch.object(ea.time, "sleep"):
+            ea.refresh_stations(self.con)
+        return {r["id"]: r["name"] for r in self.con.execute("SELECT id, name FROM stations WHERE active = 1")}
+
+    def test_river_gauges_take_the_catchment_test_and_rain_gauges_the_wider_one(self):
+        level = [self.station("50140", "UMBERLEIGH", 50.995, -3.985),
+                 self.station("50129", "Kenwith Valley", 51.02, -4.22)]       # the Torridge's
+        rain = [self.station("45183", "Rainfall station", 51.11, -3.80, "rainfall"),   # just over the watershed
+                self.station("E82840", "Rainfall station", 50.67, -3.84, "rainfall")]       # too far over
+        kept = self.refresh(level, rain, level_belongs=lambda lon, lat: lon > -4.1,
+                            rain_keeps=lambda lon, lat: lat > 50.7)
+        self.assertEqual(kept, {"50140": "Umberleigh", "45183": "Kinsford Gate"})
+
+    def test_rain_gauges_are_named_after_the_nearest_place_or_their_old_name(self):
+        rain = [self.station("50199", "Rainfall station", 50.87, -3.80, "rainfall"),
+                self.station("50110", "Rainfall station", 50.90, -3.86, "rainfall")]
+        kept = self.refresh([], rain, level_belongs=lambda lon, lat: True, rain_keeps=lambda lon, lat: True)
+        self.assertEqual(kept, {"50199": "Lapford Bowerthy", "50110": "Chulmleigh"})
+
+
 class StoreLatest(DBTestCase):
     def test_stores_only_our_stations(self):
         ours = self.add_station("A")

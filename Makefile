@@ -1,4 +1,4 @@
-# Monitoring Cornwall. Standard library Python, no build step.
+# Floodwatch. Standard library Python, no build step.
 PYTHON  := $(shell which python3)
 PORT    := 8090
 LEAFLET := 1.9.4

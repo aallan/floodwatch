@@ -1,10 +1,10 @@
-"""Met Office weather warnings: parsing the feed and keeping Cornwall's.
+"""Met Office weather warnings: parsing the feed and keeping Devon's.
 
 The feed has no warnings in force as these tests are written, so the fixture
 is built from items quoted word for word on the Home Assistant community forum
 ('UK MET Office Severe Weather Warnings', February 2024). Their links, guids
 and publication times are made up in the feed's format. The amber wind
-warning for Cornwall and Scilly is made up from the same template.
+warning for Devon and Torbay is made up from the same template.
 """
 
 import json
@@ -49,7 +49,7 @@ class Parse(unittest.TestCase):
         # 'Bournemouth Christchurch and Poole' is one authority, so 'and' isn't a separator.
         self.assertEqual(self.items[1]["areas"], ["Bournemouth Christchurch and Poole", "Dorset", "Wiltshire"])
         self.assertIn("Cornwall", self.items[2]["areas"])
-        self.assertEqual(self.items[3]["areas"], ["Cornwall", "Isles of Scilly"])
+        self.assertEqual(self.items[3]["areas"], ["Devon", "Torbay"])
 
     def test_validity_is_read_as_uk_time(self):
         w = self.items[2]
@@ -87,30 +87,30 @@ class Parse(unittest.TestCase):
         self.assertEqual(weather.parse(b"<rss version='2.0'><channel><title>x</title></channel></rss>"), [])
 
 
-class Cornish(unittest.TestCase):
+class Ours(unittest.TestCase):
     def setUp(self):
         self.items = weather.parse(FEED)
 
-    def test_only_warnings_naming_cornwall_or_scilly(self):
-        kept = weather.cornish(self.items, BEFORE)
+    def test_only_warnings_naming_devon(self):
+        kept = weather.ours(self.items, BEFORE)
         self.assertEqual(len(kept), 2)
-        self.assertTrue(all("Cornwall" in w["areas"] for w in kept))
+        self.assertTrue(all("Devon" in w["areas"] for w in kept))
 
     def test_most_severe_first(self):
-        kept = weather.cornish(self.items, BEFORE)
+        kept = weather.ours(self.items, BEFORE)
         self.assertEqual([w["level"] for w in kept], ["Amber", "Yellow"])
 
-    def test_scilly_alone_counts(self):
-        item = dict(self.items[3], areas=["Isles of Scilly"])
-        self.assertEqual(len(weather.cornish([item], BEFORE)), 1)
+    def test_cornwall_alone_doesnt_count(self):
+        item = dict(self.items[3], areas=["Cornwall", "Isles of Scilly"])
+        self.assertEqual(weather.ours([item], BEFORE), [])
 
     def test_a_warning_that_has_ended_is_dropped(self):
-        kept = weather.cornish(self.items, uk(2024, 2, 22, 15, 0))  # the yellow ended at 1400
+        kept = weather.ours(self.items, uk(2024, 2, 22, 15, 0))  # the yellow ended at 1400
         self.assertEqual([w["level"] for w in kept], ["Amber"])
-        self.assertEqual(weather.cornish(self.items, uk(2024, 2, 22, 21, 0)), [])
+        self.assertEqual(weather.ours(self.items, uk(2024, 2, 22, 21, 0)), [])
 
     def test_a_warning_in_force_is_kept(self):
-        self.assertEqual(len(weather.cornish(self.items, uk(2024, 2, 22, 13, 0))), 2)
+        self.assertEqual(len(weather.ours(self.items, uk(2024, 2, 22, 13, 0))), 2)
 
 
 class Poll(unittest.TestCase):

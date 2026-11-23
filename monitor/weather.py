@@ -1,4 +1,4 @@
-"""Met Office weather warnings for Cornwall.
+"""Met Office weather warnings for Devon, where the Taw catchment is.
 
 The Met Office publishes its warnings for each region as an RSS feed. Each
 item's title gives the level and the weather ('Yellow warning of rain
@@ -9,7 +9,7 @@ authorities it covers and when it is in force:
     Plymouth, Torbay valid from 0300 Thu 22 Feb to 1400 Thu 22 Feb
 
 The South West England feed covers Bristol to the Isles of Scilly, so only
-items that name Cornwall or the Isles of Scilly are kept. The feed's terms
+items that name Devon are kept: the whole catchment is in Devon. The feed's terms
 allow any use, with attribution, provided the content and links are shown as
 supplied: the site shows each title and description unchanged, with its link.
 """
@@ -28,7 +28,7 @@ from . import net
 from .ea import USER_AGENT
 
 FEED = "https://www.metoffice.gov.uk/public/data/PWSCache/WarningsRSS/Region/sw"
-AREAS = ("Cornwall", "Isles of Scilly")
+AREAS = ("Devon",)
 LEVELS = ("Yellow", "Amber", "Red")
 UK = ZoneInfo("Europe/London")
 
@@ -100,8 +100,8 @@ def parse(xml_bytes):
     return out
 
 
-def cornish(warnings, now=None):
-    """Those that name Cornwall or Scilly and haven't ended, most severe first."""
+def ours(warnings, now=None):
+    """Those that name Devon and haven't ended, most severe first."""
     now = int(now or time.time())
     keep = [w for w in warnings if any(a in AREAS for a in w["areas"]) and (w["to"] is None or w["to"] > now)]
     return sorted(keep, key=lambda w: (-LEVELS.index(w["level"]), w["from"] or 0))
@@ -121,6 +121,6 @@ def write_summary(warnings, now=None):
 
 
 def poll(now=None):
-    warnings = cornish(fetch(), now)
+    warnings = ours(fetch(), now)
     write_summary(warnings, now)
     return warnings

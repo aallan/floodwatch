@@ -6,14 +6,15 @@ import unittest
 
 from monitor.geo import LandMask, in_region, simplify
 
-# A square about 11 km on a side, inland of Bodmin.
+# A square about 11 km on a side, in Cornwall: the tests need only its geometry.
 SQUARE = [(-4.8, 50.4), (-4.65, 50.4), (-4.65, 50.5), (-4.8, 50.5), (-4.8, 50.4)]
 
 
 class Region(unittest.TestCase):
     def test_in_region(self):
-        self.assertTrue(in_region(50.26, -5.05))           # Truro
-        self.assertTrue(in_region(49.92, -6.30))           # St Mary's, Scilly
+        self.assertTrue(in_region(50.995, -3.985))         # Umberleigh
+        self.assertTrue(in_region(51.080, -4.058))         # Barnstaple
+        self.assertFalse(in_region(50.26, -5.05))          # Truro
         self.assertFalse(in_region(51.75, -1.25))          # Oxford
         for bad in (None, "50.3", True, math.nan, math.inf):
             self.assertFalse(in_region(bad, -5.0))

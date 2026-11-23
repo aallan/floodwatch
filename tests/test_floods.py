@@ -21,6 +21,29 @@ class UKTime(unittest.TestCase):
         self.assertIsNone(floods.uk_ts(None))
 
 
+class RefreshAreas(DBTestCase):
+    def test_areas_are_kept_by_where_they_are_or_their_river(self):
+        items = [
+            # Centre inside the catchment.
+            {"notation": "113FWFTAWUMB", "label": "River Taw at Umberleigh", "riverOrSea": "River Taw",
+             "county": "Devon", "lat": 50.99, "long": -3.98},
+            # Centre over the watershed, but on the Taw by name.
+            {"notation": "113WAFTAW", "label": "River Taw", "riverOrSea": "River Taw", "county": "Devon",
+             "lat": 50.70, "long": -3.60},
+            # The Torridge's: neither.
+            {"notation": "113FWFTORBID", "label": "River Torridge at Bideford", "riverOrSea": "River Torridge",
+             "county": "Devon", "lat": 51.02, "long": -4.21},
+            # No position and no river.
+            {"notation": "113FWFNONE", "label": "Nowhere", "county": "Devon"},
+        ]
+        inside = lambda lon, lat: lon > -4.1 and 50.8 < lat < 51.2
+        with mock.patch.object(floods, "get", return_value={"items": items}), \
+                mock.patch.object(floods, "membership", return_value=inside):
+            self.assertEqual(floods.refresh_areas(self.con), 2)
+        kept = {r["id"]: r["kind"] for r in self.con.execute("SELECT id, kind FROM flood_areas WHERE active = 1")}
+        self.assertEqual(kept, {"113FWFTAWUMB": "warning", "113WAFTAW": "alert"})
+
+
 class PollWarnings(DBTestCase):
     def setUp(self):
         super().setUp()

@@ -48,12 +48,18 @@ def rain(lat, lon):
 
 # River flow forecasts come from GloFAS, the Copernicus global flood model,
 # which routes rivers on a grid of 0.05 degree cells, about 5 km across. At
-# that scale a Cornish river often runs through a neighbouring cell rather than
-# the one under its gauge, so each outlet names the cell that carries the
-# river, found by comparing the model's 2015–2024 flows in the cells around the
+# that scale a river often runs through a neighbouring cell rather than the
+# one under its gauge, so each outlet names the cell that carries the river,
+# found by comparing the model's 2015–2024 flows in the cells around the
 # gauge with the gauged record (scripts/calibrate_flow.py). model_mean and
 # model_q10 are the model's own mean flow in that cell over those years, and
 # the flow it exceeded one day in ten.
+#
+# At Umberleigh the cells nearest the gauge carry about half the Taw's gauged
+# mean flow. One 7 km away, south-west of Barnstaple, comes closer by mean
+# flow, but it's off the Taw's course, so the outlet uses the cell just
+# upstream of the gauge, which carries the river itself; scaling to the
+# gauged mean makes up the difference.
 #
 # Model flows are scaled so their long-run mean matches the gauged mean at the
 # National River Flow Archive station, fetched from the NRFA when needed.
@@ -62,23 +68,13 @@ def rain(lat, lon):
 #
 # The flow measured at the same gauging station, every 15 minutes, comes from
 # the Environment Agency's Hydrology API; "hydrology" is the station's
-# identifier there. Denby's flow measurement is suspended, and the API returns
-# no readings for it.
+# identifier there.
 #
 # Keyed by the Environment Agency level gauge whose popup shows the forecast.
 FLOW_OUTLETS = {
-    "47117": {"river": "River Tamar", "nrfa": "47001", "nrfa_name": "Tamar at Gunnislake",
-              "cell": (50.525, -4.275), "model_mean": 11.28, "model_q10": 26.35,
-              "hydrology": "575d64ff-3205-4213-abe9-ed455d9bc49f"},
-    "47136": {"river": "River Lynher", "nrfa": "47004", "nrfa_name": "Lynher at Pillaton Mill",
-              "cell": (50.375, -4.275), "model_mean": 4.38, "model_q10": 8.16,
-              "hydrology": "817d17c7-3e01-4bc9-a7b3-8e2a5c6d0e5b"},
-    "49110": {"river": "River Fowey", "nrfa": "48011", "nrfa_name": "Fowey at Restormel",
-              "cell": (50.375, -4.675), "model_mean": 4.52, "model_q10": 8.33,
-              "hydrology": "a91dfed0-9614-4cf3-ba5a-d1a17c8c7282"},
-    "49133": {"river": "River Camel", "nrfa": "49001", "nrfa_name": "Camel at Denby",
-              "cell": (50.525, -4.875), "model_mean": 5.24, "model_q10": 9.62,
-              "hydrology": "a987b813-6ebb-44f8-bf5c-658a6a3762a5"},
+    "50140": {"river": "River Taw", "nrfa": "50001", "nrfa_name": "Taw at Umberleigh",
+              "cell": (50.975, -3.975), "model_mean": 9.19, "model_q10": 21.08,
+              "hydrology": "fafd42b9-ed79-459c-98a6-83b7692eab78"},
 }
 
 FLOW_PAST_DAYS = 7
@@ -130,7 +126,7 @@ def measured(station_id, today=None):
     return cached(("measured", station_id), MEASURED_TTL, fetch)
 
 
-# GloFAS can run well short of a Cornish river after rain, and its forecast
+# GloFAS can run well short of a river after rain, and its forecast
 # carries on from wherever the model is rather than from the river. So the
 # forecast is scaled by the ratio of measured to modelled flow on the last
 # full day with enough readings, and the model supplies only its shape: how

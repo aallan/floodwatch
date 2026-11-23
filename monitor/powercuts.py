@@ -1,6 +1,6 @@
-"""Live power cuts in Cornwall, from National Grid Electricity Distribution.
+"""Live power cuts in the Taw catchment, from National Grid Electricity Distribution.
 
-NGED runs the electricity network in Cornwall and publishes its live power
+NGED runs the electricity network in Devon and publishes its live power
 cuts as open data on its Connected Data portal, under the NGED Open Data
 Licence, which is based on the Open Government Licence and asks for the
 statement "Supported by NGED Open Data". The file is a CSV of every
@@ -9,10 +9,10 @@ the postcodes affected, the customers off and the estimated time power will
 be back on. The portal's robots.txt asks crawlers to keep off its API but not
 its downloads, so the poller reads the CSV.
 
-Cornwall's power cuts are those whose position passes the same test as the
-storm overflows: inside the county, or within 3 km of it and nearer to it
-than to Devon. Postcodes won't do, because PL covers Plymouth and west Devon
-as well as east Cornwall. NGED's own map leaves out power cuts with nobody
+The catchment's power cuts are those whose position passes the same test as
+the storm overflows: inside the catchment, or near it and nearer to it than
+to its neighbours. Postcodes won't do, because EX covers the Exe and the
+Torridge as well as the Taw. NGED's own map leaves out power cuts with nobody
 yet confirmed off, which are reports still being looked into, and so does
 this one.
 """
@@ -25,7 +25,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-from . import ea, net, overflows
+from . import ea, net, overflows, region
 from .floods import uk_ts
 
 CSV_URL = ("https://connecteddata.nationalgrid.co.uk/dataset/d6672e1e-c684-4cea-bb78-c7e5248b62a2"
@@ -82,8 +82,8 @@ def parse(text):
     return rows
 
 
-def cornish(cuts, belongs, places):
-    """The power cuts in Cornwall with someone confirmed off, largest first,
+def ours(cuts, belongs, places):
+    """The power cuts in the catchment with someone confirmed off, largest first,
     each named after the nearest town or village."""
     keep = [c for c in cuts if c["off"] > 0 and belongs(c["lon"], c["lat"])]
     for c in keep:
@@ -110,6 +110,6 @@ def write_summary(cuts, uploaded, now=None):
 def poll(now=None):
     cuts = parse(fetch())
     uploaded = max((c["uploaded"] for c in cuts if c["uploaded"]), default=None)
-    keep = cornish(cuts, overflows.membership(), ea.load_places())
+    keep = ours(cuts, region.membership(overflows.EDGE_M), ea.load_places())
     write_summary(keep, uploaded, now)
     return keep

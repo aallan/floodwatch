@@ -15,21 +15,37 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import net
+from . import net, region
 from .geo import LandMask, in_region
 
 API = "https://environment.data.gov.uk/flood-monitoring"
-USER_AGENT = "monitoring-cornwall/0.1 (+https://github.com/aallan/monitoring-cornwall)"
+USER_AGENT = "floodwatch/2.0 (+https://github.com/aallan/floodwatch)"
 
 ROOT = Path(__file__).resolve().parent.parent
 BOUNDARY = ROOT / "site" / "data" / "boundary.geojson"
 PLACES = ROOT / "data" / "places.json"
 
-# Station search: a circle that covers the county, then the county boundary.
-CENTRE = (50.40, -4.95)
-RADIUS_KM = 110
-# Gauges on the Tamar sit on either bank of the border river.
-BORDER_TOLERANCE_M = 1500
+# Station search: a circle that covers the catchment, then the catchment's
+# outline.
+CENTRE = (50.93, -3.90)
+RADIUS_KM = 45
+# River and tidal gauges are kept inside the catchment, or within this
+# distance of it and nearer to it than to its neighbours: the outline stops
+# at the estuary's banks, and Barnstaple's tidal gauge stands in the estuary.
+LEVEL_TOLERANCE_M = 1500
+# Rain gauges a little way over the watershed, such as Kinsford Gate on
+# Exmoor and Crediton Knowle, still say what's falling on the catchment's edge.
+RAIN_TOLERANCE_M = 2000
+# The Agency labels its rain gauges 'Rainfall station', so they're named
+# after the nearest town or village, except those Floodwatch has always shown
+# by the names below.
+RAIN_GAUGE_NAMES = {
+    "50199": "Lapford Bowerthy",
+    "E85220": "Molland Sindercombe",
+    "E84360": "Crediton Knowle",
+    "45183": "Kinsford Gate",
+    "E82120": "Bratton Fleming Haxton",
+}
 
 LEVEL_UNITS = ("m", "mASD", "mAOD")
 # Tidal gauges report against Ordnance Datum where they can; prefer that series.
@@ -73,10 +89,10 @@ def number(v):
 
 # ---------------------------------------------------------------- stations
 
-def load_land():
+def load_land(tolerance_m):
     fc = json.loads(BOUNDARY.read_text())
     rings = [[tuple(p) for p in poly[0]] for f in fc["features"] for poly in f["geometry"]["coordinates"]]
-    return LandMask(rings, BORDER_TOLERANCE_M)
+    return LandMask(rings, tolerance_m)
 
 
 def load_places():
@@ -179,7 +195,10 @@ def stage_scale(ref):
 
 def refresh_stations(con):
     """Rebuild the station list from the API. Run daily; stations change rarely."""
-    land, places = load_land(), load_places()
+    level_belongs = region.membership(LEVEL_TOLERANCE_M)
+    rain_land = load_land(RAIN_TOLERANCE_M)
+    keep = {"level": lambda lon, lat: level_belongs(lon, lat), "rainfall": lambda lon, lat: rain_land.keep((lon, lat))}
+    places = load_places()
     now = int(time.time())
     seen = []
     for parameter in ("level", "rainfall"):
@@ -188,7 +207,7 @@ def refresh_stations(con):
                                      "dist": RADIUS_KM, "_limit": 2000})["items"]
         for s in items:
             ref, at = s.get("stationReference"), coords(s)
-            if not ref or not at or not in_service(s) or not land.keep((at[1], at[0])):
+            if not ref or not at or not in_service(s) or not keep[parameter](at[1], at[0]):
                 continue
             picked = pick_measure(s, parameter, reporting)
             if not picked:
@@ -196,7 +215,7 @@ def refresh_stations(con):
             kind, measure, unit = picked
             label = tidy_name(s.get("label", ""))
             if kind == "rain" or not label or label.lower() in ("rainfall station", "rainfall"):
-                label = nearest_place(at[0], at[1], places) or f"Rain gauge {ref}"
+                label = RAIN_GAUGE_NAMES.get(ref) or nearest_place(at[0], at[1], places) or f"Rain gauge {ref}"
             low = high = record = None
             if kind == "level":
                 low, high, record = stage_scale(ref)

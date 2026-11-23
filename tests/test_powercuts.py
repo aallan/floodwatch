@@ -72,7 +72,7 @@ class Parse(unittest.TestCase):
 
 class Cornish(unittest.TestCase):
     def setUp(self):
-        self.kept = powercuts.cornish(powercuts.parse(CSV), cornish_test, PLACES)
+        self.kept = powercuts.ours(powercuts.parse(CSV), cornish_test, PLACES)
 
     def test_only_cornwall_with_someone_off(self):
         self.assertEqual([c["id"] for c in self.kept], ["INCD-19742-u", "INCD-19746-u"])
@@ -89,7 +89,7 @@ class Poll(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d, \
                 mock.patch.object(powercuts, "SUMMARY", Path(d) / "powercuts.json"), \
                 mock.patch.object(powercuts.net, "fetch", return_value=CSV.encode()), \
-                mock.patch.object(powercuts.overflows, "membership", return_value=cornish_test), \
+                mock.patch.object(powercuts.region, "membership", return_value=cornish_test), \
                 mock.patch.object(powercuts.ea, "load_places", return_value=PLACES):
             kept = powercuts.poll(now=uk(2026, 11, 2, 15, 0))
             summary = json.loads((Path(d) / "powercuts.json").read_text())

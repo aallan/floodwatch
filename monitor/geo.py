@@ -4,9 +4,9 @@ import math
 from collections import defaultdict
 
 
-# A box around Cornwall, Scilly and their waters. Coordinates from the feeds
-# are checked against it before any geometry runs.
-REGION = {"lat": (49.5, 51.5), "lon": (-7.0, -3.5)}
+# A box around the Taw catchment and the land beside it. Coordinates from
+# the feeds are checked against it before any geometry runs.
+REGION = {"lat": (50.4, 51.5), "lon": (-4.6, -3.2)}
 
 
 def in_region(lat, lon):
@@ -38,7 +38,7 @@ class LandMask:
 
     CELL = 0.002  # degrees, ~140 m east-west and ~220 m north-south here
     # The widest search allowed, in cells either side: about 7 km east-west
-    # at Cornwall's latitude. Keeps a bad coordinate (one near a pole, where
+    # at Devon's latitude. Keeps a bad coordinate (one near a pole, where
     # a degree of longitude shrinks towards nothing) from turning a distance
     # search into an endless loop.
     MAX_REACH = 50

@@ -10,7 +10,6 @@ published as a second FeatureServer.
 """
 
 import json
-import math
 import re
 import time
 import urllib.error
@@ -20,7 +19,8 @@ from pathlib import Path
 
 from . import db, net
 from .ea import USER_AGENT, log
-from .geo import LandMask, in_region
+from .geo import in_region
+from .region import membership
 
 LIVE_URL = ("https://services-eu1.arcgis.com/OMdMOtfhATJPcHe3/arcgis/rest/services/"
             "NEH_outlets_PROD/FeatureServer/0/query")
@@ -28,16 +28,15 @@ ANNUAL_URL = ("https://services1.arcgis.com/JZM7qJpmv7vJ0Hzx/arcgis/rest/service
               "edm_annual_returns_all_years_public/FeatureServer/0/query")
 
 ROOT = Path(__file__).resolve().parent.parent
-BOUNDARY = ROOT / "site" / "data" / "boundary.geojson"
-NEIGHBOURS = ROOT / "data" / "neighbours.geojson"
 SUMMARY = ROOT / "site" / "data" / "overflows.json"
 
 SPILLING, QUIET, OFFLINE = 1, 0, -1
-# Outfalls can sit offshore, beyond the low-water boundary. One within this
-# distance of Cornwall, and nearer to Cornwall than to Devon or Plymouth,
-# counts as Cornish.
-OFFSHORE_M = 3000
-RECENT = 48 * 3600          # 'spilled recently' window, as on Floodwatch
+# The catchment's outline stops at the estuary's banks, and outfalls often
+# discharge into the estuary or just off a bank. One within this distance of
+# the catchment, and nearer to it than to any of its neighbours (the
+# Torridge, Barnstaple Bay, the Exmoor coast and the rest), counts as the Taw's.
+EDGE_M = 1000
+RECENT = 48 * 3600          # 'spilled recently' window
 HISTORY_WINDOW = 30 * 86400
 
 # Small words that stay lower case inside a name.
@@ -96,29 +95,6 @@ def tidy_water(raw):
 
 # ---------------------------------------------------------------- which overflows
 
-def _rings(path):
-    fc = json.loads(Path(path).read_text())
-    return [[tuple(p) for p in poly[0]] for f in fc["features"] for poly in f["geometry"]["coordinates"]]
-
-
-def membership():
-    """A test for whether an overflow belongs to Cornwall."""
-    cornwall = LandMask(_rings(BOUNDARY), 0)
-    neighbours = LandMask(_rings(NEIGHBOURS), 0) if NEIGHBOURS.exists() else None
-
-    def belongs(lon, lat):
-        p = (lon, lat)
-        if cornwall.inside(p):
-            return True
-        if neighbours and neighbours.inside(p):
-            return False
-        near = cornwall.distance_m(p, OFFSHORE_M)
-        if near == math.inf:
-            return False
-        return neighbours is None or near < neighbours.distance_m(p, OFFSHORE_M)
-    return belongs
-
-
 def fetch_live():
     data = post(LIVE_URL, {
         "where": "1=1",
@@ -148,7 +124,7 @@ def fetch_annual():
 
 def refresh_overflows(con):
     """Rebuild the list of overflows, their names and yearly totals. Daily."""
-    belongs = membership()
+    belongs = membership(EDGE_M)
     now = int(time.time())
     seen = []
     for s in fetch_live():

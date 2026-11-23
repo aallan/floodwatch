@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Server for Monitoring Cornwall.
+"""Server for Floodwatch.
 
 Serves the site in site/, answers /api/ requests for station history, and
 polls the Environment Agency every 5 minutes in a background thread.
@@ -171,7 +171,7 @@ def main():
     httpd = Server((host, args.port), partial(Handler, directory=str(SITE)))
     if not args.no_poll:
         poll.start_thread()
-    print(f"Monitoring Cornwall on http://localhost:{args.port}  (Ctrl+C to stop)")
+    print(f"Floodwatch on http://localhost:{args.port}  (Ctrl+C to stop)")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

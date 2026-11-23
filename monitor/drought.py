@@ -1,19 +1,19 @@
-"""Drought status in Cornwall, from the Environment Agency's weekly report.
+"""Drought status for Devon, from the Environment Agency's weekly report.
 
 The Environment Agency publishes "Dry weather and drought in England" each
 week on GOV.UK, under the Open Government Licence. Its third section lists
 the Environment Agency Areas at each stage of drought response (prolonged
 dry weather, drought, severe drought, recovery), and its second the water
-companies with a temporary use ban, the hosepipe ban, in force. Cornwall is
-part of the Devon, Cornwall and Isles of Scilly Area, which can be at two
-stages at once: parts of it supplied by particular reservoirs in severe
-drought and the rest in drought.
+companies with a temporary use ban, the hosepipe ban, in force. The Taw
+catchment is in the Devon, Cornwall and Isles of Scilly Area, which can be at
+two stages at once: parts of it supplied by particular reservoirs in severe
+drought and the rest in drought. The report words those parts by reservoir,
+and they aren't always in Devon, so the page shows each entry as written.
 
 GOV.UK's search and content APIs serve the reports as JSON. The reports for
 each year are a separate series, so the latest series is found by search
 rather than by its address, which has the year in it. The poller keeps the
-entries that name Cornwall or the Isles of Scilly, word for word, and South
-West Water's ban.
+entries that name Devon, word for word, and South West Water's ban.
 """
 
 import json
@@ -42,7 +42,7 @@ STAGE_PREFIX = "environment-agency-areas-in-"
 STAGES = {"severe-drought": "Severe drought", "drought": "Drought",
           "prolonged-dry-weather": "Prolonged dry weather", "recovery": "Recovery"}
 BANS_PREFIX = "active-temporary-use-bans"
-AREAS = ("Cornwall", "Isles of Scilly")
+AREAS = ("Devon",)
 COMPANY = "South West Water"
 
 REFRESH = 6 * 3600   # the report is weekly
@@ -91,8 +91,7 @@ class Sections(HTMLParser):
 
 
 def parse(body):
-    """{"stages": [{"stage", "text"}], "bans": [text]} for Cornwall and the
-    Isles of Scilly. A report with no stage sections at all has changed shape,
+    """{"stages": [{"stage", "text"}], "bans": [text]} for Devon. A report with no stage sections at all has changed shape,
     and raises rather than reporting no drought."""
     p = Sections()
     p.feed(body)
