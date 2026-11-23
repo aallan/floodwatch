@@ -19,6 +19,7 @@ const FloodMap = (() => {
   const RIVER_COLOURS = {
     'River Taw': '--river-taw',
     'River Mole': '--river-mole',
+    'River Bray': '--river-bray',
     'Little Dart River': '--river-little-dart',
     'River Yeo': '--river-yeo',
     'Lapford Yeo': '--river-lapford-yeo',

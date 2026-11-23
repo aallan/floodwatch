@@ -155,9 +155,6 @@ class Gaps(unittest.TestCase):
         self.assertEqual(len(by_name["River Yeo"]), 2)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class Lines(unittest.TestCase):
     def test_lines_join_end_to_start_and_keep_their_direction(self):
@@ -178,3 +175,87 @@ class Lines(unittest.TestCase):
         land = LandMask([[(0, 50), (0.1, 50), (0.1, 50.1), (0, 50.1), (0, 50)]], 0)
         self.assertTrue(fg.touches([[(0.05, 50.05), (0.5, 50.05)]], land))
         self.assertFalse(fg.touches([[(0.5, 50.05), (0.6, 50.05)]], land))
+
+
+# Near 51 degrees north, where 0.001 degrees of latitude is about 110 m.
+X, Y = -4.0, 51.0
+
+
+def at(dx, dy):
+    """A point dx, dy thousandths of a degree from (X, Y)."""
+    return (round(X + dx / 1000, 6), round(Y + dy / 1000, 6))
+
+
+class Mouths(unittest.TestCase):
+    MOUTH = at(10, 0)
+
+    def test_the_line_that_reaches_the_mouth_ends_at_its_nearest_point(self):
+        line = [at(0, 0), at(5, 0), at(10, 1), at(15, 3), at(20, 5)]   # passes 110 m from the mouth
+        self.assertEqual(fg.cut_at_mouth(line, self.MOUTH, set()), line[:3])
+
+    def test_a_tidal_line_that_never_reaches_the_mouth_is_below_it_and_dropped(self):
+        estuary = [at(25, 5), at(30, 6)]
+        self.assertEqual(fg.cut_at_mouth(estuary, self.MOUTH, set(estuary)), [])
+
+    def test_any_other_line_far_from_the_mouth_is_left_whole(self):
+        headwater = [at(-40, -30), at(-35, -28)]
+        self.assertEqual(fg.cut_at_mouth(headwater, self.MOUTH, set()), headwater)
+
+
+class GaugeStreams(unittest.TestCase):
+    def setUp(self):
+        # A river running east along y = 0, and a stream running down to it
+        # from the north along x = 5: three ways, joined end to start.
+        self.by_name = {"River Taw": [[at(0, 0), at(5, 0), at(10, 0)]]}
+        self.upper = ("", [at(5, 20), at(5, 12)])
+        self.middle = ("", [at(5, 12), at(5, 6)])
+        self.lower = ("", [at(5, 6), at(5, 0)])
+        self.elsewhere = ("", [at(50, 50), at(51, 51)])
+
+    def test_a_gauge_on_an_unnamed_stream_draws_it_down_to_the_river_under_the_agencys_name(self):
+        streams = [self.upper, self.middle, self.lower, self.elsewhere]
+        names = fg.promote_gauge_streams(self.by_name, streams, [(*at(5.2, 9), "Landkey Brook")])
+        self.assertEqual(names, {"Landkey Brook"})
+        self.assertCountEqual(self.by_name["Landkey Brook"], [self.middle[1], self.lower[1], self.upper[1]])
+        self.assertEqual(streams, [self.elsewhere])
+
+    def test_a_gauge_already_on_a_river_promotes_nothing(self):
+        streams = [self.lower, self.elsewhere]
+        names = fg.promote_gauge_streams(self.by_name, streams, [(*at(5, 0.2), "River Taw")])
+        self.assertEqual(names, set())
+        self.assertEqual(streams, [self.lower, self.elsewhere])
+
+    def test_a_gauge_far_from_any_stream_promotes_nothing(self):
+        streams = [self.middle, self.lower]
+        self.assertEqual(fg.promote_gauge_streams(self.by_name, streams, [(*at(30, 30), "Somewhere")]), set())
+
+    def test_osms_name_wins_and_brings_the_rest_of_the_stream_with_it(self):
+        named_lower = ("Bradiford Water", self.lower[1])
+        detached = ("Bradiford Water", [at(70, 70), at(71, 71)])
+        streams = [self.middle, named_lower, detached]
+        fg.promote_gauge_streams(self.by_name, streams, [(*at(5.2, 3), "Bradiford Stream")])
+        self.assertIn(detached[1], self.by_name["Bradiford Water"])
+        self.assertNotIn("Bradiford Stream", self.by_name)
+
+    def test_upstream_it_follows_the_longest_branch_and_stops_after_a_few_kilometres(self):
+        short = ("", [at(4, 13), at(5, 12)])       # joins at the top of the middle way
+        streams = [self.upper, short, self.middle, self.lower]
+        fg.promote_gauge_streams(self.by_name, streams, [(*at(5.2, 9), "Brook")])
+        self.assertIn(self.upper[1], self.by_name["Brook"])
+        self.assertEqual(streams, [short])
+        far = [("", [at(5, 12 + 10 * (k + 1)), at(5, 12 + 10 * k)]) for k in range(6)]   # 1.1 km each
+        streams = far + [self.middle, self.lower]
+        by_name = {"River Taw": [[at(0, 0), at(5, 0), at(10, 0)]]}
+        fg.promote_gauge_streams(by_name, streams, [(*at(5.2, 9), "Long Brook")])
+        self.assertEqual(len(streams), 3)   # three ways, 3.3 km, then it stops
+
+    def test_one_gauges_chain_stops_where_it_meets_anothers_stream(self):
+        tributary = ("", [at(-5, 6), at(5, 6)])     # joins the stream at the top of the lower way
+        streams = [self.middle, self.lower, tributary]
+        fg.promote_gauge_streams(self.by_name, streams, [(*at(5.2, 3), "Main Brook"), (*at(0, 6.2), "Side Brook")])
+        self.assertCountEqual(self.by_name["Main Brook"], [self.lower[1], self.middle[1]])
+        self.assertEqual(self.by_name["Side Brook"], [tributary[1]])
+
+
+if __name__ == "__main__":
+    unittest.main()
