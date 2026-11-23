@@ -7,20 +7,12 @@
 const FloodMap = (() => {
   const DATA = 'data/';
 
-  // Points around the edge of the catchment, from scripts/fetch_geodata.py's
-  // outline: the opening view keeps all of them on screen and clear of the
-  // legend.
-  const OUTLINE = [
-    [50.65, -3.97], [50.72, -3.96], [50.78, -3.93], [50.83, -3.94], [50.85, -3.97], [50.86, -3.94], [50.86, -4.00],
-    [50.89, -4.01], [50.90, -3.99], [50.91, -4.02], [50.94, -3.99], [50.98, -4.09], [51.00, -4.09], [51.01, -4.12],
-    [51.03, -4.11], [51.04, -4.17], [51.07, -4.17], [51.07, -4.11], [51.09, -4.12], [51.08, -4.06], [51.09, -4.05],
-    [51.08, -4.16], [51.10, -4.16], [51.08, -4.21], [51.12, -4.21], [51.13, -4.18], [51.16, -4.19], [51.18, -3.99],
-    [51.17, -3.85], [51.15, -3.83], [51.12, -3.81], [51.11, -3.77], [51.07, -3.69], [51.04, -3.60], [51.00, -3.61],
-    [50.99, -3.64], [50.94, -3.59], [50.90, -3.62], [50.87, -3.74], [50.84, -3.71], [50.81, -3.79], [50.76, -3.84],
-    [50.74, -3.84], [50.71, -3.93],
-  ];
-  // Devon and a margin round it.
-  const MAX_BOUNDS = [[49.9, -4.9], [51.5, -2.6]];
+  // The opening view, as Floodwatch has always opened: the catchment from
+  // Dartmoor to Barnstaple, with the legend over the land to its west.
+  const OPENING_VIEW = { centre: [50.92, -3.88], zoom: 10 };
+  // Devon and a wide margin round it, so its edges can be panned to the
+  // middle of the screen.
+  const MAX_BOUNDS = [[49.6, -5.9], [51.9, -1.8]];
 
   // Floodwatch's river colours, by name; other rivers are drawn in the
   // plain water colour. Each is a CSS variable, so it follows the theme.
@@ -62,7 +54,7 @@ const FloodMap = (() => {
     boundary:  { on: true },
     catchment: { on: true },
     rivers:    { on: true },
-    streams:   { on: true },
+    streams:   { on: false },
     passenger: { on: true },
     freight:   { on: true },
     stations:  { on: true },
@@ -631,9 +623,9 @@ const FloodMap = (() => {
   }
 
   function addLegend() {
-    // Bottom right on wider screens; bottom left on phones, where it starts
-    // collapsed.
-    const ctl = L.control({ position: PHONE.matches ? 'bottomleft' : 'bottomright' });
+    // Bottom left, over the land west of the catchment; collapsed at first
+    // on phones.
+    const ctl = L.control({ position: 'bottomleft' });
     ctl.onAdd = () => {
       const div = L.DomUtil.create('div', 'map-legend');
       const item = (key, swatch, colour, text, extra = '') =>
@@ -757,8 +749,8 @@ const FloodMap = (() => {
     setTiles();
 
     addLegend();
-    fitLegend();     // places the legend, before the view is fitted around it
-    fitIfVisible();  // after the legend, which it fits around
+    fitLegend();     // keeps the legend inside the map
+    fitIfVisible();
     legendReady = true;
     map.on('resize', fitLegend);
     if (document.fonts) document.fonts.ready.then(fitLegend);  // the credits rewrap once fonts load
@@ -801,78 +793,12 @@ const FloodMap = (() => {
     restylers.forEach(fn => fn());
   }
 
-  // Fit the catchment the first time the map is visible. Fitting while the
-  // view is hidden (zero size) would zoom all the way in.
+  // Set the opening view the first time the map is visible: Leaflet sizes
+  // itself from the container, which has no size while the view is hidden.
   let fitted = false;
-
-  // The opening view: the highest whole zoom level at which the outline is
-  // all on screen and clear of the zoom buttons and attribution. The open
-  // legend may sit over the dimmed land outside, and over a corner of the
-  // catchment: no more than LEGEND_POINTS of its outline's points, and none
-  // deeper than LEGEND_DEPTH of its width in from its edges. At each zoom the
-  // placement covering least is used, the most central of those.
-  const LEGEND_POINTS = 3;
-  const LEGEND_DEPTH = 0.1;
-  function openingView(outline, size, hard, soft, minZoom, maxZoom) {
-    const M = 12;
-    const inside = (x, y, r, m) => x > r.left - m && x < r.right + m && y > r.top - m && y < r.bottom + m;
-    for (let z = maxZoom; z >= minZoom; z--) {
-      const pts = outline.map(p => map.project(p, z));
-      const minX = Math.min(...pts.map(p => p.x)), maxX = Math.max(...pts.map(p => p.x));
-      const minY = Math.min(...pts.map(p => p.y)), maxY = Math.max(...pts.map(p => p.y));
-      const w = maxX - minX, h = maxY - minY;
-      if (w > size.x - 2 * M || h > size.y - 2 * M) continue;
-      // Offsets from the centre back to the margin, ending on the margin itself.
-      const steps = from => { const out = []; for (let v = from; v > M; v -= 8) out.push(v); out.push(M); return out; };
-      let best = null;
-      for (const ox of steps((size.x - w) / 2)) {
-        for (const oy of steps((size.y - h) / 2)) {
-          // How many points the legend covers, and how far in it reaches.
-          let covered = 0, depth = 0, ok = true;
-          pts.forEach(p => {
-            const x = p.x - minX + ox, y = p.y - minY + oy;
-            if (hard.some(r => inside(x, y, r, M))) ok = false;
-            for (const r of soft) {
-              if (!inside(x, y, r, 0)) continue;
-              covered++;
-              depth = Math.max(depth, Math.min(x - r.left, y - r.top));
-            }
-          });
-          const better = !best || covered < best.covered || (covered === best.covered && depth < best.depth);
-          if (ok && covered <= LEGEND_POINTS && depth <= LEGEND_DEPTH * w && better) best = { ox, oy, covered, depth };
-          if (best && best.covered === 0) break;
-        }
-        if (best && best.covered === 0) break;
-      }
-      if (best) {
-        const centre = L.point(minX - best.ox + size.x / 2, minY - best.oy + size.y / 2);
-        return { centre: map.unproject(centre, z), zoom: z };
-      }
-    }
-    return null;
-  }
-
   function fitIfVisible() {
     if (fitted || !map || map.getSize().x === 0) return;
-    const box = map.getContainer().getBoundingClientRect();
-    const rect = el => {
-      const r = el.getBoundingClientRect();
-      return { left: r.left - box.left, right: r.right - box.left, top: r.top - box.top, bottom: r.bottom - box.top };
-    };
-    const c = map.getContainer();
-    const hard = [...c.querySelectorAll('.map-legend.collapsed, .leaflet-control-zoom, .leaflet-control-attribution')].map(rect);
-    const soft = [...c.querySelectorAll('.map-legend:not(.collapsed)')].map(rect);
-    // Where the open legend can't be placed clear of the catchment, as on a
-    // phone, the view is fitted ignoring it.
-    const size = map.getSize(), min = map.getMinZoom();
-    const view = openingView(OUTLINE, size, hard, soft, min, 12)
-      || openingView(OUTLINE, size, [], [], min, 12);
-    // The panning limit is set after the opening view, and takes it in, so it
-    // never pulls the view back over the legend.
-    map.setMaxBounds(null);
-    if (view) map.setView(view.centre, view.zoom, { animate: false });
-    else map.fitBounds(L.latLngBounds(OUTLINE), { animate: false });
-    map.setMaxBounds(L.latLngBounds(MAX_BOUNDS).extend(map.getBounds()));
+    map.setView(OPENING_VIEW.centre, OPENING_VIEW.zoom, { animate: false });
     fitted = true;
   }
 

@@ -116,11 +116,25 @@ class Outline(unittest.TestCase):
 
 class Roads(unittest.TestCase):
     def test_major_roads(self):
-        self.assertEqual(fg.major_ref("A39"), "A39")
+        self.assertEqual(fg.major_ref("A30"), "A30")
         self.assertEqual(fg.major_ref("A377"), "A377")
-        self.assertEqual(fg.major_ref("A3124"), None)
-        self.assertEqual(fg.major_ref("B3227;A361"), "A361")
-        self.assertEqual(fg.major_ref("A3125"), None)
+        self.assertEqual(fg.major_ref("A39"), None)
+        self.assertEqual(fg.major_ref("A361"), None)
+        self.assertEqual(fg.major_ref("B3227;A377"), "A377")
+
+    def test_the_a30_stops_east_of_exeter(self):
+        line = [(-3.6, 50.7), (-3.5, 50.7), (-3.48, 50.71), (-3.3, 50.75)]
+        self.assertEqual(fg.west_of([line], -3.49), [[(-3.6, 50.7), (-3.5, 50.7)]])
+
+
+class Gaps(unittest.TestCase):
+    def test_an_unnamed_way_between_two_stretches_of_a_river_joins_it(self):
+        by_name = {"River Yeo": [[(0, 0), (1, 0)], [(2, 0), (3, 0)]], "": [[(5, 5), (6, 6)]]}
+        streams = [("", [(1, 0), (1.5, 0.1), (2, 0)]), ("Some Brook", [(1, 0), (2, 0)]), ("", [(9, 9), (8, 8)])]
+        fg.bridge_gaps(by_name, streams)
+        self.assertIn([(1, 0), (1.5, 0.1), (2, 0)], by_name["River Yeo"])
+        self.assertEqual(streams, [("Some Brook", [(1, 0), (2, 0)]), ("", [(9, 9), (8, 8)])])
+        self.assertEqual(by_name[""], [[(5, 5), (6, 6)]])
 
 
 if __name__ == "__main__":

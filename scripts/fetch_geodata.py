@@ -116,12 +116,12 @@ SIMPLIFY_DEVON = 0.0003  # ~20-30 m: it's drawn only as the edge of the dimmed l
 RAIL_ROUTES = {275887: "Tarka Line", 276920: "Dartmoor Line"}
 STATION_NEAR_M = 250  # a station this close to a line is on it
 
-# Major roads beyond the one- and two-digit A roads: the A377 runs down the
-# Taw valley from Exeter to Barnstaple, and the A361, the North Devon Link
-# Road, crosses the catchment through South Molton. Roads that reach the
-# catchment are drawn across Devon, so they run on into Exeter rather than
-# stopping at the watershed.
-EXTRA_ROADS = {"A377", "A361"}
+# The major roads drawn: the A377, which runs down the Taw valley from Exeter
+# to Barnstaple, and the A30 from Exeter west past the foot of the catchment
+# at Sticklepath, ending at Devon's edge. East of Exeter the A30 is cut off
+# at ROAD_EAST_LIMIT, where it leaves the M5 for Honiton.
+MAJOR_ROADS = ("A30", "A377")
+ROAD_EAST_LIMIT = {"A30": -3.49}
 
 
 # --------------------------------------------------------------------------
@@ -544,6 +544,39 @@ def nearest_name(line, places):
     return min(places, key=lambda nq: min(dist(p, nq[1]) for p in line[::5] + [line[-1]]))[0]
 
 
+def bridge_gaps(by_name, streams):
+    """Join unnamed waterways that fill a gap in a named river.
+
+    OSM sometimes leaves a stretch of a river unnamed, such as the Lapford
+    Yeo below its headwaters, where an unnamed way doubles as a parish
+    boundary. An unnamed way that runs from the end of one stretch of a river
+    to the start of another of the same river is part of it.
+    """
+    ends, starts = defaultdict(set), defaultdict(set)
+    for name, lines in by_name.items():
+        if name:
+            for l in lines:
+                ends[l[-1]].add(name)
+                starts[l[0]].add(name)
+
+    def owner(pts):
+        found = ends.get(pts[0], set()) & starts.get(pts[-1], set())
+        return next(iter(found)) if len(found) == 1 else None
+
+    keep = []
+    for pts in by_name.get("", []):
+        name = owner(pts) if len(pts) >= 2 else None
+        (by_name[name] if name else keep).append(pts)
+    if "" in by_name:
+        by_name[""] = keep
+    for i, (nm, pts) in enumerate(list(streams)):
+        name = None if nm or len(pts) < 2 else owner(pts)
+        if name:
+            by_name[name].append(pts)
+            streams[i] = None
+    streams[:] = [s for s in streams if s is not None]
+
+
 def fetch_waterways(land, coast, bbox):
     box = ",".join(map(str, bbox))
     river_ways = overpass(f'[out:json][timeout:240];way["waterway"~"^(river|canal)$"]({box});out tags geom;', "rivers")
@@ -581,6 +614,7 @@ def fetch_waterways(land, coast, bbox):
             kind_of.setdefault(name, "river")
         else:
             streams_left.append((name, coords_of(w)))
+    bridge_gaps(by_name, streams_left)
 
     named_lines = defaultdict(list)
     for name, lines in by_name.items():
@@ -756,25 +790,42 @@ def fetch_railways(land):
 
 
 def major_ref(tag):
-    """The road's major number, if it has one: a one- or two-digit A road, or one of EXTRA_ROADS."""
+    """The road's number, if it's one of MAJOR_ROADS."""
     for r in (r.strip() for r in tag.split(";")):
-        if (r[:1] == "A" and r[1:].isdigit() and len(r) <= 3) or r in EXTRA_ROADS:
+        if r in MAJOR_ROADS:
             return r
     return None
 
 
+def west_of(lines, limit):
+    """The runs of each line that lie west of a longitude."""
+    runs = []
+    for line in lines:
+        cur = []
+        for p in line:
+            if p[0] <= limit:
+                cur.append(p)
+            else:
+                if len(cur) >= 2:
+                    runs.append(cur)
+                cur = []
+        if len(cur) >= 2:
+            runs.append(cur)
+    return runs
+
+
 def fetch_roads(land, devon, devon_bbox):
-    """The major roads that reach the catchment, the A30, A39, A361 and A377,
-    drawn across Devon and ending at its edge.
+    """The A30 and A377 across Devon, ending at its edge, and the A30 east of
+    Exeter cut off.
 
     Slip roads (``*_link``) are left out. Dual carriageways stay as two lines,
     as OSM draws them.
     """
     box = ",".join(map(str, devon_bbox))
-    extra = "|".join(sorted(EXTRA_ROADS))
+    refs = "|".join(MAJOR_ROADS)
     els = overpass(
         f'[out:json][timeout:240];way["highway"~"^(motorway|trunk|primary)$"]'
-        f'["ref"~"(^|;) *(A[0-9]{{1,2}}|{extra})( *;|$)"]({box});out tags geom;', "roads")
+        f'["ref"~"(^|;) *({refs})( *;|$)"]({box});out tags geom;', "roads")
     by_ref = defaultdict(list)
     for w in els:
         ref = major_ref(w.get("tags", {}).get("ref", ""))
@@ -786,6 +837,8 @@ def fetch_roads(land, devon, devon_bbox):
         if not touches(merged, land):
             continue
         merged = [run for l in merged for run in devon.clip(l)]
+        if ref in ROAD_EAST_LIMIT:
+            merged = west_of(merged, ROAD_EAST_LIMIT[ref])
         parts = [rnd(simplify(l, SIMPLIFY_RAIL)) for l in merged]
         roads.append(feature("MultiLineString", parts, ref=ref,
                              length_km=round(sum(length_km(l) for l in merged), 1)))
