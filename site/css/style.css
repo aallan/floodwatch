@@ -1,0 +1,841 @@
+/* Monitoring Cornwall stylesheet. A warm-neutral palette held in CSS custom
+   properties, with light and dark values; hairline borders rather than
+   shadows; one brand accent (--accent). */
+
+:root {
+    --bg: #faf9f7;
+    --bg-card: #ffffff;
+    --bg-hover: #f3f2ef;
+    --bg-elevated: #f3f2ef;
+    --border: #e8e6e1;
+    --text: #2d2b28;
+    --text-secondary: #7a756d;
+    --text-tertiary: #a9a49b;
+    --text-on-dark: #f5f3f0;
+    --accent: #2f7a86;
+    --accent-light: rgba(47, 122, 134, 0.12);
+    --up: #5a9e6f;
+    --up-light: rgba(90, 158, 111, 0.15);
+    --down: #c4564a;
+    --down-light: rgba(196, 86, 74, 0.15);
+    --warn: #b8860b;
+    --grid-import: #4a82a8;
+    --radius: 10px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --mono: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+
+    /* Map overlays (read by map.js at render time) */
+    --water: #3f7fae;
+    --water-minor: #7fa9c9;
+    --rail: #5c5853;
+    --rail-freight: #9e998f;
+    --road: #8fbf8f;
+    --road-edge: #4f7d58;
+    --road-badge: #2f6a45;
+    --road-badge-text: #f6e7a6;
+    --level-normal: #4f9a6c;
+    --level-high: #c4564a;
+    --level-low: #8db0c8;
+    --level-unknown: #7d8f9c;
+    --tidal: #c47a2a;
+    --rain: #4a82a8;
+    --cso: #7b3fa0;
+    --cso-recent: #a582c4;
+    --cso-quiet: #d9cee8;
+    --bw-excellent: #2b8a8f;
+    --bw-good: #8cc5c2;
+    --bw-sufficient: #d9a03f;
+    --bw-poor: #c4564a;
+    --sea: #2f4f73;
+    --flood-severe: #c4564a;
+    --flood-warning: #d9822b;
+    --flood-alert: #c9a227;
+    /* Met Office warning levels */
+    --met-yellow: #e0b400;
+    --met-amber: #e07b00;
+    --met-red: #c8322b;
+    --power-bg: #2d2b28;
+    --power-bolt: #f5c400;
+    /* Drought stages */
+    --drought-severe: #a8432a;
+    --drought: #c7782a;
+    --drought-dry: #b0912e;
+    --station-fill: #ffffff;
+    --hollow-fill: #fcf8ef;  /* hollow markers show the county's land colour */
+    --mask: #d9d5cd;
+    --mask-opacity: 0.55;
+    --tile-filter: sepia(0.18) saturate(0.85) brightness(1.02);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg: #1c1b19;
+        --bg-card: #262522;
+        --bg-hover: #302f2c;
+        --bg-elevated: #302f2c;
+        --border: #3a3835;
+        --text: #e8e5df;
+        --text-secondary: #9e998f;
+        --text-tertiary: #6b665e;
+        --accent: #5fb0bb;
+        --accent-light: rgba(95, 176, 187, 0.14);
+        --up: #6fb585;
+        --up-light: rgba(111, 181, 133, 0.13);
+        --down: #d4837a;
+        --down-light: rgba(212, 131, 122, 0.13);
+        --warn: #d6a72a;
+
+        --water: #6aa9d6;
+        --water-minor: #4d7896;
+        --rail: #c9c4bb;
+        --rail-freight: #77726a;
+        --road: #78ad80;
+        --road-edge: #335c3d;
+        --road-badge: #2f6a45;
+        --road-badge-text: #f6e7a6;
+        --level-normal: #6fb585;
+        --level-high: #d4837a;
+        --level-low: #6f93ad;
+        --level-unknown: #8a96a0;
+        --tidal: #d39a5e;
+        --rain: #6aa9d6;
+        --cso: #c39be6;
+        --cso-recent: #9677b5;
+        --cso-quiet: #594c69;
+        --bw-excellent: #4fb8b5;
+        --bw-good: #3d7f7c;
+        --bw-sufficient: #dba95c;
+        --bw-poor: #e07b6f;
+        --sea: #8fb3d9;
+        --flood-severe: #e07b6f;
+        --flood-warning: #e39a52;
+        --flood-alert: #d9bd4f;
+        --met-yellow: #e8c23a;
+        --met-amber: #e8962e;
+        --met-red: #e0675c;
+        --power-bg: #f5c400;
+        --power-bolt: #1f1e1c;
+        --drought-severe: #e07a5f;
+        --drought: #e39a52;
+        --drought-dry: #d4b65a;
+        --station-fill: #262522;
+        --hollow-fill: #4d4b49;
+        --mask: #0e0d0c;
+        --mask-opacity: 0.5;
+        --tile-filter: sepia(0.25) saturate(0.7);
+    }
+}
+:root[data-theme="dark"] {
+    --bg: #1c1b19;
+    --bg-card: #262522;
+    --bg-hover: #302f2c;
+    --bg-elevated: #302f2c;
+    --border: #3a3835;
+    --text: #e8e5df;
+    --text-secondary: #9e998f;
+    --text-tertiary: #6b665e;
+    --accent: #5fb0bb;
+    --accent-light: rgba(95, 176, 187, 0.14);
+    --up: #6fb585;
+    --up-light: rgba(111, 181, 133, 0.13);
+    --down: #d4837a;
+    --down-light: rgba(212, 131, 122, 0.13);
+    --warn: #d6a72a;
+
+    --water: #6aa9d6;
+    --water-minor: #4d7896;
+    --rail: #c9c4bb;
+    --rail-freight: #77726a;
+    --road: #78ad80;
+    --road-edge: #335c3d;
+    --road-badge: #2f6a45;
+    --road-badge-text: #f6e7a6;
+    --level-normal: #6fb585;
+    --level-high: #d4837a;
+    --level-low: #6f93ad;
+    --level-unknown: #8a96a0;
+    --tidal: #d39a5e;
+    --rain: #6aa9d6;
+    --cso: #c39be6;
+    --cso-recent: #9677b5;
+    --cso-quiet: #594c69;
+    --bw-excellent: #4fb8b5;
+    --bw-good: #3d7f7c;
+    --bw-sufficient: #dba95c;
+    --bw-poor: #e07b6f;
+    --sea: #8fb3d9;
+    --flood-severe: #e07b6f;
+    --flood-warning: #e39a52;
+    --flood-alert: #d9bd4f;
+    --met-yellow: #e8c23a;
+    --met-amber: #e8962e;
+    --met-red: #e0675c;
+    --power-bg: #f5c400;
+    --power-bolt: #1f1e1c;
+    --drought-severe: #e07a5f;
+    --drought: #e39a52;
+    --drought-dry: #d4b65a;
+    --station-fill: #262522;
+    --hollow-fill: #4d4b49;
+    --mask: #0e0d0c;
+    --mask-opacity: 0.5;
+    --tile-filter: sepia(0.25) saturate(0.7);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; }
+body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ---------- Header ---------- */
+/* One row: the title, the tabs, then the status line and buttons on the
+   right, with the active tab's underline on the header's bottom edge.
+   Header, main and footer share one full-width left edge on every tab, so
+   nothing shifts sideways when switching between Map and About. */
+header { padding: 0 2rem; width: 100%; border-bottom: 1px solid var(--border); }
+.header-row { display: flex; align-items: stretch; gap: 1.5rem; min-height: 3.25rem; }
+.header-row > h1, .header-row > .header-buttons, .header-row > .status-line { align-self: center; }
+header h1 {
+    font-size: 1.1rem; font-weight: 600; letter-spacing: 0.02em; color: var(--text);
+    display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; flex: none;
+}
+header h1 .ticker {
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; color: var(--text-on-dark);
+    background: var(--accent); padding: 0.1rem 0.4rem; border-radius: 5px;
+}
+.header-buttons { display: flex; gap: 0.4rem; align-items: center; flex: none; }
+.header-btn, .theme-toggle {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px;
+    width: 2.25rem; height: 2.25rem; cursor: pointer; font-size: 1.1rem; color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center; transition: background 0.15s; padding: 0;
+}
+.header-btn:hover, .theme-toggle:hover { background: var(--bg-hover); }
+.theme-toggle { font-size: 1rem; }
+.theme-toggle::after { content: '\263e'; }
+:root[data-theme="dark"] .theme-toggle::after { content: '\2600'; }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .theme-toggle::after { content: '\2600'; }
+}
+.status-line {
+    font-size: 0.78rem; color: var(--text-tertiary); font-variant-numeric: tabular-nums;
+    margin-left: auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ---------- Nav ---------- */
+nav { display: flex; gap: 0.25rem; overflow-x: auto; scrollbar-width: none; flex: none; }
+nav::-webkit-scrollbar { display: none; }
+.nav-btn {
+    background: none; border: none; padding: 0.5rem 0.75rem; font: inherit; font-size: 0.875rem;
+    color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; white-space: nowrap;
+    flex-shrink: 0; text-decoration: none; display: flex; align-items: center;
+}
+.nav-btn:hover { color: var(--text); }
+.nav-btn.active { color: var(--text); border-bottom-color: var(--text); }
+
+/* ---------- Layout ---------- */
+main { width: 100%; padding: 1.5rem 2rem 1.5rem; flex: 1 0 auto; display: flex; flex-direction: column; }
+#view-about { max-width: 1100px; }  /* readable line length; left-aligned with the header */
+.view { display: none; }
+.view.active { display: block; }
+#view-map.active { display: flex; flex-direction: column; flex: 1 0 auto; }
+
+/* Map mode: the map is the page. The header becomes a full-width bar and the
+   map fills the rest of the window, edge to edge. app.js sets the class. */
+body.map-mode { height: 100vh; height: 100dvh; overflow: hidden; }
+body.map-mode main { padding: 0; flex: 1 1 auto; min-height: 0; }
+body.map-mode #view-map.active { flex: 1 1 auto; min-height: 0; margin-top: 0; }
+body.map-mode .map-box { flex: 1 1 auto; min-height: 0; border: none; border-radius: 0; }
+body.map-mode footer { display: none; }
+@media (max-width: 640px) {
+    /* Every pixel counts on a phone. Applied on every tab, not just the map,
+       so the header never changes size when switching. The snapshot date is
+       repeated on the About tab. */
+    .status-line { display: none; }
+    header { padding: 0 1rem; }
+    /* The tabs take a row of their own under the title and buttons. */
+    .header-row { flex-wrap: wrap; row-gap: 0; column-gap: 0.75rem; min-height: 0; padding-top: 0.6rem; }
+    .header-row > .header-buttons { margin-left: auto; }
+    .header-row > nav { order: 1; flex: 1 0 100%; margin-left: -0.75rem; }
+}
+
+/* ---------- Sections / panels ---------- */
+.section { margin-bottom: 2rem; }
+.section > h2 { font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.75rem; }
+.panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+.panel p { font-size: 0.875rem; margin-bottom: 0.75rem; }
+.panel p:last-child { margin-bottom: 0; }
+.panel a, .data-table a { color: var(--accent); text-decoration: none; }
+.panel a:hover, .data-table a:hover { text-decoration: underline; }
+
+/* ---------- Tables ---------- */
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.data-table th {
+    text-align: left; font-weight: 500; color: var(--text-secondary); padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em;
+}
+.data-table th.num, .data-table td.num { text-align: right; }
+.data-table td.num { white-space: nowrap; }
+.data-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+/* Data sources: the layer and licence columns keep their words whole, and
+   the source column takes the rest. */
+.data-table.sources td { overflow-wrap: normal; }
+.data-table.sources td:first-child { width: 12rem; }
+.data-table.sources td:last-child { white-space: nowrap; }
+
+/* About: what's on the map, as labelled paragraphs. */
+.about-list { display: grid; grid-template-columns: 9rem 1fr; gap: 0.6rem 1.25rem; font-size: 0.875rem; margin: 0; }
+.about-list dt { font-weight: 600; }
+.about-list dd { margin: 0; }
+@media (max-width: 640px) {
+    .about-list { grid-template-columns: 1fr; gap: 0.15rem; }
+    .about-list dd { margin-bottom: 0.6rem; }
+}
+.muted { color: var(--text-tertiary); }
+
+/* ---------- Map ---------- */
+.map-box {
+    position: relative; flex: 1 0 auto; min-height: 520px;
+    border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+    background: var(--bg-card);
+}
+#map { position: absolute; inset: 0; background: var(--bg); font-family: var(--font); }
+#map .leaflet-tile-pane, #map .leaflet-labels-pane { filter: var(--tile-filter); }
+
+/* Leaflet chrome, restyled to the house look */
+.leaflet-container a { color: var(--accent); }
+.leaflet-bar { border: 1px solid var(--border) !important; border-radius: var(--radius) !important; box-shadow: none !important; overflow: hidden; }
+.leaflet-bar a, .leaflet-bar a:hover {
+    background: var(--bg-card); color: var(--text-secondary); border-bottom: 1px solid var(--border);
+    width: 30px; height: 30px; line-height: 30px; font-weight: 400;
+}
+.leaflet-bar a:hover { background: var(--bg-hover); color: var(--text); }
+.leaflet-bar a:last-child { border-bottom: none; }
+.leaflet-bar a.leaflet-disabled, .leaflet-bar a.leaflet-disabled:hover {
+    background: var(--bg-card); color: var(--text-tertiary); opacity: 0.6;
+}
+.leaflet-control-attribution {
+    background: color-mix(in srgb, var(--bg-card) 85%, transparent) !important;
+    color: var(--text-tertiary); font-size: 10px; border-top-left-radius: 6px;
+}
+.leaflet-control-attribution a { color: var(--text-secondary); }
+
+/* Hover tooltips: the one dark floating layer */
+.leaflet-tooltip.map-tip {
+    background: rgba(45, 43, 40, 0.92); color: var(--text-on-dark); border: none;
+    border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.leaflet-tooltip.map-tip::before { display: none; }
+.map-tip .tip-sub { color: #a9a49b; font-weight: 400; margin-left: 0.35rem; }
+
+/* River and railway labels */
+.map-label {
+    position: absolute; transform: translate(-50%, -50%);
+    white-space: nowrap; width: max-content; pointer-events: none;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+    text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 6px var(--bg);
+}
+.map-label.river { color: var(--water); font-style: italic; font-weight: 500; font-size: 10.5px; }
+.map-label.river.major { font-size: 11.5px; font-weight: 600; }
+.map-label.rail {
+    color: var(--text-secondary); background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1px 6px; font-size: 9.5px; text-shadow: none; letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+/* Road numbers in the green-and-yellow of UK primary-route signs */
+.map-label.road {
+    background: var(--road-badge); color: var(--road-badge-text); text-shadow: none;
+    border-radius: 3px; padding: 1px 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.02em;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55);
+}
+.flow-arrow { color: var(--water); font-size: 9px; line-height: 1; opacity: 0.75; pointer-events: none; }
+
+/* Legend: a house-style card floating on the map */
+/* --legend-max is set by map.js from the map's height, leaving room for the
+   zoom buttons above; the list scrolls inside the card when it doesn't fit. */
+.map-legend {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 0.6rem 0.75rem 0.5rem; color: var(--text);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+    display: flex; flex-direction: column; max-height: var(--legend-max, none);
+}
+.legend-head {
+    display: flex; align-items: center; justify-content: space-between; width: 100%;
+    background: none; border: none; font: inherit; font-size: 0.75rem; font-weight: 500;
+    color: var(--text-secondary); cursor: pointer; padding: 0 0.1rem 0.25rem;
+    text-transform: uppercase; letter-spacing: 0.04em;
+}
+.legend-head:hover { color: var(--text); }
+.legend-chevron::after { content: '\25BE'; font-size: 0.8rem; }
+.map-legend.collapsed { min-width: 0; padding-bottom: 0.35rem; }
+.map-legend.collapsed .legend-head { padding-bottom: 0; gap: 0.6rem; }
+.map-legend.collapsed .legend-chevron::after { content: '\25B8'; }
+.map-legend.collapsed .legend-body { display: none; }
+/* Two columns, so the legend is wider and shorter; it scrolls only when even
+   two columns don't fit. One column on phones. */
+.legend-body {
+    border-top: 1px solid var(--border); padding-top: 0.15rem; min-height: 0;
+    overflow-y: auto; overscroll-behavior: contain;
+    /* Equal shares: in a legend that sizes to its content, each column takes
+       the width the wider one needs, so the two match. */
+    display: grid; grid-template-columns: 1fr 1fr; column-gap: 1.25rem;
+}
+/* Rows never wrap: the columns grow to fit the longest. */
+.legend-col { min-width: max-content; }
+.legend-hint {
+    grid-column: 1 / -1; margin: 0.3rem 0 0.15rem; font-size: 0.72rem; line-height: 1.35;
+    color: var(--text-tertiary);
+}
+.legend-title {
+    font-size: 0.7rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em;
+    margin: 0.35rem 0 0.2rem;
+}
+.legend-group {
+    display: block; width: 100%; background: none; border: none; font-family: inherit;
+    text-align: left; cursor: pointer; padding: 0 0.1rem; border-radius: 4px;
+    transition: color 0.15s;
+}
+.legend-group:hover { color: var(--text-secondary); }
+.legend-group.off { text-decoration: line-through; text-decoration-color: var(--text-tertiary); }
+.legend-item {
+    display: flex; align-items: center; gap: 0.55rem; width: 100%;
+    background: none; border: none; font: inherit; font-size: 0.8rem; color: var(--text);
+    padding: 0.18rem 0.1rem; cursor: pointer; text-align: left; border-radius: 4px;
+    transition: background 0.15s, color 0.15s; white-space: nowrap;
+}
+.legend-item:hover { background: var(--bg-hover); }
+.legend-item.off { color: var(--text-tertiary); }
+.legend-item.off .legend-label { text-decoration: line-through; text-decoration-color: var(--text-tertiary); }
+.legend-item .count { margin-left: auto; color: var(--text-tertiary); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+
+/* Swatches: filled when the layer is on, hollow when off (house legend) */
+.swatch { flex: 0 0 22px; height: 10px; position: relative; }
+.swatch::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); }
+.swatch.line::before { height: 3px; border-radius: 2px; background: var(--c); }
+.swatch.line.thin::before { height: 1.5px; }
+.swatch.road::before { height: 5px; border-radius: 3px; background: var(--road); box-shadow: 0 0 0 1px var(--road-edge); }
+.swatch.dash::before { height: 0; border-top: 2.5px dashed var(--c); }
+.swatch.dot::before { left: 6px; right: auto; width: 9px; height: 9px; border-radius: 50%; background: var(--station-fill); border: 2px solid var(--c); }
+.swatch.area::before { height: 10px; border-radius: 3px; background: var(--accent-light); border: 1.5px solid var(--c); }
+.legend-item.off .swatch.line::before { background: none; height: 3px; box-shadow: inset 0 0 0 1px var(--c); opacity: 0.6; }
+.legend-item.off .swatch.road::before { background: none; }
+.legend-item.off .swatch.dash::before, .legend-item.off .swatch.dot::before, .legend-item.off .swatch.area::before { opacity: 0.35; }
+
+.map-note { margin-top: 0.6rem; font-size: 11px; color: var(--text-tertiary); }
+
+/* ---------- Loading / empty ---------- */
+.loading, .empty { color: var(--text-tertiary); font-size: 0.85rem; padding: 2rem; text-align: center; }
+
+/* ---------- Footer ---------- */
+footer { width: 100%; padding: 0 2rem 1.5rem; }
+.footer-line { border-top: 1px solid var(--border); margin-bottom: 0.75rem; }
+.footer-content { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.footer-note { font-size: 11px; color: var(--text-tertiary); }
+.github-link { display: flex; align-items: center; gap: 0.35rem; font-size: 11px; color: var(--text-tertiary); text-decoration: none; }
+.github-link:hover { color: var(--text-secondary); }
+.github-icon { width: 14px; height: 14px; opacity: 0.5; transition: opacity 0.15s; }
+.github-link:hover .github-icon { opacity: 0.8; }
+:root[data-theme="dark"] .github-icon { filter: invert(1); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .github-icon { filter: invert(1); } }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+    header, main, footer { padding-left: 1rem; padding-right: 1rem; }
+    main { padding-top: 1rem; }
+    .map-box { min-height: 70vh; }
+    .map-legend { font-size: 0.75rem; }
+    .legend-body { grid-template-columns: 1fr; }
+    /* The credits wrap across a phone's width; fitLegend() in map.js measures
+       them and lifts the legend clear. This is the starting point. */
+    .leaflet-bottom.leaflet-left .leaflet-control { margin-bottom: 36px; }
+    .data-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .footer-content { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+}
+
+/* ---------- Live stations ---------- */
+/* Station and overflow markers are centred on their point and sized as a base
+   size times --mk, which map.js raises as the map zooms in, so they stay easy
+   to see and to tap on a close-up map. Rotation and the hover enlargement are
+   variables too, so the shapes keep them as they grow. */
+.stn, .cso, .bw, .buoy {
+    position: absolute; left: 50%; top: 50%; box-sizing: border-box;
+    width: calc(var(--size) * var(--mk, 1)); height: calc(var(--size) * var(--mk, 1));
+    transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) scale(var(--hover, 1));
+    border: 1.5px solid var(--station-fill); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+    cursor: pointer; transition: transform 0.15s, width 0.2s, height 0.2s;
+}
+.leaflet-marker-icon:hover .stn, .leaflet-marker-icon:focus .stn,
+.leaflet-marker-icon:hover .cso, .leaflet-marker-icon:focus .cso,
+.leaflet-marker-icon:hover .bw, .leaflet-marker-icon:focus .bw,
+.leaflet-marker-icon:hover .buoy, .leaflet-marker-icon:focus .buoy { --hover: 1.25; }
+
+/* ---------- Power cuts ---------- */
+/* A dark disc with a yellow bolt, reversed in dark mode */
+.pcut {
+    position: absolute; left: 50%; top: 50%; box-sizing: border-box;
+    width: calc(var(--size) * var(--mk, 1)); height: calc(var(--size) * var(--mk, 1));
+    transform: translate(-50%, -50%) scale(var(--hover, 1));
+    border-radius: 50%; background: var(--power-bg); border: 1.5px solid var(--station-fill);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); cursor: pointer; transition: transform 0.15s;
+    display: flex; align-items: center; justify-content: center;
+}
+.pcut svg { width: 64%; height: 64%; fill: var(--power-bolt); }
+.leaflet-marker-icon:hover .pcut, .leaflet-marker-icon:focus .pcut { --hover: 1.2; }
+.swatch.pcut-swatch::before { left: 5px; right: auto; width: 11px; height: 11px; border-radius: 50%; background: var(--power-bg); }
+.legend-item.off .swatch.pcut-swatch::before { opacity: 0.3; }
+.stn-pop-state.is-power .stn-pop-dot { background: var(--power-bg); box-shadow: inset 0 0 0 2px var(--power-bolt); }
+.pcut-postcodes { font-size: 0.78rem; color: var(--text-secondary); margin: 0.25rem 0; }
+.pcut-postcodes summary { cursor: pointer; }
+.pcut-postcode-list { margin-top: 0.25rem; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.stn { --size: 14px; }
+.stn-level { border-radius: 50%; background: var(--level-normal); }
+.stn-level.is-high { background: var(--level-high); }
+.stn-level.is-low { background: var(--level-low); }
+.stn-level.is-unknown { background: var(--level-unknown); }
+.stn-tidal { --size: 12px; --rot: 45deg; border-radius: 2px; background: var(--tidal); }
+/* A drop: a rounded square with one sharp corner, pointing down */
+.stn-rain { --rot: -45deg; border-radius: 50% 50% 50% 0; background: var(--hollow-fill); border-color: var(--rain); border-width: 2px; }
+.stn-rain.is-raining { background: var(--rain); border-color: var(--station-fill); border-width: 1.5px; }
+.stn.is-stale, .stn.is-no-data { background: var(--hollow-fill); border-color: var(--text-tertiary); box-shadow: none; }
+
+/* Legend swatches for the station kinds */
+.swatch.gauge::before { left: 6px; right: auto; width: 10px; height: 10px; }
+.swatch.gauge.level::before { border-radius: 50%; background: var(--level-normal); }
+.swatch.gauge.tidal::before { width: 8px; height: 8px; left: 7px; border-radius: 1px; transform: translateY(-50%) rotate(45deg); background: var(--tidal); }
+.swatch.gauge.rain::before { border-radius: 50% 50% 50% 0; transform: translateY(-50%) rotate(-45deg); background: var(--rain); }
+.legend-item.off .swatch.gauge::before { opacity: 0.3; }
+
+/* Station popup: a house-style card */
+.stn-popup .leaflet-popup-content-wrapper {
+    background: var(--bg-card); color: var(--text); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14);
+}
+.stn-popup .leaflet-popup-tip { background: var(--bg-card); border: 1px solid var(--border); box-shadow: none; }
+.stn-popup .leaflet-popup-content { margin: 0.9rem 1rem 0.75rem; font-family: var(--font); line-height: 1.4; }
+.stn-popup a.leaflet-popup-close-button { color: var(--text-tertiary); top: 6px; right: 6px; }
+.stn-popup a.leaflet-popup-close-button:hover { color: var(--text); }
+.stn-pop-title { font-size: 0.95rem; font-weight: 600; padding-right: 1rem; }
+.stn-pop-sub { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+.stn-pop-now { display: flex; align-items: baseline; gap: 0.5rem; }
+.stn-pop-value { font-size: 1.4rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stn-pop-note { font-size: 0.8rem; color: var(--text-secondary); }
+.stn-pop-state { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--text-secondary); margin: 0.15rem 0 0.6rem; }
+.stn-pop-when { color: var(--text-tertiary); }
+.stn-pop-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); flex: none; }
+.is-normal .stn-pop-dot { background: var(--level-normal); }
+.is-high .stn-pop-dot { background: var(--level-high); }
+.is-low .stn-pop-dot { background: var(--level-low); }
+.is-tidal .stn-pop-dot { background: var(--tidal); }
+.is-raining .stn-pop-dot { background: var(--rain); }
+.is-dry .stn-pop-dot { background: none; box-shadow: inset 0 0 0 1.5px var(--rain); }
+.stn-pop-ranges { display: flex; gap: 0.25rem; margin-bottom: 0.4rem; }
+.stn-pop-ranges .btn-toggle { padding: 0.2rem 0.55rem; font-size: 0.72rem; border-radius: 6px; }
+.stn-pop-chart { min-height: 150px; }
+.stn-pop-chart.loading { opacity: 0.4; }
+.stn-pop-key { font-size: 0.72rem; color: var(--text-tertiary); }
+.stn-pop-readout { min-height: 1.2em; font-size: 0.72rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.stn-pop-source { margin-top: 0.35rem; font-size: 0.68rem; color: var(--text-tertiary); }
+
+/* Station chart: inline SVG, coloured from the theme */
+.stn-chart { display: block; width: 100%; height: auto; overflow: visible; }
+.stn-grid { stroke: var(--border); stroke-width: 1; }
+.stn-axis { fill: var(--text-tertiary); font-size: 9px; font-family: var(--font); font-variant-numeric: tabular-nums; }
+.stn-ref { stroke-width: 1.2; }
+.stn-ref-high { stroke: var(--level-high); stroke-dasharray: 5 4; }
+.stn-ref-record { stroke: var(--text-tertiary); stroke-dasharray: 1 3; }
+.stn-line { fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.stn-line-level { stroke: var(--water); }
+.stn-line-tidal { stroke: var(--tidal); }
+.stn-bar { fill: var(--rain); }
+.stn-bar-forecast { fill: var(--tidal); }  /* amber for forecasts, as on Floodwatch */
+.stn-line-forecast { stroke: var(--tidal); }
+.stn-line-model { stroke: var(--water); opacity: 0.45; stroke-dasharray: 4 3; }
+.stn-band { fill: var(--tidal); opacity: 0.2; }
+.stn-ref-normal { stroke: var(--text-tertiary); stroke-dasharray: 1 3; }
+.stn-today { stroke: var(--text-secondary); stroke-width: 1; stroke-dasharray: 3 2; }
+.stn-today-label { fill: var(--text-secondary); font-size: 9px; font-family: var(--font); }
+.stn-cursor { stroke: var(--text-tertiary); stroke-width: 1; stroke-dasharray: 2 2; }
+.stn-chart-empty { fill: var(--text-tertiary); font-size: 11px; font-family: var(--font); }
+
+/* The house toggle button, used for the popup's time ranges */
+.btn-toggle {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 0.35rem 0.75rem; font: inherit; font-size: 0.8rem; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.15s;
+}
+.btn-toggle:hover { background: var(--bg-hover); }
+.btn-toggle.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+/* ---------- Storm overflows ---------- */
+.cso { --size: 12px; border-radius: 50%; background: var(--cso-quiet); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15); }
+.cso.is-spilling { background: var(--cso); animation: cso-pulse 1.8s ease-in-out infinite; }
+.cso.is-recent { background: var(--cso-recent); }
+.cso.is-quiet { --size: 10px; }
+.cso.is-offline { --size: 10px; background: var(--hollow-fill); border-color: var(--text-tertiary); box-shadow: none; }
+@keyframes cso-pulse {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15), 0 0 0 0 var(--cso); }
+    50% { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15), 0 0 0 4px rgba(123, 63, 160, 0.25); }
+}
+/* Overflows at sewage treatment works are diamonds; those on the sewer
+   network or at pumping stations are circles. */
+.cso.is-works { --rot: 45deg; border-radius: 2px; }
+@media (prefers-reduced-motion: reduce) { .cso.is-spilling { animation: none; } }
+
+.swatch.cso-swatch::before { left: 6px; right: auto; width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.legend-item.off .swatch.cso-swatch::before { opacity: 0.3; }
+
+.cso-state.is-spilling .stn-pop-dot { background: var(--cso); }
+.cso-state.is-recent .stn-pop-dot { background: var(--cso-recent); }
+.cso-state.is-quiet .stn-pop-dot { background: var(--cso-quiet); }
+.cso-state.is-offline .stn-pop-dot { background: none; box-shadow: inset 0 0 0 1.5px var(--text-tertiary); }
+.cso-body { min-height: 120px; }
+.cso-body.loading { opacity: 0.4; }
+.cso-head { font-size: 0.7rem; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; margin: 0.4rem 0 0.15rem; }
+.cso-stats { display: flex; align-items: baseline; gap: 0.35rem; margin-bottom: 0.3rem; }
+.cso-stats .stn-pop-value { font-size: 1.15rem; }
+.cso-stats .stn-pop-note + .stn-pop-value { margin-left: 0.6rem; }
+.cso-strip-bg { fill: var(--bg-hover); }
+.cso-strip-bar { fill: var(--cso); }
+.cso-year-bar { fill: var(--cso-recent); }
+
+/* ---------- Flood warnings ---------- */
+/* Quiet indicator in the header when nothing is in force, which opens to say so */
+.flood-pill {
+    display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.7rem 0.3rem 0.6rem;
+    border-radius: 999px; font: inherit; font-size: 0.78rem; color: var(--up); background: var(--up-light);
+    border: 1px solid rgba(90, 158, 111, 0.3); white-space: nowrap; cursor: pointer;
+}
+.flood-pill:hover { background: color-mix(in srgb, var(--up) 22%, var(--bg-card)); }
+.flood-pill-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+/* Banner under the header while any warning or alert is in force */
+.flood-banner {
+    --tone: var(--flood-alert);
+    border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+    background: color-mix(in srgb, var(--tone) 12%, var(--bg-card));
+    border-radius: var(--radius); margin-bottom: 0.6rem; position: relative;
+}
+.flood-banner[hidden] { display: none; }
+.flood-banner.is-warning { --tone: var(--flood-warning); }
+.flood-banner.is-severe { --tone: var(--flood-severe); }
+.flood-summary {
+    display: flex; align-items: center; gap: 0.6rem; width: 100%; padding: 0.55rem 0.85rem;
+    background: none; border: none; font: inherit; font-size: 0.875rem; font-weight: 500;
+    color: var(--text); text-align: left; cursor: pointer;
+}
+.flood-icon { width: 10px; height: 10px; border-radius: 50%; background: var(--tone); flex: none; }
+.flood-banner.is-severe .flood-icon { animation: pill-pulse 1.8s ease-in-out infinite; }
+@keyframes pill-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.flood-summary-text { flex: 1; }
+.flood-chevron::after { content: '\25BE'; color: var(--text-secondary); }
+.flood-summary[aria-expanded="true"] .flood-chevron::after { content: '\25B4'; }
+/* The list drops down over the map, like a menu, rather than pushing it down */
+.flood-details {
+    position: absolute; left: -1px; right: -1px; top: calc(100% - 1px); z-index: 1100;
+    max-height: min(60vh, 32rem); overflow-y: auto;
+    background: var(--bg-card); border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+    border-radius: 0 0 var(--radius) var(--radius); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+.flood-summary[aria-expanded="true"] { border-bottom: 1px solid color-mix(in srgb, var(--tone) 35%, transparent); }
+.flood-details[hidden] { display: none; }
+.flood-details .flood-item { padding: 0.7rem 0.85rem; border-bottom: 1px solid var(--border); background: var(--bg-card); }
+.flood-details .flood-item:last-child { border-bottom: none; }
+
+/* One warning, in the banner or in a map popup */
+.flood-item-head { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+.flood-chip {
+    font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 0.1rem 0.45rem; border-radius: 4px; color: var(--text-on-dark); background: var(--flood-alert);
+}
+.flood-item.is-warning .flood-chip { background: var(--flood-warning); }
+.flood-item.is-severe .flood-chip { background: var(--flood-severe); }
+.flood-item-area { font-weight: 600; font-size: 0.9rem; }
+.flood-item-meta { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.15rem; }
+.flood-item-message { font-size: 0.82rem; line-height: 1.45; margin-top: 0.4rem; white-space: pre-line; max-width: 75ch; }
+.flood-show { margin-top: 0.5rem; padding: 0.2rem 0.6rem; font-size: 0.75rem; border-radius: 6px; }
+.flood-item-source { font-size: 0.68rem; color: var(--text-tertiary); margin-top: 0.35rem; }
+.stn-popup .flood-item-message { max-height: 14rem; overflow-y: auto; }
+
+/* Met Office weather warnings: the flood banner's layout, in the warning's colour */
+.flood-banner.is-yellow { --tone: var(--met-yellow); }
+.flood-banner.is-amber { --tone: var(--met-amber); }
+.flood-banner.is-red { --tone: var(--met-red); }
+.flood-banner.is-red .flood-icon { animation: pill-pulse 1.8s ease-in-out infinite; }
+.flood-item.is-yellow .flood-chip { background: var(--met-yellow); color: #2d2b28; }
+.flood-item.is-amber .flood-chip { background: var(--met-amber); }
+.flood-item.is-red .flood-chip { background: var(--met-red); }
+.weather-link { display: inline-block; margin-top: 0.4rem; font-size: 0.8rem; color: var(--accent); text-decoration: none; }
+.weather-link:hover { text-decoration: underline; }
+
+.swatch.flood-swatch::before { background: color-mix(in srgb, var(--c) 30%, transparent); border-color: var(--c); }
+
+@media (max-width: 640px) {
+    /* The dot alone on phones */
+    .flood-pill { padding: 0; width: 2.25rem; height: 2.25rem; justify-content: center; }
+    .flood-pill-text { display: none; }
+}
+
+/* ---------- Header pills ---------- */
+/* A pill in the header that opens a panel below it, like a menu (PillMenus in utils.js) */
+.pill-menu { position: relative; }
+.pill-menu[hidden] { display: none; }
+.pill-panel {
+    position: absolute; right: 0; top: calc(100% + 0.4rem); z-index: 1200;
+    width: min(24rem, calc(100vw - 2rem)); padding: 0.75rem 0.85rem;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14); font-size: 0.82rem; line-height: 1.45; color: var(--text);
+}
+.pill-panel[hidden] { display: none; }
+.pill-panel-head { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; }
+.pill-panel-text { margin: 0 0 0.6rem; }
+.pill-panel-source { font-size: 0.72rem; color: var(--text-tertiary); }
+.pill-panel-source a { color: var(--accent); text-decoration: none; }
+.pill-panel-source a:hover { text-decoration: underline; }
+
+/* ---------- Drought ---------- */
+/* The drought pill at the most severe stage, or green when there's none */
+.drought { --tone: var(--drought); }
+.drought.is-clear { --tone: var(--up); }
+.drought.is-severe { --tone: var(--drought-severe); }
+.drought.is-dry { --tone: var(--drought-dry); }
+.drought.is-recovery { --tone: var(--up); }
+.drought-pill {
+    display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.7rem 0.3rem 0.6rem;
+    border-radius: 999px; font: inherit; font-size: 0.78rem; white-space: nowrap; cursor: pointer;
+    color: var(--tone); background: color-mix(in srgb, var(--tone) 12%, var(--bg-card));
+    border: 1px solid color-mix(in srgb, var(--tone) 40%, transparent);
+}
+.drought-pill:hover { background: color-mix(in srgb, var(--tone) 20%, var(--bg-card)); }
+.drought-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.drought-item { --tone: var(--drought); margin-bottom: 0.6rem; }
+.drought-item.is-severe { --tone: var(--drought-severe); }
+.drought-item.is-dry { --tone: var(--drought-dry); }
+.drought-item.is-recovery { --tone: var(--up); }
+.drought-item.is-ban { --tone: var(--text-secondary); }
+.drought-chip {
+    display: inline-block; font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 0.1rem 0.45rem; border-radius: 4px; color: var(--text-on-dark); background: var(--tone);
+}
+.drought-text { margin-top: 0.25rem; }
+/* The header runs out of room before a phone's width, so the pills shrink to
+   their dots in turn: the drought pill first, then the flood one. */
+@media (max-width: 1000px) {
+    .drought-pill { padding: 0; width: 2.25rem; height: 2.25rem; justify-content: center; }
+    .drought-pill-text { display: none; }
+}
+@media (max-width: 760px) {
+    .flood-pill { padding: 0; width: 2.25rem; height: 2.25rem; justify-content: center; }
+    .flood-pill-text { display: none; }
+}
+@media (max-width: 640px) {
+    /* On a phone the title and up to three round buttons share one row, a
+       little smaller than on wider screens. The pills' panels open from the
+       header's right-hand edge, across the width of the screen. */
+    header h1 { font-size: 1rem; gap: 0.4rem; }
+    header h1 .ticker { font-size: 0.62rem; padding: 0.1rem 0.35rem; }
+    .header-row { position: relative; column-gap: 0.5rem; }
+    .header-buttons { gap: 0.3rem; }
+    .header-buttons .theme-toggle, .flood-pill, .drought-pill { width: 2rem; height: 2rem; font-size: 1rem; }
+    .pill-menu { position: static; }
+}
+@media (max-width: 380px) {
+    /* The smallest phones need a little more room for the same row */
+    header { padding-left: 0.75rem; padding-right: 0.75rem; }
+    header h1 { font-size: 0.94rem; gap: 0.35rem; }
+    header h1 .ticker { letter-spacing: 0.05em; }
+}
+
+/* ---------- Trend badges ---------- */
+/* A small badge at the bottom right of a river or tidal gauge: red rising,
+   green falling, grey steady. Sized, like the marker, by --mk. */
+.trend {
+    --size: 14px;
+    position: absolute; left: 50%; top: 50%; box-sizing: border-box;
+    width: calc(9px * var(--mk, 1)); height: calc(9px * var(--mk, 1));
+    transform: translate(calc(var(--size) * var(--mk, 1) * 0.5 - 45%), calc(var(--size) * var(--mk, 1) * 0.5 - 45%));
+    border-radius: 50%; border: 1px solid var(--station-fill); pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: calc(7px * var(--mk, 1)); font-weight: 700; line-height: 1;
+    transition: width 0.2s, height 0.2s;
+}
+.trend.for-tidal { --size: 13px; }
+.trend.is-rising, .trend-key.is-rising { background: var(--level-high); }
+.trend.is-falling, .trend-key.is-falling { background: var(--level-normal); }
+.trend.is-steady, .trend-key.is-steady { background: var(--level-unknown); }
+.trend.is-rising::after, .trend-key.is-rising::after { content: '↑'; }
+.trend.is-falling::after, .trend-key.is-falling::after { content: '↓'; }
+.trend.is-steady::after, .trend-key.is-steady::after { content: '→'; }
+
+.legend-key {
+    display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap;
+    font-size: 0.72rem; color: var(--text-tertiary); padding: 0.1rem 0.1rem 0.15rem 1.85rem;
+}
+.trend-key {
+    width: 12px; height: 12px; border-radius: 50%; color: #fff; font-size: 8px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; margin-left: 0.25rem;
+}
+.trend-key:first-child { margin-left: 0; }
+.works-key { width: 8px; height: 8px; margin: 0 3px 0 1px; border-radius: 1px; transform: rotate(45deg); background: var(--cso-recent); flex: none; }
+.works-key.is-network { width: 9px; height: 9px; margin: 0 2px 0 0; border-radius: 50%; transform: none; }
+
+.stn-pop-trend { font-size: 0.8rem; font-weight: 500; }
+.stn-pop-trend.is-rising { color: var(--level-high); }
+.stn-pop-trend.is-falling { color: var(--level-normal); }
+.stn-pop-trend.is-steady { color: var(--text-secondary); }
+
+/* ---------- Coast ---------- */
+/* Bathing waters are rounded squares coloured by their classification;
+   offshore stations are navy rings. */
+.bw { --size: 11px; border-radius: 3px; background: var(--bw-excellent); }
+.bw.is-good { background: var(--bw-good); }
+.bw.is-sufficient { background: var(--bw-sufficient); }
+.bw.is-poor { background: var(--bw-poor); }
+.bw.is-unclassified { background: var(--hollow-fill); border-color: var(--text-tertiary); box-shadow: none; }
+.buoy { --size: 13px; border-radius: 50%; background: var(--station-fill); border: 3.5px solid var(--sea); box-shadow: 0 0 0 1px var(--station-fill); }
+.buoy.is-stale, .buoy.is-no-data { border-color: var(--text-tertiary); }
+/* The day's pollution risk forecast is raised: an amber badge. */
+.trend.for-bw { --size: 11px; }
+.trend.is-risk, .bw-key.is-risk { background: var(--flood-warning); }
+.trend.is-risk::after, .bw-key.is-risk::after { content: '!'; }
+
+.swatch.bw-swatch::before { left: 6px; right: auto; width: 9px; height: 9px; border-radius: 2px; background: var(--c); }
+.swatch.buoy-swatch::before { left: 5px; right: auto; width: 11px; height: 11px; box-sizing: border-box; border-radius: 50%; background: var(--station-fill); border: 3px solid var(--c); }
+.legend-item.off .swatch.bw-swatch::before, .legend-item.off .swatch.buoy-swatch::before { opacity: 0.3; }
+.bw-key { width: 9px; height: 9px; border-radius: 2px; flex: none; margin-left: 0.4rem; }
+.bw-key:first-child { margin-left: 0; }
+.bw-key.is-excellent { background: var(--bw-excellent); }
+.bw-key.is-good { background: var(--bw-good); }
+.bw-key.is-sufficient { background: var(--bw-sufficient); }
+.bw-key.is-poor { background: var(--bw-poor); }
+.bw-key.is-risk { width: 12px; height: 12px; border-radius: 50%; color: #fff; font-size: 8px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center; }
+
+/* Popups */
+.bw-class { font-weight: 600; }
+.stn-pop-state.is-excellent .stn-pop-dot { background: var(--bw-excellent); border-radius: 2px; }
+.stn-pop-state.is-good .stn-pop-dot { background: var(--bw-good); border-radius: 2px; }
+.stn-pop-state.is-sufficient .stn-pop-dot { background: var(--bw-sufficient); border-radius: 2px; }
+.stn-pop-state.is-poor .stn-pop-dot { background: var(--bw-poor); border-radius: 2px; }
+.stn-pop-note.is-risk { color: var(--flood-warning); font-weight: 600; }
+.stn-pop-line { font-size: 0.78rem; color: var(--text-secondary); margin: 0.1rem 0; }
+.stn-pop-link { font-size: 0.72rem; }
+.marine-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.1rem 0.75rem; font-size: 0.8rem; margin: 0.2rem 0 0.5rem; }
+.marine-grid dt { color: var(--text-tertiary); }
+.marine-grid dd { margin: 0; font-variant-numeric: tabular-nums; }
+.bw-bar.is-excellent { fill: var(--bw-excellent); }
+.bw-bar.is-sufficient { fill: var(--bw-sufficient); }
+.bw-bar.is-poor { fill: var(--bw-poor); }
+.bw-bar.is-limit { opacity: 0.4; }
+.bw-ref { stroke: var(--bw-excellent); stroke-dasharray: 5 4; }
+.stn-line-sea { stroke: var(--sea); }

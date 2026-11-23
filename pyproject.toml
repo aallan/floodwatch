@@ -1,20 +1,11 @@
 [project]
 name = "floodwatch"
-version = "1.5.1"
-requires-python = ">=3.12"
-
-[project.optional-dependencies]
-test = ["pytest>=9.0.3"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
+version = "2.0.0"
+requires-python = ">=3.10"
 
 [tool.ruff]
 line-length = 140
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
-ignore = ["SIM105"]
-
-[tool.ruff.format]
-quote-style = "preserve"
+select = ["E", "F", "W"]
+ignore = ["E731", "E741"]
