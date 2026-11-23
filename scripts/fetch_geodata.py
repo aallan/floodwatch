@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""Fetch the River Taw catchment and its waterways, railways and roads.
+"""Fetch the River Taw catchment, Devon, and the waterways, railways and roads.
 
-The catchment boundary comes from the Environment Agency's Catchment Data
-Explorer; everything else comes from OpenStreetMap through the Overpass API.
-Writes simplified GeoJSON overlays to site/data/:
+The catchment boundary comes from the Environment Agency's WFD operational
+catchments and Catchment Data Explorer; everything else comes from
+OpenStreetMap through the Overpass API. Writes simplified GeoJSON overlays
+to site/data/:
 
-    boundary.geojson   the Taw catchment (one polygon)
-    rivers.geojson     rivers and canals, one feature per named river
-    streams.geojson    streams (minor waterways), simplified
-    railways.geojson   running lines, classified passenger or freight
-    roads.geojson      major roads: one- and two-digit A roads, the A377 and the A361
-    stations.geojson   National Rail stations
+    boundary.geojson   Devon, with Plymouth and Torbay: the map dims the land outside it
+    catchment.geojson  the Taw catchment, which the data is drawn for
+    rivers.geojson     the catchment's rivers and canals, one feature per named river
+    streams.geojson    the catchment's streams (minor waterways), simplified
+    railways.geojson   the Tarka and Dartmoor lines
+    roads.geojson      the major roads that reach the catchment, across Devon
+    stations.geojson   National Rail stations on those lines
     meta.json          when the snapshot was taken, and feature counts
 
 and, for the server only, data/places.json (the towns, villages and hamlets
@@ -35,7 +37,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from monitor.geo import LandMask, simplify  # noqa: E402
+from monitor.geo import LandMask, perp_dist, simplify  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "site" / "data"
@@ -101,25 +103,24 @@ SIMPLIFY_BOUNDARY = 0.0001
 EDGE_TOLERANCE_M = 60
 PRECISION = 5  # decimal places, ~1 m
 
-# Railway classification. Way names in OSM carry the line name, except on
-# some bridges and viaducts, which carry their own; those take the name of
-# the line they join.
-PASSENGER_LINES = {
-    "Tarka Line": "Tarka Line",
-    "Dartmoor Line": "Dartmoor Line",
-}
-# Heritage and tourist lines are left off the map; listed so their ways are
-# recognised and dropped rather than mistaken for freight.
-HERITAGE_LINES = {
-    "Lynton and Barnstaple Railway": "Lynton and Barnstaple Railway",
-    "North Devon Line": "North Devon Line",
-}
-FREIGHT_LINES = {}
-SKIP_SERVICE = {"yard", "siding", "crossover", "spur"}
+# Devon, which the map highlights: the county council's area with the two
+# unitary authorities inside it, Plymouth and Torbay.
+DEVON_GSS = ("E10000008", "E06000026", "E06000027")
+SIMPLIFY_DEVON = 0.0003  # ~20-30 m: it's drawn only as the edge of the dimmed land
+
+# The railway lines drawn, as OpenStreetMap route relations. A route lists
+# all the track its trains run on, so the Tarka Line runs from Barnstaple
+# right into Exeter St Davids and Exeter Central, over track OSM names after
+# other lines. The Dartmoor Line shares the Tarka's track from Exeter to
+# Coleford Junction, and is drawn only where it leaves it, for Okehampton.
+RAIL_ROUTES = {275887: "Tarka Line", 276920: "Dartmoor Line"}
+STATION_NEAR_M = 250  # a station this close to a line is on it
 
 # Major roads beyond the one- and two-digit A roads: the A377 runs down the
-# Taw valley from Copplestone to Barnstaple, and the A361, the North Devon
-# Link Road, crosses the catchment through South Molton.
+# Taw valley from Exeter to Barnstaple, and the A361, the North Devon Link
+# Road, crosses the catchment through South Molton. Roads that reach the
+# catchment are drawn across Devon, so they run on into Exeter rather than
+# stopping at the watershed.
 EXTRA_ROADS = {"A377", "A361"}
 
 
@@ -611,57 +612,64 @@ def fetch_waterways(land, coast, bbox):
     return rivers, streams
 
 
-def classify_rail(t):
-    """Return (kind, line) for a railway way, or None to skip it."""
-    if t.get("service") in SKIP_SERVICE:
-        return None
-    railway, usage, name = t.get("railway"), t.get("usage"), t.get("name", "")
-    if name in HERITAGE_LINES:
-        return None
-    if name in FREIGHT_LINES:
-        return "freight", FREIGHT_LINES[name]
-    if name in PASSENGER_LINES:
-        return "passenger", PASSENGER_LINES[name]
-    if railway in ("preserved", "narrow_gauge") or usage in ("tourism", "heritage"):
-        return None
-    if usage in ("industrial", "freight", "military"):
-        return "freight", ""
-    if railway == "rail" and usage in ("main", "branch"):
-        return "passenger", ""
-    if railway == "rail":
-        return UNKNOWN, ""
-    return None
-
-
-# Track with neither a known line name nor a usage tag: it takes the kind and
-# line of the track it joins, or is left off. The catchment has no freight
-# railway, so unlabelled track here is a stretch of the Tarka or Dartmoor Line.
-UNKNOWN = "unknown"
-
-
-def name_by_neighbour(ways):
-    """Give unnamed stretches of a line, such as viaducts tagged with their
-    own name, the name of the line they join end to end. Track whose kind is
-    UNKNOWN takes its neighbour's kind as well; any left unknown is dropped."""
-    line_at = {}
-    for kind, line, pts in ways:
-        if line:
-            line_at.setdefault(pts[0], (kind, line))
-            line_at.setdefault(pts[-1], (kind, line))
-    pending = [i for i, (_, line, _) in enumerate(ways) if not line]
-    changed = True
-    while pending and changed:
-        changed = False
-        for i in list(pending):
-            kind, _, pts = ways[i]
-            found = line_at.get(pts[0]) or line_at.get(pts[-1])
-            if found and kind in (found[0], UNKNOWN):
-                ways[i] = (found[0], found[1], pts)
-                line_at.setdefault(pts[0], found)
-                line_at.setdefault(pts[-1], found)
-                pending.remove(i)
+def assemble_rings(segs):
+    """Stitch boundary ways, in any order and direction, into closed rings."""
+    segs = [list(seg) for seg in segs if len(seg) >= 2]
+    rings = []
+    while segs:
+        ring = segs.pop(0)
+        changed = True
+        while ring[0] != ring[-1] and changed:
+            changed = False
+            for i, seg in enumerate(segs):
+                if seg[0] == ring[-1]:
+                    ring += seg[1:]
+                elif seg[-1] == ring[-1]:
+                    ring += seg[-2::-1]
+                elif seg[-1] == ring[0]:
+                    ring = seg[:-1] + ring
+                elif seg[0] == ring[0]:
+                    ring = seg[:0:-1] + ring
+                else:
+                    continue
+                segs.pop(i)
                 changed = True
-    return [w for w in ways if w[0] != UNKNOWN]
+                break
+        if ring[0] == ring[-1] and len(ring) >= 4:
+            rings.append(ring)
+        else:
+            print(f"  warning: dropped an unclosed boundary ring ({len(ring)} points)", file=sys.stderr)
+    return rings
+
+
+def outline_of(relations):
+    """The outer rings of the area that relations tile between them.
+
+    Neighbouring areas share the ways along their common border, so a way
+    that's an outer member of two of the relations is inside the whole, and
+    is left out; the rest make up its outline.
+    """
+    uses = defaultdict(int)
+    ways = {}
+    for rel in relations:
+        for m in rel.get("members", []):
+            if m["type"] == "way" and m.get("role") in ("outer", ""):
+                uses[m["ref"]] += 1
+                ways[m["ref"]] = coords_of(m)
+    return assemble_rings([ways[ref] for ref, n in uses.items() if n == 1])
+
+
+def fetch_devon():
+    """Devon's outline: its feature, the rings for clipping, and the bounding box."""
+    gss = "|".join(DEVON_GSS)
+    rings = outline_of(overpass(f'[out:json][timeout:240];rel["ref:gss"~"^({gss})$"];out geom;', "devon"))
+    if not rings:
+        sys.exit("Devon's outline came out empty")
+    polys = [[rnd(r)] for r in (simplify(r, SIMPLIFY_DEVON) for r in rings) if len(r) >= 4]
+    xs = [p[0] for r in rings for p in r]
+    ys = [p[1] for r in rings for p in r]
+    bbox = (round(min(ys), 3), round(min(xs), 3), round(max(ys), 3), round(max(xs), 3))
+    return [feature("MultiPolygon", polys, name="Devon")], rings, bbox
 
 
 def touches(lines, land):
@@ -669,30 +677,64 @@ def touches(lines, land):
     return any(land.keep(p) for l in lines for p in l[::3] + [l[-1]])
 
 
-def fetch_railways(land, bbox):
-    box = ",".join(map(str, bbox))
-    els = overpass(
-        f'[out:json][timeout:240];way["railway"~"^(rail|preserved|narrow_gauge)$"]({box});out tags geom;', "railways")
-    ways = []
-    for w in els:
-        c = classify_rail(w.get("tags", {}))
-        pts = coords_of(w)
-        if c and len(pts) >= 2:
-            ways.append((c[0], c[1], pts))
-    groups = defaultdict(list)
-    for kind, line, pts in name_by_neighbour(ways):
-        groups[(kind, line)].append(pts)
-    rails = []
-    for (kind, line), lines in sorted(groups.items()):
-        # The whole line is kept, not just the stretches in the catchment,
-        # so stations outside it, such as Crediton, sit on their track.
-        merged = merge_lines(lines)
-        if not touches(merged, land):
+def metres_to_line(p, lines, within_m):
+    """How far p is from the nearest of the lines, if within within_m; else infinity."""
+    kx, ky = 111_320 * math.cos(math.radians(p[1])), 110_570
+    best = math.inf
+    for line in lines:
+        for a, b in zip(line, line[1:]):
+            if min(abs(a[0] - p[0]), abs(b[0] - p[0])) * kx > within_m + 5000:
+                continue
+            pa, pb = ((a[0] - p[0]) * kx, (a[1] - p[1]) * ky), ((b[0] - p[0]) * kx, (b[1] - p[1]) * ky)
+            best = min(best, perp_dist((0.0, 0.0), pa, pb))
+    return best if best <= within_m else math.inf
+
+
+SHARED_TRACK_M = 30  # a way this close to an earlier route's track runs beside it
+
+
+def route_lines(relations):
+    """{line name: [way coordinates]} from route relations. Track on more than
+    one route is drawn once, on the first: the Tarka Line before the Dartmoor.
+    The routes don't always list the same ways for the track they share, so a
+    way lying along an earlier route's track, within SHARED_TRACK_M at both
+    ends and in the middle, counts as shared too."""
+    seen, lines, earlier = set(), defaultdict(list), []
+    for rel in sorted(relations, key=lambda r: list(RAIL_ROUTES).index(r["id"])):
+        mine = []
+        for m in rel.get("members", []):
+            if m["type"] != "way" or m.get("role") not in ("", "forward", "backward") or m["ref"] in seen:
+                continue
+            seen.add(m["ref"])
+            pts = coords_of(m)
+            if len(pts) < 2:
+                continue
+            if earlier and all(metres_to_line(p, earlier, SHARED_TRACK_M) < math.inf
+                               for p in (pts[0], pts[len(pts) // 2], pts[-1])):
+                continue
+            mine.append(pts)
+        lines[RAIL_ROUTES[rel["id"]]] = mine
+        earlier += mine
+    return lines
+
+
+def fetch_railways(land):
+    ids = ",".join(map(str, RAIL_ROUTES))
+    lines = route_lines(overpass(f"[out:json][timeout:240];rel(id:{ids});out geom;", "railways"))
+    rails, all_track = [], []
+    for name in RAIL_ROUTES.values():
+        merged = merge_lines(lines.get(name, []))
+        if not merged:
+            print(f"  warning: no track found for the {name}", file=sys.stderr)
             continue
+        all_track += merged
         parts = [rnd(simplify(l, SIMPLIFY_RAIL)) for l in merged]
-        rails.append(feature("MultiLineString", parts, kind=kind, line=line,
+        rails.append(feature("MultiLineString", parts, kind="passenger", line=name,
                              length_km=round(sum(length_km(l) for l in merged), 1)))
 
+    xs = [p[0] for l in all_track for p in l]
+    ys = [p[1] for l in all_track for p in l]
+    box = f"{min(ys) - 0.01},{min(xs) - 0.01},{max(ys) + 0.01},{max(xs) + 0.01}"
     pause()
     els = overpass(f'[out:json][timeout:180];node["railway"~"^(station|halt)$"]({box});out body;', "stations")
     stations = []
@@ -700,8 +742,11 @@ def fetch_railways(land, bbox):
         t = n.get("tags", {})
         if not t.get("name") or "disused" in t or t.get("railway:historic"):
             continue
-        # National Rail stations only; heritage and miniature railway halts are skipped.
+        # National Rail stations on the lines drawn; heritage and miniature
+        # railway halts, and stations on other lines, are left off.
         if not ("ref:crs" in t or t.get("network") == "National Rail"):
+            continue
+        if metres_to_line((n["lon"], n["lat"]), all_track, STATION_NEAR_M) == math.inf:
             continue
         stations.append(feature("Point", [round(n["lon"], PRECISION), round(n["lat"], PRECISION)],
                                 name=t["name"], crs=t.get("ref:crs", ""), operator=t.get("operator", ""),
@@ -718,13 +763,14 @@ def major_ref(tag):
     return None
 
 
-def fetch_roads(land, bbox):
-    """The catchment's major roads: the A30 and A39, plus the A377 and A361.
+def fetch_roads(land, devon, devon_bbox):
+    """The major roads that reach the catchment, the A30, A39, A361 and A377,
+    drawn across Devon and ending at its edge.
 
     Slip roads (``*_link``) are left out. Dual carriageways stay as two lines,
     as OSM draws them.
     """
-    box = ",".join(map(str, bbox))
+    box = ",".join(map(str, devon_bbox))
     extra = "|".join(sorted(EXTRA_ROADS))
     els = overpass(
         f'[out:json][timeout:240];way["highway"~"^(motorway|trunk|primary)$"]'
@@ -739,6 +785,7 @@ def fetch_roads(land, bbox):
         merged = merge_lines(lines)
         if not touches(merged, land):
             continue
+        merged = [run for l in merged for run in devon.clip(l)]
         parts = [rnd(simplify(l, SIMPLIFY_RAIL)) for l in merged]
         roads.append(feature("MultiLineString", parts, ref=ref,
                              length_km=round(sum(length_km(l) for l in merged), 1)))
@@ -757,22 +804,26 @@ def main():
     sys.stdout.reconfigure(line_buffering=True)  # show progress when piped
     OUT.mkdir(parents=True, exist_ok=True)
     print("Fetching the catchment (Catchment Data Explorer) and map data (OpenStreetMap, Overpass API)…")
-    boundary, rings, bbox, north_coast = fetch_boundary()
+    catchment, rings, bbox, north_coast = fetch_boundary()
     neighbours = fetch_neighbours(bbox, north_coast)
     land = LandMask(rings, EDGE_TOLERANCE_M)
+    pause()
+    devon, devon_rings, devon_bbox = fetch_devon()
+    devon_land = LandMask(devon_rings, 100)
     box = ",".join(map(str, bbox))
     coast = Coastline(overpass(f'[out:json][timeout:240];way["natural"="coastline"]({box});out geom;', "coastline"))
     pause()
     rivers, streams = fetch_waterways(land, coast, bbox)
     pause()
-    rails, stations = fetch_railways(land, bbox)
+    rails, stations = fetch_railways(land)
     pause()
-    roads = fetch_roads(land, bbox)
+    roads = fetch_roads(land, devon_land, devon_bbox)
     pause()
     places = fetch_places(bbox)
 
     print("Writing overlays…")
-    write("boundary.geojson", boundary)
+    write("boundary.geojson", devon)
+    write("catchment.geojson", catchment)
     write("rivers.geojson", rivers)
     write("streams.geojson", streams)
     write("railways.geojson", rails)

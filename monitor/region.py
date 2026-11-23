@@ -1,6 +1,6 @@
 """Which positions belong to the Taw catchment.
 
-The catchment's outline, site/data/boundary.geojson, stops at the estuary's
+The catchment's outline, site/data/catchment.geojson, stops at the estuary's
 banks; data/neighbours.geojson holds the catchments around it. Both are
 written by scripts/fetch_geodata.py.
 """
@@ -12,7 +12,7 @@ from pathlib import Path
 from .geo import LandMask
 
 ROOT = Path(__file__).resolve().parent.parent
-BOUNDARY = ROOT / "site" / "data" / "boundary.geojson"
+BOUNDARY = ROOT / "site" / "data" / "catchment.geojson"
 NEIGHBOURS = ROOT / "data" / "neighbours.geojson"
 
 

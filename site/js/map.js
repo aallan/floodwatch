@@ -1,6 +1,7 @@
 'use strict';
 
-// The Taw catchment map: basemap, catchment mask, waterways, railways, legend.
+// The Taw catchment map: basemap, Devon's mask, the catchment, waterways,
+// railways, legend.
 // Colours come from CSS variables so the map follows light/dark mode.
 
 const FloodMap = (() => {
@@ -18,8 +19,8 @@ const FloodMap = (() => {
     [50.99, -3.64], [50.94, -3.59], [50.90, -3.62], [50.87, -3.74], [50.84, -3.71], [50.81, -3.79], [50.76, -3.84],
     [50.74, -3.84], [50.71, -3.93],
   ];
-  // Loose enough that the opening view can sit the catchment beside the legend.
-  const MAX_BOUNDS = [[50.2, -4.9], [51.6, -2.9]];
+  // Devon and a margin round it.
+  const MAX_BOUNDS = [[49.9, -4.9], [51.5, -2.6]];
 
   // Floodwatch's river colours, by name; other rivers are drawn in the
   // plain water colour. Each is a CSS variable, so it follows the theme.
@@ -59,6 +60,7 @@ const FloodMap = (() => {
   // Legend toggles. Each map part belongs to one toggle and may have a min zoom.
   const toggles = {
     boundary:  { on: true },
+    catchment: { on: true },
     rivers:    { on: true },
     streams:   { on: true },
     passenger: { on: true },
@@ -68,11 +70,12 @@ const FloodMap = (() => {
     levels:    { on: true },
     tidal:     { on: true },
     rain:      { on: true },
-    // Spilling now and spilled recently show at every zoom; quiet and
-    // offline overflows once zoomed in (CSO_QUIET_ZOOM).
+    // Only the overflows spilling now show when the page opens; spilled
+    // recently, and quiet or offline (from CSO_QUIET_ZOOM), are switched on
+    // from the legend.
     csoNow:    { on: true },
-    csoRecent: { on: true },
-    csoQuiet:  { on: true },
+    csoRecent: { on: false },
+    csoQuiet:  { on: false },
     floods:    { on: true },
     powercuts: { on: true },
   };
@@ -92,7 +95,7 @@ const FloodMap = (() => {
 
   // Draw order on the shared canvas, bottom to top. Labels and arrows are
   // DOM markers in their own pane, so their order doesn't matter.
-  const Z = { mask: 0, streams: 1, rivers: 2, floods: 2.5, roads: 3, boundary: 4, rail: 5, stations: 6, markers: 9 };
+  const Z = { mask: 0, streams: 1, rivers: 2, floods: 2.5, roads: 3, boundary: 4, catchment: 4.5, rail: 5, stations: 6, markers: 9 };
 
   function addPart(layer, toggle, z, minZoom = 0) {
     parts.push({ layer, toggle, z, minZoom });
@@ -132,7 +135,7 @@ const FloodMap = (() => {
     map.getPane('labels').style.pointerEvents = 'none';
     renderers.mask = L.canvas({ pane: 'mask' });
     const shared = L.canvas({ tolerance: 5 });
-    for (const name of ['streams', 'rivers', 'roads', 'boundary', 'rail', 'stations']) renderers[name] = shared;
+    for (const name of ['streams', 'rivers', 'roads', 'boundary', 'catchment', 'rail', 'stations']) renderers[name] = shared;
   }
 
   // ---------------------------------------------------------------- basemap
@@ -224,7 +227,7 @@ const FloodMap = (() => {
     const rings = fc.features.flatMap(f => f.geometry.coordinates.map(poly => toLatLngs(poly[0])));
     const world = [[-89, -179], [-89, 179], [89, 179], [89, -179]];
 
-    // Dim everything outside the catchment so it reads as the subject.
+    // Dim everything outside Devon.
     const mask = L.polygon([world, ...rings], {
       renderer: renderers.mask, interactive: false, stroke: false, fillRule: 'evenodd',
     });
@@ -232,12 +235,25 @@ const FloodMap = (() => {
 
     const style = () => {
       mask.setStyle({ fillColor: cssVar('--mask'), fillOpacity: parseFloat(cssVar('--mask-opacity')) || 0.5 });
-      outline.setStyle({ color: cssVar('--accent'), weight: 1.4, opacity: 0.75 });
+      outline.setStyle({ color: cssVar('--text-tertiary'), weight: 1, opacity: 0.6 });
     };
     style();
     restylers.push(style);
     addPart(mask, 'boundary', Z.mask);
     addPart(outline, 'boundary', Z.boundary);
+  }
+
+  // The Taw catchment, which everything on the map is drawn for: an outline
+  // in the accent colour, with a faint tint inside.
+  function addCatchment(fc) {
+    const rings = fc.features.flatMap(f => f.geometry.coordinates.map(poly => toLatLngs(poly[0])));
+    const area = L.polygon(rings, { renderer: renderers.catchment, interactive: false });
+    const style = () => area.setStyle({
+      color: cssVar('--accent'), weight: 1.8, opacity: 0.85, fillColor: cssVar('--accent'), fillOpacity: 0.04,
+    });
+    style();
+    restylers.push(style);
+    addPart(area, 'catchment', Z.catchment);
   }
 
   // ---------------------------------------------------------------- waterways
@@ -671,8 +687,9 @@ const FloodMap = (() => {
         ${item('stations', 'dot', '--rail', 'Stations', '<span class="count" id="legend-count-stations"></span>')}
         ${title('roads', 'Roads')}
         ${item('roads', 'road', '--road', 'Major roads')}
-        <div class="legend-title">Boundary</div>
-        ${item('boundary', 'area', '--accent', 'Taw catchment')}
+        <div class="legend-title">Boundaries</div>
+        ${item('catchment', 'area', '--accent', 'Taw catchment')}
+        ${item('boundary', 'area', '--text-tertiary', 'Devon')}
         </div>
         </div>`;
       syncLegend(div);
@@ -759,6 +776,7 @@ const FloodMap = (() => {
       .then(fc => { add(fc); updateVisibility(); })
       .catch(e => console.warn(e));
     layer('boundary.geojson', addBoundary);
+    layer('catchment.geojson', addCatchment);
     layer('rivers.geojson', fc => setCount('rivers', addRivers(fc)));
     layer('roads.geojson', addRoads);
     layer('railways.geojson', addRailways);

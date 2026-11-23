@@ -44,7 +44,7 @@ class Static(Server):
     def test_page_has_security_headers(self):
         status, r, body = self.request("/")
         self.assertEqual(status, 200)
-        self.assertIn(b"Monitoring Cornwall", body)
+        self.assertIn(b"Floodwatch", body)
         csp = r.getheader("Content-Security-Policy")
         self.assertIn("script-src 'self'", csp)
         self.assertIn("connect-src 'self'", csp)

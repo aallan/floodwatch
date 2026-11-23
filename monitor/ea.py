@@ -22,7 +22,7 @@ API = "https://environment.data.gov.uk/flood-monitoring"
 USER_AGENT = "floodwatch/2.0 (+https://github.com/aallan/floodwatch)"
 
 ROOT = Path(__file__).resolve().parent.parent
-BOUNDARY = ROOT / "site" / "data" / "boundary.geojson"
+BOUNDARY = region.BOUNDARY
 PLACES = ROOT / "data" / "places.json"
 
 # Station search: a circle that covers the catchment, then the catchment's

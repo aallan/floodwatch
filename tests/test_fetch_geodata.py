@@ -77,26 +77,41 @@ class Rivers(unittest.TestCase):
 
 
 class Railways(unittest.TestCase):
-    def test_classification(self):
-        self.assertEqual(fg.classify_rail({"railway": "rail", "name": "Tarka Line", "usage": "branch"}),
-                         ("passenger", "Tarka Line"))
-        self.assertEqual(fg.classify_rail({"railway": "rail", "name": "Umberleigh Viaduct", "usage": "branch"}),
-                         ("passenger", ""))
-        self.assertEqual(fg.classify_rail({"railway": "rail"}), (fg.UNKNOWN, ""))
-        self.assertIsNone(fg.classify_rail({"railway": "narrow_gauge", "name": "Lynton and Barnstaple Railway"}))
-        self.assertIsNone(fg.classify_rail({"railway": "rail", "name": "North Devon Line", "usage": "heritage"}))
-        self.assertIsNone(fg.classify_rail({"railway": "rail", "name": "Tarka Line", "service": "siding"}))
+    def way(self, ref, *pts, role=""):
+        return {"type": "way", "ref": ref, "role": role, "geometry": [{"lon": x, "lat": y} for x, y in pts]}
 
-    def test_unnamed_track_takes_the_name_of_the_line_it_joins(self):
-        a, b, c, d = (0, 0), (1, 0), (2, 0), (3, 0)
-        ways = fg.name_by_neighbour([
-            ("passenger", "Tarka Line", [a, b]),
-            ("passenger", "", [b, c]),     # a viaduct with its own name
-            (fg.UNKNOWN, "", [c, d]),      # no name, no usage
-            (fg.UNKNOWN, "", [(9, 9), (8, 8)]),  # joins nothing: dropped
-        ])
-        self.assertEqual(ways, [("passenger", "Tarka Line", [a, b]), ("passenger", "Tarka Line", [b, c]),
-                                ("passenger", "Tarka Line", [c, d])])
+    def test_track_on_two_routes_is_drawn_once_on_the_tarka_line(self):
+        tarka, dartmoor = fg.RAIL_ROUTES  # relation ids, Tarka first
+        relations = [
+            {"id": dartmoor, "members": [self.way(1, (0, 0), (1, 0)), self.way(3, (1, 0), (1, 1)),
+                                         {"type": "node", "ref": 9, "role": "stop"}]},
+            {"id": tarka, "members": [self.way(1, (0, 0), (1, 0)), self.way(2, (1, 0), (2, 0), role="forward")]},
+        ]
+        lines = fg.route_lines(relations)
+        self.assertEqual(lines["Tarka Line"], [[(0, 0), (1, 0)], [(1, 0), (2, 0)]])
+        self.assertEqual(lines["Dartmoor Line"], [[(1, 0), (1, 1)]])
+
+    def test_stations_are_kept_only_near_the_lines(self):
+        line = [[(-3.98, 50.99), (-3.98, 51.01)]]
+        self.assertLess(fg.metres_to_line((-3.981, 51.00), line, 250), 100)        # ~70 m off
+        self.assertEqual(fg.metres_to_line((-3.97, 51.00), line, 250), fg.math.inf)  # ~700 m off
+
+
+class Outline(unittest.TestCase):
+    def rel(self, *ways):
+        return {"members": [{"type": "way", "ref": ref, "role": "outer",
+                             "geometry": [{"lon": x, "lat": y} for x, y in pts]} for ref, pts in ways]}
+
+    def test_borders_shared_by_neighbouring_areas_drop_out(self):
+        # Two squares side by side share the way at x = 1.
+        left = self.rel((1, [(0, 0), (1, 0)]), (2, [(1, 0), (1, 1)]), (3, [(1, 1), (0, 1), (0, 0)]))
+        right = self.rel((2, [(1, 0), (1, 1)]), (4, [(1, 1), (2, 1), (2, 0), (1, 0)]))
+        rings = fg.outline_of([left, right])
+        self.assertEqual(len(rings), 1)
+        ring = rings[0]
+        self.assertEqual(ring[0], ring[-1])
+        # The outer corners, plus the two points along its edges where the squares met.
+        self.assertEqual(set(ring), {(0, 0), (1, 0), (2, 0), (2, 1), (1, 1), (0, 1)})
 
 
 class Roads(unittest.TestCase):
