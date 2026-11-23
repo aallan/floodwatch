@@ -103,7 +103,7 @@ class Summaries(DBTestCase):
         self.assertEqual(overflows.summary(self.con, NOW)["overflows"], [])
 
     def test_detail_shows_the_last_30_days(self):
-        self.add_overflow("A")
+        self.add_overflow("A", status=1, status_start=NOW - H)
         self.con.executemany("INSERT INTO overflow_events (id, started, ended) VALUES (?, ?, ?)",
                              [("A", NOW - 40 * 86400, NOW - 39 * 86400),   # too old
                               ("A", NOW - 31 * 86400, NOW - 29 * 86400),   # overlaps the window
@@ -114,6 +114,25 @@ class Summaries(DBTestCase):
         self.assertEqual(d["events"], [[NOW - 31 * 86400, NOW - 29 * 86400], [NOW - H, None]])
         self.assertEqual(d["annual"], [[2025, 123.5, 9]])
         self.assertIsNone(overflows.detail(self.con, "MISSING", NOW))
+
+    def test_a_spill_left_open_on_a_quiet_overflow_ended_when_it_went_quiet(self):
+        # The feed reported the overflow quiet without a usable end time, so
+        # the log holds the spill open; it isn't 'recent' for ever, and the
+        # popup doesn't count it up to now.
+        self.add_overflow("Q", status=0, status_start=NOW - 3 * 86400)
+        self.con.execute("INSERT INTO overflow_events (id, started, ended) VALUES ('Q', ?, NULL)", (NOW - 4 * 86400,))
+        self.con.commit()
+        out = overflows.summary(self.con, NOW)["overflows"][0]
+        self.assertEqual(out["state"], "quiet")
+        self.assertEqual(out["last_end"], NOW - 3 * 86400)
+        self.assertEqual(overflows.detail(self.con, "Q", NOW)["events"], [[NOW - 4 * 86400, NOW - 3 * 86400]])
+
+    def test_without_a_status_start_an_open_spill_on_a_quiet_overflow_ends_where_it_began(self):
+        self.add_overflow("Q", status=0, status_start=None)
+        self.con.execute("INSERT INTO overflow_events (id, started, ended) VALUES ('Q', ?, NULL)", (NOW - 4 * 86400,))
+        self.con.commit()
+        self.assertEqual(overflows.summary(self.con, NOW)["overflows"][0]["state"], "quiet")
+        self.assertEqual(overflows.detail(self.con, "Q", NOW)["events"], [[NOW - 4 * 86400, NOW - 4 * 86400]])
 
 
 if __name__ == "__main__":

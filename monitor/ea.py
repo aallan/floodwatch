@@ -4,11 +4,11 @@ The API is open, with no key, under the Open Government Licence:
 https://environment.data.gov.uk/flood-monitoring/doc/reference
 """
 
+import http.client
 import json
 import math
 import sys
 import time
-import urllib.error
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -64,7 +64,7 @@ def get(path, params=None, retries=3):
         req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept-Encoding": "gzip"})
         try:
             return json.loads(net.fetch(req))
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
+        except (OSError, http.client.HTTPException, json.JSONDecodeError) as e:
             if attempt == retries - 1:
                 raise
             log(f"EA request failed ({e}); retrying in {delay}s: {path}")

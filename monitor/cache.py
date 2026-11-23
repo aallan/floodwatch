@@ -5,10 +5,10 @@ server when someone asks for them, never by visitors' browsers, and each
 answer is kept for a while so repeated popups don't repeat the request.
 """
 
+import http.client
 import json
 import threading
 import time
-import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -35,7 +35,7 @@ def cached(key, ttl, fetch):
             return hit[1]
     try:
         value = fetch()
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, KeyError, ValueError) as e:
+    except (OSError, http.client.HTTPException, json.JSONDecodeError, KeyError, ValueError) as e:
         log(f"request failed for {key}: {e}")
         if hit:
             return hit[1]

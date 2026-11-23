@@ -24,5 +24,9 @@ NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
-# data/ for the database: SQLite needs its shared-memory file even to read.
-ReadWritePaths=/srv/floodwatch/archive /srv/floodwatch/.git /srv/floodwatch/data
+# It commits in its own worktree, data/archive-worktree, on the tip of
+# origin/main, so the checkout the server runs from stays read-only here.
+# data/ also holds the database: SQLite needs its shared-memory file even
+# to read. .git takes the fetched objects, the commit and the worktree's
+# own records.
+ReadWritePaths=/srv/floodwatch/.git /srv/floodwatch/data

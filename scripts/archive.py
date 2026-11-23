@@ -6,8 +6,12 @@
     python3 scripts/archive.py push      # export, then commit and push if anything changed
 
 `push` is what the nightly timer runs on the server
-(deploy/floodwatch-archive.service). It commits only archive/, as the
-archive's own author, and leaves the checkout's git configuration alone.
+(deploy/floodwatch-archive.service). It commits in a separate worktree,
+data/archive-worktree, reset to origin/main each time, so the checkout the
+server runs from is never touched: a deploy's `git pull` stays a fast
+forward, and a failed push leaves nothing behind for the next night. It
+commits only archive/, as the archive's own author, and leaves git's
+configuration alone.
 The server restores from archive/ by itself the first time it runs, so
 `restore` is for loading an archive by hand, such as v1's data. Standard
 library only.
@@ -26,8 +30,12 @@ from monitor import archive, db, live, overflows  # noqa: E402
 AUTHOR = ["-c", "user.name=Floodwatch archive", "-c", "user.email=floodwatch-archive@users.noreply.github.com"]
 
 
-def git(*args, check=True):
-    return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=check)
+WORKTREE = ROOT / "data" / "archive-worktree"
+PUSH_ATTEMPTS = 3
+
+
+def git(*args, check=True, cwd=None):
+    return subprocess.run(["git", *args], cwd=cwd or ROOT, capture_output=True, text=True, check=check)
 
 
 def export():
@@ -55,20 +63,39 @@ def restore(directory):
     print(f"restored {readings} readings and {spills} spills from {directory}")
 
 
-def push():
-    dirty = git("status", "--porcelain", "--untracked-files=no", "--", ".", ":!archive").stdout.strip()
-    if dirty:
-        sys.exit(f"The checkout has changes outside archive/; not committing:\n{dirty}")
-    export()
-    git("add", "--", "archive")
-    if not git("diff", "--cached", "--quiet", check=False).returncode:
-        print("archive: nothing to commit")
-        return
-    stamp = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
-    git(*AUTHOR, "commit", "--quiet", "-m", f"Archive readings and spills, {stamp}")
-    git("pull", "--rebase", "--quiet")
-    git("push", "--quiet")
-    print(f"archive: pushed {stamp}")
+def push(root=None, worktree=None, branch="main"):
+    """Export the database onto the tip of origin/main, in the worktree,
+    and push it if anything changed. If main moves on meanwhile, start
+    again from the new tip. Returns True if it pushed."""
+    root, worktree = root or ROOT, worktree or WORKTREE
+    for attempt in range(1, PUSH_ATTEMPTS + 1):
+        git("fetch", "--quiet", "origin", branch, cwd=root)
+        tip = f"origin/{branch}"
+        if not (worktree / ".git").exists():
+            git("worktree", "prune", cwd=root)
+            worktree.parent.mkdir(parents=True, exist_ok=True)
+            git("worktree", "add", "--quiet", "--detach", "--force", str(worktree), tip, cwd=root)
+        git("reset", "--quiet", "--hard", tip, cwd=worktree)
+        git("clean", "-fdq", "--", "archive", cwd=worktree)
+        con = db.connect(read_only=True)
+        try:
+            n = archive.export(con, worktree / "archive")
+        finally:
+            con.close()
+        git("add", "--", "archive", cwd=worktree)
+        if not git("diff", "--cached", "--quiet", check=False, cwd=worktree).returncode:
+            print("archive: nothing to commit")
+            return False
+        stamp = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
+        git(*AUTHOR, "commit", "--quiet", "-m", f"Archive readings and spills, {stamp}", cwd=worktree)
+        result = git("push", "--quiet", "origin", f"HEAD:{branch}", check=False, cwd=worktree)
+        if result.returncode == 0:
+            print(f"archive: pushed {n} changed files, {stamp}")
+            return True
+        if attempt == PUSH_ATTEMPTS:
+            raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
+        print(f"archive: push failed, starting again from {tip}: {result.stderr.strip()}")
+    return False
 
 
 def main():

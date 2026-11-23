@@ -165,7 +165,7 @@ systemctl reload caddy
 ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443 && ufw --force enable
 ```
 
-The service runs as the unprivileged `floodwatch` user and can write only to `data/`, `site/data/` and `.cache/`; the archive service can also write to `archive/` and `.git`. Its log is in the journal, `journalctl -u floodwatch -f`, and the archive's in `journalctl -u floodwatch-archive`.
+The service runs as the unprivileged `floodwatch` user and can write only to `data/`, `site/data/` and `.cache/`; the archive service writes only to `data/` and `.git`. Its log is in the journal, `journalctl -u floodwatch -f`, and the archive's in `journalctl -u floodwatch-archive`.
 
 To update, pull and restart. The first poll after a restart reads every feed straight away, whatever its schedule:
 
@@ -181,7 +181,7 @@ cd /srv/floodwatch && runuser -u floodwatch -- git pull && systemctl restart flo
 - `level_<id>_<name>.csv` and `rainfall_<id>.csv`, one per gauge, with every 15-minute reading: `dateTime,value,unit,station_id,station_label`
 - `cso_<id>.csv`, one per storm overflow, with every spill: `start_time,end_time,duration_min,is_ongoing`
 
-Every night `scripts/archive.py push` writes the database out to `archive/`, and commits and pushes the files that changed. A gauge's existing file is reused and written exactly as v1 wrote it, so a night's commit adds that day's lines and nothing else. Files of gauges that are no longer listed are left alone.
+Every night `scripts/archive.py push` writes the database out to `archive/`, and commits and pushes the files that changed. It works in a separate git worktree, `data/archive-worktree`, reset to the tip of `main` each night, so the checkout the server runs from is never touched and a deploy's `git pull` stays a fast-forward; if a push fails, the next night starts afresh. A gauge's existing file is reused and written exactly as v1 wrote it, so a night's commit adds that day's lines and nothing else. Files of gauges that are no longer listed are left alone.
 
 On a new server the first poll loads `archive/` into the database, once the gauges and overflows are listed, so a fresh deploy starts with all the history there is. Readings and spills it already holds are kept, so the load is safe to repeat; `python3 scripts/archive.py restore` runs it by hand, and loads v1's own `data/` directory too.
 
@@ -215,7 +215,7 @@ Flow forecasts come from [GloFAS](https://global-flood.emergency.copernicus.eu/)
 
 ## Tests
 
-`make test` runs both suites, which use only Python's `unittest` and Node's built-in test runner, so there's nothing to install beyond Python and Node. The 178 Python tests cover the poller, the gauges, the spill log, the archive's export and restore, the history buckets and CSV download, which positions belong to the catchment, the overlay builder's outline tracing, river naming and gap filling, the warnings, the drought report, power cuts, forecasts, and the server's endpoints and headers; each runs against a temporary database, with every outside service replaced by fixed responses, several of them trimmed copies of real ones in `tests/fixtures/`. The 26 JavaScript tests load the page's scripts into a sandbox and check the gauges' states and numbers, what a cluster shows, the chart arithmetic, the flow forecast's scaling, the spelt-out overflow names, the warning banner's wording and the power cut popups. GitHub Actions runs both on every push to `main` and every pull request.
+`make test` runs both suites, which use only Python's `unittest` and Node's built-in test runner, so there's nothing to install beyond Python and Node. The 194 Python tests cover the poller, the gauges, the spill log, the archive's export, restore and nightly push, the history buckets and CSV download, which positions belong to the catchment, the overlay builder's outline tracing, river naming and gap filling, the warnings, the drought report, power cuts, forecasts, and the server's endpoints and headers; each runs against a temporary database, with every outside service replaced by fixed responses, several of them trimmed copies of real ones in `tests/fixtures/`. The 26 JavaScript tests load the page's scripts into a sandbox and check the gauges' states and numbers, what a cluster shows, the chart arithmetic, the flow forecast's scaling, the spelt-out overflow names, the warning banner's wording and the power cut popups. GitHub Actions runs both on every push to `main` and every pull request.
 
 ## Project layout
 

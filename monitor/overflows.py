@@ -9,10 +9,10 @@ Names, asset types and yearly totals come from the regulatory annual returns,
 published as a second FeatureServer.
 """
 
+import http.client
 import json
 import re
 import time
-import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -58,7 +58,7 @@ def post(url, params, retries=3):
             if "error" in data:
                 raise RuntimeError(data["error"])
             return data
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, RuntimeError) as e:
+        except (OSError, http.client.HTTPException, json.JSONDecodeError, RuntimeError) as e:
             if attempt == retries - 1:
                 raise
             log(f"overflow request failed ({e}); retrying in {delay}s")
@@ -176,6 +176,8 @@ def _record_event(con, oid, status, start, end):
     A new start time means a new spill; if the previous spill was still open,
     it ended at some point we didn't see, recorded as the new spill's start.
     The same start time with the overflow now quiet closes the open spill.
+    A quiet overflow whose feed gives no usable end leaves it open; summary
+    and detail then take it to have ended when the quiet status began.
     """
     if start is None:
         return
@@ -232,8 +234,10 @@ def at_works(asset_type):
 def summary(con, now=None):
     now = int(now or time.time())
     rows = con.execute("""
-        SELECT o.*, (SELECT MAX(COALESCE(e.ended, ?)) FROM overflow_events e WHERE e.id = o.id) AS last_end
-        FROM overflows o WHERE o.active = 1 AND o.status IS NOT NULL ORDER BY o.id""", (now,)).fetchall()
+        SELECT o.*, (SELECT MAX(COALESCE(e.ended, CASE WHEN o.status = ? THEN ?
+                                                     ELSE MAX(e.started, COALESCE(o.status_start, e.started)) END))
+                     FROM overflow_events e WHERE e.id = o.id) AS last_end
+        FROM overflows o WHERE o.active = 1 AND o.status IS NOT NULL ORDER BY o.id""", (SPILLING, now)).fetchall()
     out = []
     for r in rows:
         entry = {"id": r["id"], "lat": r["lat"], "lon": r["lon"], "state": state(r, now)}
@@ -258,6 +262,16 @@ def write_summary(con, now=None):
     tmp.replace(SUMMARY)
 
 
+def open_end(overflow, started, now):
+    """When a spill the log still holds open ended. While the overflow is
+    spilling it hasn't (None, which the popup draws up to now). Otherwise the
+    feed reported it quiet without a usable end time, and it ended when its
+    current status began, or as far as we know when it started."""
+    if overflow["status"] == SPILLING:
+        return None
+    return max(started, overflow["status_start"] or started)
+
+
 def detail(con, oid, now=None):
     """Everything an overflow's popup shows."""
     now = int(now or time.time())
@@ -265,9 +279,10 @@ def detail(con, oid, now=None):
     if o is None:
         return None
     since = now - HISTORY_WINDOW
-    events = [[e["started"], e["ended"]] for e in con.execute(
-        "SELECT started, ended FROM overflow_events WHERE id = ? AND COALESCE(ended, ?) > ? ORDER BY started",
-        (oid, now, since))]
+    events = [[e["started"], e["ended"] if e["ended"] is not None else open_end(o, e["started"], now)]
+              for e in con.execute(
+                  "SELECT started, ended FROM overflow_events WHERE id = ? AND COALESCE(ended, ?) > ? ORDER BY started",
+                  (oid, now, since))]
     annual = [[a["year"], round(a["hours"], 1) if a["hours"] is not None else None, a["spills"]] for a in con.execute(
         "SELECT year, hours, spills FROM overflow_annual WHERE id = ? ORDER BY year", (oid,))]
     return {

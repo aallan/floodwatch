@@ -146,5 +146,22 @@ class StoreLatest(DBTestCase):
         self.assertEqual([tuple(r) for r in rows], [(ours, 0.41)])
 
 
+class Retries(unittest.TestCase):
+    def test_a_reset_connection_or_truncated_answer_is_tried_again(self):
+        import http.client
+        for failure in (ConnectionResetError(54, "Connection reset by peer"), http.client.IncompleteRead(b"{")):
+            with self.subTest(failure=type(failure).__name__), \
+                    mock.patch.object(ea.net, "fetch", side_effect=[failure, b'{"items": []}']) as fetch, \
+                    mock.patch.object(ea.time, "sleep"), mock.patch.object(ea, "log"):
+                self.assertEqual(ea.get("/id/stations"), {"items": []})
+                self.assertEqual(fetch.call_count, 2)
+
+    def test_gives_up_after_the_last_try(self):
+        with mock.patch.object(ea.net, "fetch", side_effect=ConnectionResetError(54, "reset")), \
+                mock.patch.object(ea.time, "sleep"), mock.patch.object(ea, "log"):
+            with self.assertRaises(ConnectionResetError):
+                ea.get("/id/stations", retries=2)
+
+
 if __name__ == "__main__":
     unittest.main()

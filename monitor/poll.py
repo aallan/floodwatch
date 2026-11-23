@@ -18,6 +18,7 @@ from . import archive, db, drought, ea, floods, live, overflows, powercuts, weat
 # reporting interval shortens the wait for each new reading.
 INTERVAL = 5 * 60
 STATION_REFRESH = 24 * 3600
+DROUGHT_RETRY = 3600   # after a failed drought report, try again in an hour
 
 # The first cycle after the server starts reads everything, whatever the
 # schedules say, so that whatever a deploy adds or changes shows straight away.
@@ -34,7 +35,7 @@ def cycle():
         # run, or after the server has been down, it can take minutes.
         gaps = None
         for name, poll in (("gauge", poll_gauges), ("overflow", poll_overflows),
-                           ("archive", restore_archive),
+                           ("archive", restore_spills),
                            ("flood warning", poll_floods), ("weather warning", poll_weather),
                            ("power cut", poll_powercuts), ("drought", poll_drought)):
             try:
@@ -62,6 +63,7 @@ def poll_gauges(con, fresh=False):
         db.set_meta(con, "stations_refreshed", int(time.time()))
         con.commit()
         ea.log(f"station list refreshed: {n} stations")
+    restore_readings(con)
     latest, held = ea.store_latest(con)
     db.set_meta(con, "last_poll", int(time.time()))
     con.commit()
@@ -70,20 +72,38 @@ def poll_gauges(con, fresh=False):
     return latest, held
 
 
-def restore_archive(con, fresh=False):
-    """On a new server, load the history in archive/ once, after the gauges
-    and overflows are listed and before gaps are filled from the API, so
-    those fetch only what the archive doesn't hold."""
-    if db.get_meta(con, "archive_restored"):
+def restore_readings(con):
+    """On a new server, load the readings in archive/ once the stations are
+    listed, before the latest readings are stored, so the gap fill that
+    follows fetches only what the archive doesn't hold. A failure is logged
+    and tried again next cycle; it doesn't stop the gauge poll."""
+    if db.get_meta(con, "archive_readings_restored") or db.get_meta(con, "archive_restored"):
         return
     if not con.execute("SELECT 1 FROM stations LIMIT 1").fetchone():
         return  # the station list failed; try again next cycle
-    readings, spills, skipped = archive.restore(con)
-    db.set_meta(con, "archive_restored", int(time.time()))
+    try:
+        loaded, skipped = archive.restore_readings(con) if archive.has_readings() else ({}, {})
+    except Exception as e:  # noqa: BLE001
+        ea.log(f"archive: restoring readings failed, trying again next cycle: {e}")
+        return
+    db.set_meta(con, "archive_readings_restored", int(time.time()))
     con.commit()
-    live.write(con)
+    ea.log(f"archive: restored {sum(loaded.values())} readings" + (f"; skipped {len(skipped)} stations" if skipped else ""))
+
+
+def restore_spills(con, fresh=False):
+    """On a new server, load the spill logs in archive/ once the overflows
+    are listed. Until then it waits, however many cycles that takes, so a
+    failed first overflow poll can't lose them."""
+    if db.get_meta(con, "archive_spills_restored") or db.get_meta(con, "archive_restored"):
+        return
+    if not con.execute("SELECT 1 FROM overflows LIMIT 1").fetchone():
+        return  # the overflow list failed; try again next cycle
+    spills = archive.restore_spills(con)
+    db.set_meta(con, "archive_spills_restored", int(time.time()))
+    con.commit()
     overflows.write_summary(con)
-    ea.log(f"archive: restored {readings} readings and {spills} spills" + (f"; skipped {len(skipped)} stations" if skipped else ""))
+    ea.log(f"archive: restored {sum(spills.values())} spills")
 
 
 def fill_gauge_gaps(con, latest, held):
@@ -96,10 +116,16 @@ def fill_gauge_gaps(con, latest, held):
 def poll_floods(con, fresh=False):
     refreshed = int(db.get_meta(con, "flood_areas_refreshed", 0))
     if fresh or time.time() - refreshed > STATION_REFRESH:
-        n = floods.refresh_areas(con)
-        db.set_meta(con, "flood_areas_refreshed", int(time.time()))
-        con.commit()
-        ea.log(f"flood area list refreshed: {n} areas")
+        # The daily list refresh failing mustn't stop the warnings: they're
+        # read against yesterday's list, and the refresh is tried next cycle.
+        try:
+            n = floods.refresh_areas(con)
+            db.set_meta(con, "flood_areas_refreshed", int(time.time()))
+            con.commit()
+            ea.log(f"flood area list refreshed: {n} areas")
+        except Exception as e:  # noqa: BLE001
+            con.rollback()
+            ea.log(f"flood area list refresh failed, trying again next cycle: {e}")
     warnings = floods.poll_warnings(con)
     floods.write_summary(warnings)
     ea.log(f"flood warnings: {len(warnings)} in force")
@@ -120,7 +146,14 @@ def poll_powercuts(con, fresh=False):
 def poll_drought(con, fresh=False):
     """The drought report is weekly, so it's read every six hours."""
     if fresh or time.time() - int(db.get_meta(con, "drought_refreshed", 0)) > drought.REFRESH:
-        status = drought.poll()
+        try:
+            status = drought.poll()
+        except Exception:
+            # Try again in an hour rather than every cycle: a report that no
+            # longer parses won't start parsing in five minutes.
+            db.set_meta(con, "drought_refreshed", int(time.time()) - drought.REFRESH + DROUGHT_RETRY)
+            con.commit()
+            raise
         db.set_meta(con, "drought_refreshed", int(time.time()))
         con.commit()
         ea.log(f"drought: {', '.join(s['stage'] for s in status['stages']) or 'none'} ({status['report']['period']})")
@@ -129,12 +162,18 @@ def poll_drought(con, fresh=False):
 def poll_overflows(con, fresh=False):
     refreshed = int(db.get_meta(con, "overflows_refreshed", 0))
     if fresh or time.time() - refreshed > STATION_REFRESH:
-        n = overflows.refresh_overflows(con)
-        db.set_meta(con, "overflows_refreshed", int(time.time()))
-        if not db.get_meta(con, "overflow_log_started"):
-            db.set_meta(con, "overflow_log_started", int(time.time()))
-        con.commit()
-        ea.log(f"overflow list refreshed: {n} overflows")
+        # As with flood areas: a failed daily refresh is tried next cycle, and
+        # the spill log carries on against yesterday's list meanwhile.
+        try:
+            n = overflows.refresh_overflows(con)
+            db.set_meta(con, "overflows_refreshed", int(time.time()))
+            if not db.get_meta(con, "overflow_log_started"):
+                db.set_meta(con, "overflow_log_started", int(time.time()))
+            con.commit()
+            ea.log(f"overflow list refreshed: {n} overflows")
+        except Exception as e:  # noqa: BLE001
+            con.rollback()
+            ea.log(f"overflow list refresh failed, trying again next cycle: {e}")
     n = overflows.poll_overflows(con)
     overflows.write_summary(con)
     ea.log(f"overflows: {n} statuses")

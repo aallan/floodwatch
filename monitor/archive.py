@@ -194,10 +194,14 @@ def close_superseded(con):
             con.execute("UPDATE overflow_events SET ended = ? WHERE id = ? AND started = ?", (nxt, oid, started))
 
 
+def has_readings(directory=None):
+    return ((directory or ARCHIVE) / "stations.csv").exists()
+
+
 def restore(con, directory=ARCHIVE):
     """Load the whole archive. Readings and spills already held are kept, so
     it's safe to run again. Returns (readings added, spills added, skipped)."""
-    if not (directory / "stations.csv").exists():
+    if not has_readings(directory):
         return 0, 0, {}
     loaded, skipped = restore_readings(con, directory)
     spills = restore_spills(con, directory)

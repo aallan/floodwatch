@@ -27,7 +27,7 @@ function cssVar(name) {
 
 // Theme ---------------------------------------------------------------------
 // Follows the OS by default; the toggle persists an explicit choice.
-const THEME_KEY = 'monitoring_cornwall_theme';
+const THEME_KEY = 'floodwatch_theme';
 (function () {
   try {
     const s = localStorage.getItem(THEME_KEY);
