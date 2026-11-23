@@ -17,8 +17,12 @@ const FloodWarnings = (() => {
 
   function plural(n, one, many) { return `${n} ${n === 1 ? one : many}`; }
 
-  // 'One severe flood warning, 2 flood warnings and 3 flood alerts in force'
+  // One warning gives its kind and area, as Floodwatch has always shown it:
+  // 'Flood alert: North Dartmoor Rivers'. More are counted by kind: '1 severe
+  // flood warning, 2 flood warnings and 3 flood alerts in force'.
+  const KIND = { 1: 'Severe flood warning', 2: 'Flood warning', 3: 'Flood alert' };
   function summaryText(list) {
+    if (list.length === 1 && list[0].area) return `${KIND[list[0].severity] || 'Flood warning'}: ${list[0].area}`;
     const n = level => list.filter(w => w.severity === level).length;
     const parts = [];
     if (n(1)) parts.push(plural(n(1), 'severe flood warning', 'severe flood warnings'));

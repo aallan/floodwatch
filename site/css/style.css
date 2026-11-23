@@ -75,6 +75,7 @@
     --chrome-border: #5d6782;
     --chrome-text: #f1f3f8;
     --chrome-muted: #c0c6d6;
+    --chrome-banner: #3d455c;
 
     /* Gauge markers, white-edged so they read on light and dark basemaps */
     --gauge-normal: #1a8a7d;
@@ -231,7 +232,7 @@ body {
    right, with the active tab's underline on the header's bottom edge.
    Header, main and footer share one full-width left edge on every tab, so
    nothing shifts sideways when switching between Map and About. */
-header { padding: 0 2rem; width: 100%; background: var(--chrome-bar); border-bottom: 1px solid var(--chrome-border); color: var(--chrome-text); }
+header { --pad: 2rem; padding: 0 var(--pad); width: 100%; background: var(--chrome-bar); border-bottom: 1px solid var(--chrome-border); color: var(--chrome-text); }
 .header-row { display: flex; align-items: stretch; gap: 1.5rem; min-height: 3.25rem; }
 .header-row > h1, .header-row > .header-buttons, .header-row > .status-line { align-self: center; }
 header h1 {
@@ -301,7 +302,7 @@ body.map-mode footer { display: none; }
        so the header never changes size when switching. The snapshot date is
        repeated on the About tab. */
     .status-line { display: none; }
-    header { padding: 0 1rem; }
+    header { --pad: 1rem; }
     /* The tabs take a row of their own under the title and buttons. */
     .header-row { flex-wrap: wrap; row-gap: 0; column-gap: 0.75rem; min-height: 0; padding-top: 0.6rem; }
     .header-row > .header-buttons { margin-left: auto; }
@@ -493,7 +494,7 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 640px) {
-    header, main, footer { padding-left: 1rem; padding-right: 1rem; }
+    main, footer { padding-left: 1rem; padding-right: 1rem; }
     main { padding-top: 1rem; }
     .map-box { min-height: 70vh; }
     .map-legend { font-size: 0.75rem; }
@@ -684,29 +685,33 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 /* Quiet indicator in the header when nothing is in force, which opens to say so */
 .flood-pill {
     display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.7rem 0.3rem 0.6rem;
-    border-radius: 999px; font: inherit; font-size: 0.78rem; color: color-mix(in srgb, var(--up) 55%, white);
-    background: color-mix(in srgb, var(--up) 16%, var(--chrome-bar));
-    border: 1px solid color-mix(in srgb, var(--up) 45%, transparent); white-space: nowrap; cursor: pointer;
+    border-radius: 5px; font: inherit; font-size: 0.78rem; font-weight: 600; color: var(--chrome-text);
+    background: color-mix(in srgb, var(--up) 14%, var(--chrome-banner));
+    border: none; border-left: 3px solid var(--up); white-space: nowrap; cursor: pointer;
 }
-.flood-pill:hover { background: color-mix(in srgb, var(--up) 26%, var(--chrome-bar)); }
-.flood-pill-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.flood-pill:hover { background: color-mix(in srgb, var(--up) 24%, var(--chrome-banner)); }
+/* With its text, the pill's stripe says its state; shrunk to a square on a
+   narrow screen, a dot in the state's colour does. */
+.flood-pill-dot { display: none; width: 9px; height: 9px; border-radius: 50%; background: var(--up); }
 
 /* Banner under the header while any warning or alert is in force */
 .flood-banner {
     --tone: var(--flood-alert);
-    border: 1px solid color-mix(in srgb, var(--tone) 50%, transparent); border-left: 4px solid var(--tone);
-    background: color-mix(in srgb, var(--tone) 14%, var(--chrome-bar));
-    border-radius: var(--radius); margin-bottom: 0.6rem; position: relative;
+    /* A full-width bar under the header, as Floodwatch has always shown it:
+       a stripe of the warning's colour down the left, over a faint tint. */
+    margin: 0 calc(-1 * var(--pad)); border: none; border-top: 1px solid var(--chrome-border); border-left: 4px solid var(--tone);
+    background: color-mix(in srgb, var(--tone) 9%, var(--chrome-banner));
+    border-radius: 0; position: relative;
 }
 .flood-banner[hidden] { display: none; }
 .flood-banner.is-warning { --tone: var(--flood-warning); }
 .flood-banner.is-severe { --tone: var(--flood-severe); }
 .flood-summary {
-    display: flex; align-items: center; gap: 0.6rem; width: 100%; padding: 0.55rem 0.85rem;
-    background: none; border: none; font: inherit; font-size: 0.875rem; font-weight: 500;
+    display: flex; align-items: center; gap: 0.7rem; width: 100%; padding: 0.6rem calc(var(--pad) - 4px);
+    background: none; border: none; font: inherit; font-size: 0.9rem; font-weight: 600;
     color: var(--chrome-text); text-align: left; cursor: pointer;
 }
-.flood-icon { width: 10px; height: 10px; border-radius: 50%; background: var(--tone); flex: none; }
+.flood-icon { width: 18px; height: 18px; color: var(--chrome-text); flex: none; }
 .flood-banner.is-severe .flood-icon { animation: pill-pulse 1.8s ease-in-out infinite; }
 @keyframes pill-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 .flood-summary-text { flex: 1; }
@@ -714,10 +719,10 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 .flood-summary[aria-expanded="true"] .flood-chevron::after { content: '\25B4'; }
 /* The list drops down over the map, like a menu, rather than pushing it down */
 .flood-details {
-    position: absolute; left: -1px; right: -1px; top: calc(100% - 1px); z-index: 1100;
+    position: absolute; left: -4px; right: 0; top: 100%; z-index: 1100;
     max-height: min(60vh, 32rem); overflow-y: auto;
     background: var(--bg-card); border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
-    border-radius: 0 0 var(--radius) var(--radius); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+    border-radius: 0; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 .flood-summary[aria-expanded="true"] { border-bottom: 1px solid color-mix(in srgb, var(--tone) 35%, transparent); }
 .flood-details[hidden] { display: none; }
@@ -785,11 +790,12 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 .drought-pill {
     display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.7rem 0.3rem 0.6rem;
     border-radius: 999px; font: inherit; font-size: 0.78rem; white-space: nowrap; cursor: pointer;
-    color: color-mix(in srgb, var(--tone) 55%, white); background: color-mix(in srgb, var(--tone) 18%, var(--chrome-bar));
-    border: 1px solid color-mix(in srgb, var(--tone) 50%, transparent);
+    color: var(--chrome-text); font-weight: 600; border-radius: 5px;
+    background: color-mix(in srgb, var(--tone) 16%, var(--chrome-banner));
+    border: none; border-left: 3px solid var(--tone);
 }
-.drought-pill:hover { background: color-mix(in srgb, var(--tone) 28%, var(--chrome-bar)); }
-.drought-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.drought-pill:hover { background: color-mix(in srgb, var(--tone) 26%, var(--chrome-banner)); }
+.drought-dot { display: none; width: 9px; height: 9px; border-radius: 50%; background: var(--tone); }
 .drought-item { --tone: var(--drought); margin-bottom: 0.6rem; }
 .drought-item.is-severe { --tone: var(--drought-severe); }
 .drought-item.is-dry { --tone: var(--drought-dry); }
@@ -803,12 +809,14 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 /* The header runs out of room before a phone's width, so the pills shrink to
    their dots in turn: the drought pill first, then the flood one. */
 @media (max-width: 1000px) {
-    .drought-pill { padding: 0; width: 2.25rem; height: 2.25rem; justify-content: center; }
+    .drought-pill { padding: 0; width: 2.25rem; height: 2.25rem; justify-content: center; border-left: none; }
     .drought-pill-text { display: none; }
+    .drought-dot { display: block; }
 }
 @media (max-width: 760px) {
-    .flood-pill { padding: 0; width: 2.25rem; height: 2.25rem; justify-content: center; }
+    .flood-pill { padding: 0; width: 2.25rem; height: 2.25rem; justify-content: center; border-left: none; }
     .flood-pill-text { display: none; }
+    .flood-pill-dot { display: block; }
 }
 @media (max-width: 640px) {
     /* On a phone the title and up to three round buttons share one row, a
@@ -823,7 +831,7 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 }
 @media (max-width: 380px) {
     /* The smallest phones need a little more room for the same row */
-    header { padding-left: 0.75rem; padding-right: 0.75rem; }
+    header { --pad: 0.75rem; }
     header h1 { font-size: 0.94rem; gap: 0.35rem; }
     header h1 .ticker { letter-spacing: 0.05em; }
 }

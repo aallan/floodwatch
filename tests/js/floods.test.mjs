@@ -6,6 +6,9 @@ const { FloodWarnings } = load('utils.js', 'floods.js')('FloodWarnings');
 const { summaryText } = FloodWarnings._internals;
 
 test('the banner counts warnings by severity, most severe first', () => {
+  assert.equal(summaryText([{ severity: 3, area: 'North Dartmoor Rivers' }]), 'Flood alert: North Dartmoor Rivers');
+  assert.equal(summaryText([{ severity: 1, area: 'River Taw (Lower) at Bishops Tawton' }]),
+    'Severe flood warning: River Taw (Lower) at Bishops Tawton');
   assert.equal(summaryText([{ severity: 3 }]), '1 flood alert in force in the Taw catchment');
   assert.equal(summaryText([{ severity: 3 }, { severity: 3 }, { severity: 3 }]), '3 flood alerts in force in the Taw catchment');
   assert.equal(summaryText([{ severity: 3 }, { severity: 2 }, { severity: 1 }, { severity: 2 }]),
