@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 - The River Bray in its own colour, raspberry, with its own entry in the legend.
+- Dartmoor and Exmoor national parks, shaded pale green and named on the map, with a legend entry to hide them.
 - The streams the Environment Agency gauges are drawn with the rivers, so their gauges no longer sit on nothing with the streams layer off: Landkey Brook at Swimbridge, Halford Stream at Landkey, Bradiford Water and Coney Gut.
 - Diagrams in the README of how the site is put together, the poll cycle, the spill log, the archive and the server, and figures of how the catchment's outline is made and of the flow forecast's scaling, drawn by `make figures`.
 

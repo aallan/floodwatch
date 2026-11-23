@@ -114,6 +114,24 @@ class Outline(unittest.TestCase):
         self.assertEqual(set(ring), {(0, 0), (1, 0), (2, 0), (2, 1), (1, 1), (0, 1)})
 
 
+class Parks(unittest.TestCase):
+    def park(self, name, x0, size=0.1):
+        square = [[x0, 50.6], [x0 + size, 50.6], [x0 + size, 50.6 + size], [x0, 50.6 + size], [x0, 50.6]]
+        return {"type": "Feature", "properties": {"NAME": name},
+                "geometry": {"type": "Polygon", "coordinates": [square]}}
+
+    def test_both_moors_named_as_people_say_them_and_sorted(self):
+        parks = fg.park_features([self.park("EXMOOR", -3.7), self.park("DARTMOOR", -3.9)])
+        self.assertEqual([p["properties"]["name"] for p in parks], ["Dartmoor", "Exmoor"])
+        self.assertEqual(parks[0]["geometry"]["type"], "MultiPolygon")
+        # A 0.1 degree square at 50.6 N is about 7.1 km by 11.1 km.
+        self.assertAlmostEqual(parks[0]["properties"]["area_km2"], 78, delta=2)
+
+    def test_other_parks_are_left_off(self):
+        parks = fg.park_features([self.park("DARTMOOR", -3.9), self.park("NEW FOREST", -1.6)])
+        self.assertEqual([p["properties"]["name"] for p in parks], ["Dartmoor"])
+
+
 class Roads(unittest.TestCase):
     def test_major_roads(self):
         self.assertEqual(fg.major_ref("A30"), "A30")

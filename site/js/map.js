@@ -53,6 +53,7 @@ const FloodMap = (() => {
   // Legend toggles. Each map part belongs to one toggle and may have a min zoom.
   const toggles = {
     catchment: { on: false },
+    parks:     { on: true },
     rivers:    { on: true },
     streams:   { on: false },
     passenger: { on: true },
@@ -87,7 +88,7 @@ const FloodMap = (() => {
 
   // Draw order on the shared canvas, bottom to top. Labels and arrows are
   // DOM markers in their own pane, so their order doesn't matter.
-  const Z = { mask: 0, streams: 1, rivers: 2, floods: 2.5, roads: 3, boundary: 4, catchment: 4.5, rail: 5, stations: 6, markers: 9 };
+  const Z = { mask: 0, parks: 0.5, streams: 1, rivers: 2, floods: 2.5, roads: 3, boundary: 4, catchment: 4.5, rail: 5, stations: 6, markers: 9 };
 
   function addPart(layer, toggle, z, minZoom = 0) {
     parts.push({ layer, toggle, z, minZoom });
@@ -128,6 +129,8 @@ const FloodMap = (() => {
     map.getPane('mask').style.pointerEvents = 'none';
     map.getPane('labels').style.pointerEvents = 'none';
     renderers.mask = L.canvas({ pane: 'mask' });
+    // The parks are a flat fill under everything, with nothing to hover.
+    renderers.parks = renderers.mask;
     const shared = L.canvas({ tolerance: 5 });
     for (const name of ['streams', 'rivers', 'roads', 'boundary', 'catchment', 'rail', 'stations']) renderers[name] = shared;
   }
@@ -228,6 +231,29 @@ const FloodMap = (() => {
     style();
     restylers.push(style);
     addPart(area, 'catchment', Z.catchment);
+  }
+
+  // ---------------------------------------------------------------- national parks
+  // Dartmoor and Exmoor, a pale green under everything else. Their names sit
+  // at a fixed point on each moor, clear of the rivers and the gauges, and
+  // Dartmoor's near its northern edge, the part the opening view shows.
+  const PARK_LABELS = { Dartmoor: [50.70, -3.83], Exmoor: [51.135, -3.69] };
+
+  function addParks(fc) {
+    const area = L.geoJSON(fc, { renderer: renderers.parks, interactive: false });
+    const style = () => area.setStyle({
+      stroke: true, color: cssVar('--park-edge'), weight: 1, opacity: 0.6,
+      fill: true, fillColor: cssVar('--park'), fillOpacity: Number(cssVar('--park-opacity')) || 0.3,
+    });
+    style();
+    restylers.push(style);
+    const labels = L.layerGroup();
+    for (const f of fc.features) {
+      const at = PARK_LABELS[f.properties.name];
+      if (at) label(at, f.properties.name, 'park').addTo(labels);
+    }
+    addPart(area, 'parks', Z.parks);
+    addPart(labels, 'parks', Z.markers);
   }
 
   // ---------------------------------------------------------------- waterways
@@ -768,8 +794,9 @@ const FloodMap = (() => {
         ${item('stations', 'dot', '--rail', 'Stations', '<span class="count" id="legend-count-stations"></span>')}
         ${title('roads', 'Roads')}
         ${item('roads', 'road', '--road', 'Major roads')}
-        <div class="legend-title">Boundary</div>
+        <div class="legend-title">Boundaries</div>
         ${item('catchment', 'dash', '--accent', 'Taw catchment')}
+        ${item('parks', 'area park-swatch', '--park', 'National parks')}
         </div>
         </div>`;
       syncLegend(div);
@@ -832,6 +859,7 @@ const FloodMap = (() => {
     map.attributionControl.addAttribution('Forecasts: <a href="https://open-meteo.com/">Open-Meteo</a>, <a href="https://nrfa.ceh.ac.uk/">NRFA</a>');
     map.attributionControl.addAttribution('Power cuts: Supported by <a href="https://connecteddata.nationalgrid.co.uk/dataset/live-power-cuts">NGED Open Data</a>');
     map.attributionControl.addAttribution('Catchment: <a href="https://environment.data.gov.uk/catchment-planning/">Environment Agency</a>');
+    map.attributionControl.addAttribution('National parks: <a href="https://naturalengland-defra.opendata.arcgis.com/">Natural England</a>');
     map.setView([50.93, -3.90], 10, { animate: false });  // placeholder until the container has a size
     makePanes();
     makeClusters();
@@ -856,6 +884,7 @@ const FloodMap = (() => {
     const layer = (name, add) => getJSON(DATA + name)
       .then(fc => { add(fc); updateVisibility(); })
       .catch(e => console.warn(e));
+    layer('parks.geojson', addParks);
     layer('catchment.geojson', addCatchment);
     layer('rivers.geojson', addRivers);
     layer('roads.geojson', addRoads);

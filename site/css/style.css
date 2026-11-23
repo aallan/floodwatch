@@ -68,6 +68,11 @@
     --hollow-fill: #fcf8ef;  /* hollow markers show the county's land colour */
     --mask: #d9d5cd;
     --mask-opacity: 0.55;
+    /* Dartmoor and Exmoor */
+    --park: #8fbf72;
+    --park-edge: #6f9f58;
+    --park-opacity: 0.25;
+    --park-label: #4f7d3c;
     --tile-filter: none;
 
     /* The page around the map: dark slate in both themes */
@@ -153,6 +158,10 @@
         --hollow-fill: #4d4b49;
         --mask: #0e0d0c;
         --mask-opacity: 0.5;
+        --park: #5e8c4c;
+        --park-edge: #78a764;
+        --park-opacity: 0.22;
+        --park-label: #9cc68a;
         --tile-filter: none;
     }
 }
@@ -213,6 +222,10 @@
     --hollow-fill: #4d4b49;
     --mask: #0e0d0c;
     --mask-opacity: 0.5;
+    --park: #5e8c4c;
+    --park-edge: #78a764;
+    --park-opacity: 0.22;
+    --park-label: #9cc68a;
     --tile-filter: none;
 }
 
@@ -402,6 +415,11 @@ body.map-mode footer { display: none; }
 .map-label.rail {
     color: var(--text-secondary); background: var(--bg-card); border: 1px solid var(--border);
     border-radius: 4px; padding: 1px 6px; font-size: 9.5px; text-shadow: none; letter-spacing: 0.03em;
+}
+/* The national parks' names, set like a region on a printed map */
+.map-label.park {
+    color: var(--park-label); font-size: 12px; font-weight: 600; font-style: italic;
+    letter-spacing: 0.18em; text-transform: uppercase;
 }
 /* Road numbers: small and grey, so they don't compete with the gauges */
 .map-label.road {
@@ -762,6 +780,7 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 .weather-link { display: inline-block; margin-top: 0.4rem; font-size: 0.8rem; color: var(--accent); text-decoration: none; }
 .weather-link:hover { text-decoration: underline; }
 
+.swatch.park-swatch::before { background: color-mix(in srgb, var(--park) 45%, transparent); border-color: var(--park-edge); }
 .swatch.flood-swatch::before { background: color-mix(in srgb, var(--c) 30%, transparent); border-color: var(--c); }
 
 @media (max-width: 640px) {

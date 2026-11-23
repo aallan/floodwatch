@@ -874,6 +874,39 @@ def fetch_devon():
     return [feature("MultiPolygon", polys, name="Devon")], rings, bbox
 
 
+PARKS_URL = ("https://services.arcgis.com/JJzESW51TqeY9uat/arcgis/rest/services/"
+             "National_Parks_England/FeatureServer/0/query")
+NATIONAL_PARKS = ("DARTMOOR", "EXMOOR")  # as Natural England names them
+SIMPLIFY_PARK = 0.0003  # ~20-30 m: a pale fill, not a boundary anyone follows
+
+
+def park_features(features):
+    """One MultiPolygon per national park, named as people say it: "Dartmoor"."""
+    out = []
+    for f in sorted(features, key=lambda f: f.get("properties", {}).get("NAME", "")):
+        name = f.get("properties", {}).get("NAME", "")
+        if name not in NATIONAL_PARKS:
+            continue
+        polys = [[rnd(r)] for r in (simplify(r, SIMPLIFY_PARK) for r in outer_rings([f])) if len(r) >= 4]
+        if polys:
+            out.append(feature("MultiPolygon", polys, name=name.title(),
+                               area_km2=round(sum(area_km2(p[0]) for p in polys))))
+    return out
+
+
+def fetch_parks():
+    """Dartmoor and Exmoor, from Natural England: the Taw rises on one, and the
+    Mole and the Bray on the other."""
+    names = ",".join(f"'{n}'" for n in NATIONAL_PARKS)
+    parks = park_features(geojson_features(
+        "parks", PARKS_URL, source="Natural England national parks",
+        data={"where": f"NAME IN ({names})", "outFields": "NAME",
+              "returnGeometry": "true", "outSR": "4326", "f": "geojson"}))
+    if len(parks) != len(NATIONAL_PARKS):
+        print(f"  warning: found {len(parks)} of {len(NATIONAL_PARKS)} national parks", file=sys.stderr)
+    return parks
+
+
 def touches(lines, land):
     """True if any of the lines comes into the catchment."""
     return any(land.keep(p) for l in lines for p in l[::3] + [l[-1]])
@@ -1042,9 +1075,12 @@ def main():
     roads = fetch_roads(land, devon_land, devon_bbox)
     pause()
     places = fetch_places(bbox)
+    pause()
+    parks = fetch_parks()
 
     print("Writing overlays…")
     write("catchment.geojson", catchment)
+    write("parks.geojson", parks)
     write("rivers.geojson", rivers)
     write("streams.geojson", streams)
     write("railways.geojson", rails)
@@ -1058,7 +1094,8 @@ def main():
     print(f"  wrote data/neighbours.geojson ({len(neighbours[0]['geometry']['coordinates'])} polygons)")
     meta = {
         "generated": datetime.fromtimestamp(min(FETCHED), timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "source": "Environment Agency Catchment Data Explorer (OGL); OpenStreetMap contributors, via the Overpass API (ODbL)",
+        "source": ("Environment Agency Catchment Data Explorer (OGL); Natural England national parks (OGL); "
+                   "OpenStreetMap contributors, via the Overpass API (ODbL)"),
         "bbox": bbox,
         "counts": {
             "rivers": len([f for f in rivers if f["properties"]["name"]]),
