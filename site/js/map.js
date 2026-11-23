@@ -727,21 +727,26 @@ const FloodMap = (() => {
         ${item('powercuts', 'pcut-swatch', '--power-bg', 'Live power cuts', '<span class="count" id="legend-count-powercuts"></span>')}
         ${title('live', 'Live readings')}
         ${item('levels', 'gauge-swatch level', '--gauge-normal', 'River level (m)', '<span class="count" id="legend-count-levels"></span>')}
-        <div class="legend-key gauge-key"><span class="swatch gauge-swatch level" style="--c: var(--gauge-approach)"></span>near top of range
-          <span class="swatch gauge-swatch level" style="--c: var(--gauge-high)"></span>above range</div>
+        <div class="legend-key gauge-key">
+          <span class="key-pair"><span class="swatch gauge-swatch level" style="--c: var(--gauge-approach)"></span>near top of range</span>
+          <span class="key-pair"><span class="swatch gauge-swatch level" style="--c: var(--gauge-high)"></span>above range</span>
+        </div>
         ${item('tidal', 'gauge-swatch tidal', '--gauge-tidal', 'Tidal level (m AOD)', '<span class="count" id="legend-count-tidal"></span>')}
         ${item('rain', 'gauge-swatch rain', '--gauge-rain', 'Rain in the last hour (mm)', '<span class="count" id="legend-count-rain"></span>')}
-        <div class="legend-key"><span class="cluster-key">3</span>gauges grouped together: zoom in</div>
+        <div class="legend-key"><span class="key-pair"><span class="cluster-key">3</span>gauges grouped together: zoom in</span></div>
         <div class="legend-key" aria-label="Trend badges on river and tidal gauges">
-          <span class="trend-key is-rising"></span>rising
-          <span class="trend-key is-falling"></span>falling
-          <span class="trend-key is-steady"></span>steady
+          <span class="key-pair"><span class="trend-key is-rising"></span>rising</span>
+          <span class="key-pair"><span class="trend-key is-falling"></span>falling</span>
+          <span class="key-pair"><span class="trend-key is-steady"></span>steady</span>
         </div>
         ${title('overflows', 'Storm overflows')}
         ${item('csoNow', 'cso-swatch is-spilling', '--cso', 'Spilling now', '<span class="count" id="legend-count-csoNow"></span>')}
         ${item('csoRecent', 'cso-swatch is-recent', '--cso-recent', 'Spilled in last 48 h', '<span class="count" id="legend-count-csoRecent"></span>')}
         ${item('csoQuiet', 'cso-swatch is-quiet', '--cso-quiet', 'Quiet or offline', '<span class="count"><span id="legend-cso-quiet-hint">zoom in · </span><span id="legend-count-csoQuiet"></span></span>')}
-        <div class="legend-key"><span class="works-key"></span>treatment works<span class="works-key is-network"></span>sewer network</div>
+        <div class="legend-key">
+          <span class="key-pair"><span class="works-key"></span>treatment works</span>
+          <span class="key-pair"><span class="works-key is-network"></span>sewer network</span>
+        </div>
         </div>
         <div class="legend-col">
         ${title('waterways', 'Waterways')}
