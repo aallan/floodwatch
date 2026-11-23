@@ -15,6 +15,7 @@ import argparse
 import json
 import re
 import socket
+import subprocess
 import urllib.parse
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -23,6 +24,21 @@ from pathlib import Path
 from monitor import db, forecast, history, overflows, poll
 
 SITE = Path(__file__).resolve().parent / "site"
+
+
+def git_version():
+    """The version running, as `git describe` gives it: the latest tag, and
+    how many commits on, as Floodwatch has always shown it. The server runs
+    from a git checkout, deployed by pulling."""
+    try:
+        out = subprocess.run(["git", "describe", "--tags", "--always"], cwd=SITE.parent,
+                             capture_output=True, text=True, timeout=5)
+        return out.stdout.strip() or None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+VERSION = git_version()
 DEFAULT_PORT = 8090
 # A chart can ask for up to ten years by number of days, or for all time.
 MAX_HISTORY_DAYS = 3650
@@ -81,6 +97,9 @@ class Handler(SimpleHTTPRequestHandler):
 
     def handle_api(self, url):
         parts = url.path.strip("/").split("/")
+        # /api/version: the version running
+        if parts == ["api", "version"]:
+            return self.send_json({"version": VERSION})
         # /api/overflows/<id>
         if len(parts) == 3 and parts[:2] == ["api", "overflows"] and STATION_ID.match(parts[2]):
             con = db.connect(read_only=True)

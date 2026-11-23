@@ -27,6 +27,14 @@ async function loadMeta() {
   }
 }
 
+// The version running, under the title.
+async function loadVersion() {
+  try {
+    const { version } = await getJSON('/api/version');
+    if (version) $('#version').textContent = `(${version})`;
+  } catch (e) { /* the version is a nicety; leave it out */ }
+}
+
 // The status line reports how fresh the live readings are.
 function showLiveStatus(live) {
   const newest = Math.max(0, ...live.stations.map(s => s.ts || 0));
@@ -48,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('hashchange', route);
   route();
   loadMeta();
+  loadVersion();
   FloodWarnings.init();
   WeatherWarnings.init();
   Drought.init();

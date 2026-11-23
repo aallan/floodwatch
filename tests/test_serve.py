@@ -100,6 +100,10 @@ class Readings(Server):
         self.assertTrue(lines[1].endswith(",0.5,m,A,Somewhere"))
         self.assertEqual(self.request("/api/stations/NOPE/readings.csv")[0], 404)
 
+    def test_version(self):
+        with mock.patch.object(serve, "VERSION", "v2.0.0-3-gabc1234"):
+            self.assertEqual(self.get_json("/api/version"), (200, {"version": "v2.0.0-3-gabc1234"}))
+
     def test_unknown_and_malformed_ids(self):
         self.assertEqual(self.request("/api/stations/NOPE/readings")[0], 404)
         self.assertEqual(self.request("/api/stations/a%27%20OR%201=1/readings")[0], 404)

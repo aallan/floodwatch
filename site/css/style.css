@@ -4,7 +4,7 @@
    brightest thing on screen. */
 
 :root {
-    --bg: #faf9f7;
+    --bg: #eceef2;
     --bg-card: #ffffff;
     --bg-hover: #f3f2ef;
     --bg-elevated: #f3f2ef;
@@ -70,12 +70,11 @@
     --tile-filter: none;
 
     /* The page around the map: dark slate in both themes */
-    --chrome-bg: #2c3345;
-    --chrome-bar: #343b50;
-    --chrome-raised: #3d4560;
-    --chrome-border: #48506a;
-    --chrome-text: #e8ecf4;
-    --chrome-muted: #9aa2b8;
+    --chrome-bar: #48516a;
+    --chrome-raised: #56607b;
+    --chrome-border: #5d6782;
+    --chrome-text: #f1f3f8;
+    --chrome-muted: #c0c6d6;
 
     /* Gauge markers, white-edged so they read on light and dark basemaps */
     --gauge-normal: #1a8a7d;
@@ -96,7 +95,7 @@
 
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-        --bg: #1c1b19;
+        --bg: #232836;
         --bg-card: #262522;
         --bg-hover: #302f2c;
         --bg-elevated: #302f2c;
@@ -155,7 +154,7 @@
     }
 }
 :root[data-theme="dark"] {
-    --bg: #1c1b19;
+    --bg: #232836;
     --bg-card: #262522;
     --bg-hover: #302f2c;
     --bg-elevated: #302f2c;
@@ -218,7 +217,7 @@
 html, body { height: 100%; }
 body {
     font-family: var(--font);
-    background: var(--chrome-bg);
+    background: var(--bg);
     color: var(--text);
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
@@ -239,6 +238,16 @@ header h1 {
     font-size: 1.1rem; font-weight: 600; letter-spacing: 0.02em; color: var(--chrome-text);
     display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; flex: none;
 }
+/* The title, with Floodwatch's icon, and under it the link to the code
+   and the version running, as Floodwatch has always shown them. */
+.brand { display: flex; flex-direction: column; justify-content: center; align-self: center; flex: none; padding: 0.35rem 0; }
+header h1 .logo { width: 26px; height: 26px; border-radius: 6px; }
+.brand-meta { display: flex; gap: 0.5rem; align-items: center; margin-left: calc(26px + 0.5rem); font-size: 0.72rem; color: var(--chrome-muted); }
+.brand-meta a { color: var(--chrome-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; }
+.brand-meta a:hover { color: var(--chrome-text); }
+.brand-meta .github-icon { width: 12px; height: 12px; }
+.version { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 0.68rem; }
+.version:empty { display: none; }
 header h1 .ticker {
     font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; color: var(--text-on-dark);
     background: var(--accent); padding: 0.1rem 0.4rem; border-radius: 5px;
@@ -297,11 +306,13 @@ body.map-mode footer { display: none; }
     .header-row { flex-wrap: wrap; row-gap: 0; column-gap: 0.75rem; min-height: 0; padding-top: 0.6rem; }
     .header-row > .header-buttons { margin-left: auto; }
     .header-row > nav { order: 1; flex: 1 0 100%; margin-left: -0.75rem; }
+    /* The version is left off, so the buttons stay on the title's row. */
+    .brand-meta .version { display: none; }
 }
 
 /* ---------- Sections / panels ---------- */
 .section { margin-bottom: 2rem; }
-.section > h2 { font-size: 0.875rem; font-weight: 500; color: var(--chrome-muted); margin-bottom: 0.75rem; }
+.section > h2 { font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.75rem; }
 .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
 .panel p { font-size: 0.875rem; margin-bottom: 0.75rem; }
 .panel p:last-child { margin-bottom: 0; }
@@ -476,12 +487,9 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 .footer-line { border-top: 1px solid var(--border); margin-bottom: 0.75rem; }
 .footer-content { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 .footer-note { font-size: 11px; color: var(--text-tertiary); }
-.github-link { display: flex; align-items: center; gap: 0.35rem; font-size: 11px; color: var(--text-tertiary); text-decoration: none; }
+.github-link { display: flex; align-items: center; gap: 0.35rem; font-size: 11px; color: var(--text-secondary); text-decoration: none; }
 .github-link:hover { color: var(--text-secondary); }
-.github-icon { width: 14px; height: 14px; opacity: 0.5; transition: opacity 0.15s; }
-.github-link:hover .github-icon { opacity: 0.8; }
-:root[data-theme="dark"] .github-icon { filter: invert(1); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .github-icon { filter: invert(1); } }
+.github-icon { width: 14px; height: 14px; flex: none; }
 
 /* ---------- Responsive ---------- */
 @media (max-width: 640px) {
