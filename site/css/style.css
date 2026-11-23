@@ -123,10 +123,10 @@
         --river-hollocombe: #a3b366;
         --rail: #c9c4bb;
         --rail-freight: #77726a;
-        --road: #78ad80;
-        --road-edge: #335c3d;
-        --road-badge: #2f6a45;
-        --road-badge-text: #f6e7a6;
+        --road: #6f7685;
+        --road-edge: #2a2e38;
+        --road-badge: #5a6070;
+        --road-badge-text: #e8ebf2;
         --level-normal: #6fb585;
         --level-high: #d4837a;
         --level-low: #6f93ad;
@@ -182,10 +182,10 @@
     --river-hollocombe: #a3b366;
     --rail: #c9c4bb;
     --rail-freight: #77726a;
-    --road: #78ad80;
-    --road-edge: #335c3d;
-    --road-badge: #2f6a45;
-    --road-badge-text: #f6e7a6;
+    --road: #6f7685;
+    --road-edge: #2a2e38;
+    --road-badge: #5a6070;
+    --road-badge-text: #e8ebf2;
     --level-normal: #6fb585;
     --level-high: #d4837a;
     --level-low: #6f93ad;
@@ -851,7 +851,7 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
     font-size: 0.72rem; color: var(--text-tertiary); padding: 0.1rem 0.1rem 0.15rem 1.85rem;
 }
 /* An icon and its label, kept together on one line */
-.key-pair { display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+.key-pair { display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; flex: none; }
 .trend-key {
     width: 12px; height: 12px; border-radius: 50%; color: #fff; font-size: 8px; font-weight: 700;
     display: inline-flex; align-items: center; justify-content: center;
