@@ -128,3 +128,14 @@ test('all-time charts tick on the first of the month, more sparsely on a long re
   assert.equal(tickLabel(t(2026, 2), 'all'), 'Mar');
   assert.equal(tickLabel(t(2027, 0), 'all'), 'Jan 2027');
 });
+
+test('storm overflow names and asset types are spelt out', () => {
+  const { spellOut } = StationPopup._internals;
+  assert.equal(spellOut('Chulmleigh WWTW SSO'), 'Chulmleigh wastewater treatment works settled storm overflow');
+  assert.equal(spellOut('Barnstaple (ashford) STW'), 'Barnstaple (Ashford) sewage treatment works');
+  assert.equal(spellOut('Rock Park CSO'), 'Rock Park combined sewer overflow');
+  assert.equal(spellOut('WWTW at Lapford'), 'Wastewater treatment works at Lapford');
+  assert.equal(spellOut('Inlet SO at WwTW'), 'Inlet storm overflow at wastewater treatment works');
+  assert.equal(spellOut('SO on sewer network'), 'Storm overflow on sewer network');
+  assert.equal(StationPopup.overflowName({ id: 'SBB1' }), 'Storm overflow SBB1');
+});

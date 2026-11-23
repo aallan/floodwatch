@@ -856,3 +856,34 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 .stn-pop-note.is-risk { color: var(--flood-warning); font-weight: 600; }
 .stn-pop-line { font-size: 0.78rem; color: var(--text-secondary); margin: 0.1rem 0; }
 .stn-pop-link { font-size: 0.72rem; }
+
+/* ---------- Clusters ---------- */
+/* Gauges gathered into one marker: a white circle, so it can't be taken for
+   a reading, with the count, edged in the most urgent state among them. */
+.gcluster {
+    position: absolute; left: 50%; top: 50%; box-sizing: border-box;
+    width: var(--g); height: var(--g); transform: translate(-50%, -50%) scale(var(--hover, 1));
+    border-radius: 50%; background: #fff; border: 4px solid var(--gauge-normal);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35); cursor: pointer; transition: transform 0.15s;
+    display: flex; align-items: center; justify-content: center;
+}
+.gcluster.is-approach { border-color: var(--gauge-approach); }
+.gcluster.is-high { border-color: var(--gauge-high); background: #fdecec; }
+.gcluster.is-raining { box-shadow: inset 0 0 0 2px var(--gauge-rain), 0 2px 8px rgba(0, 0, 0, 0.35); }
+.gcluster-n { color: #2c3345; font-weight: 800; font-size: calc(var(--g) * 0.36); line-height: 1; font-variant-numeric: tabular-nums; }
+.leaflet-marker-icon:hover .gcluster { --hover: 1.12; }
+/* Storm overflows gathered into one: a purple disc with the count, dark if
+   any of them is spilling. */
+.ccluster {
+    position: absolute; left: 50%; top: 50%; box-sizing: border-box; width: 26px; height: 26px;
+    transform: translate(-50%, -50%); border-radius: 50%; background: #9b6cc4; border: 2px solid #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); color: #fff; font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.ccluster.is-spilling { background: #5b2a8a; box-shadow: 0 0 0 3px rgba(91, 42, 138, 0.28), 0 1px 4px rgba(0, 0, 0, 0.4); }
+/* The legend's key to a cluster */
+.cluster-key {
+    width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2.5px solid var(--gauge-normal);
+    box-sizing: border-box; color: #2c3345; font-size: 8px; font-weight: 800; flex: none; margin-right: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+}

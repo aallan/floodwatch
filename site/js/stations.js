@@ -652,9 +652,32 @@ const StationPopup = (() => {
     host.appendChild(svg);
   }
 
+  // South West Water's names and asset types are full of abbreviations:
+  // 'Chulmleigh WWTW SSO' is a wastewater treatment works' settled storm
+  // overflow. They're spelt out, as Floodwatch has always shown them.
+  const ABBREVIATIONS = [
+    [/\bWWTW\b/gi, 'wastewater treatment works'],
+    [/\bWWTP\b/gi, 'wastewater treatment plant'],
+    [/\bSTW\b/gi, 'sewage treatment works'],
+    [/\bSTP\b/gi, 'sewage treatment plant'],
+    [/\bSSO\b/g, 'settled storm overflow'],
+    [/\bCSO\b/g, 'combined sewer overflow'],
+    [/\bSO\b/g, 'storm overflow'],
+    [/\bPS\b/g, 'pumping station'],
+  ];
+  function spellOut(text) {
+    if (!text) return '';
+    let out = String(text);
+    for (const [re, long] of ABBREVIATIONS) out = out.replace(re, long);
+    // 'Barnstaple (ashford)' -> 'Barnstaple (Ashford)', and a capital to start.
+    out = out.replace(/\((\p{Ll})/gu, (_, c) => `(${c.toUpperCase()}`);
+    return out.charAt(0).toUpperCase() + out.slice(1);
+  }
+  const overflowName = o => (o.name ? spellOut(o.name) : `Storm overflow ${o.id}`);
+
   function overflowContent(o) {
     const box = node('div', 'stn-pop');
-    box.appendChild(node('div', 'stn-pop-title', o.name || `Storm overflow ${o.id}`));
+    box.appendChild(node('div', 'stn-pop-title', overflowName(o)));
     const sub = node('div', 'stn-pop-sub', [o.water, 'Storm overflow'].filter(Boolean).join(' · '));
     box.appendChild(sub);
     const state = node('div', `stn-pop-state cso-state is-${o.state}`);
@@ -673,7 +696,7 @@ const StationPopup = (() => {
 
     getJSON(`/api/overflows/${encodeURIComponent(o.id)}`).then(d => {
       body.classList.remove('loading');
-      if (d.asset_type) sub.textContent = [o.water, d.asset_type].filter(Boolean).join(' · ');
+      if (d.asset_type) sub.textContent = [o.water, spellOut(d.asset_type)].filter(Boolean).join(' · ');
       const now = Math.floor(Date.now() / 1000);
       const from = now - 30 * 86400;
       const hours = d.events.reduce((sum, [s, e]) => sum + (Math.min(e || now, now) - Math.max(s, from)) / 3600, 0);
@@ -710,9 +733,9 @@ const StationPopup = (() => {
   }
 
   return {
-    open, summary, invalidate, openOverflow, overflowSummary,
+    open, summary, invalidate, openOverflow, overflowSummary, overflowName,
     // The chart arithmetic and formatting, for tests/js.
     _internals: { niceTicks, niceScale, levelAxis, timeTicks, monthTicks, tickLabel, rainBuckets, fmtValue, fmtFlow,
-      dailyMeans, scaleForecast },
+      dailyMeans, scaleForecast, spellOut },
   };
 })();

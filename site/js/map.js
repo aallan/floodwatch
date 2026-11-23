@@ -122,6 +122,8 @@ const FloodMap = (() => {
   function makePanes() {
     map.createPane('mask').style.zIndex = 350;
     map.createPane('labels').style.zIndex = 450;
+    // Storm overflows sit just beneath the gauges (the marker pane is 600).
+    map.createPane('overflows').style.zIndex = 590;
     map.getPane('mask').style.pointerEvents = 'none';
     map.getPane('labels').style.pointerEvents = 'none';
     renderers.mask = L.canvas({ pane: 'mask' });
@@ -426,7 +428,74 @@ const FloodMap = (() => {
   // stylesheet: circles for river levels, diamonds for tidal gauges, and
   // drops for rain gauges.
   const LIVE_REFRESH_MS = 5 * 60 * 1000;
-  const liveGroups = { level: L.layerGroup(), tidal: L.layerGroup(), rain: L.layerGroup() };
+  // ---------------------------------------------------------------- clusters
+  // Markers that would overlap are gathered into one, showing how many it
+  // holds and the most urgent state among them, until zoom CLUSTER_OFF_ZOOM.
+  // Gauges and storm overflows cluster separately, so an overflow never hides
+  // a gauge, and overflows sit in a pane beneath the gauges.
+  const CLUSTER_OFF_ZOOM = 13;
+  let gaugeCluster = null, csoCluster = null;
+
+  // A legend layer whose markers live in a shared cluster group: switching
+  // the layer on adds its markers to the group, and off takes them out.
+  const ClusterPart = L.Layer.extend({
+    initialize(getCluster) { this._getCluster = getCluster; this._markers = []; this._shown = false; },
+    onAdd() { this._shown = true; this._getCluster().addLayers(this._markers); },
+    onRemove() { this._shown = false; this._getCluster().removeLayers(this._markers); },
+    addLayer(m) { this._markers.push(m); if (this._shown) this._getCluster().addLayer(m); return this; },
+    clearLayers() { if (this._shown) this._getCluster().removeLayers(this._markers); this._markers = []; return this; },
+  });
+
+  const LEVEL_RANK = { high: 3, approach: 2 };
+  function gaugeClusterIcon(cluster) {
+    const stations = cluster.getAllChildMarkers().map(m => m.station).filter(Boolean);
+    const worst = stations.reduce((w, s) => {
+      const st = gaugeState(s);
+      return (LEVEL_RANK[st] || 0) > (LEVEL_RANK[w] || 0) ? st : w;
+    }, 'normal');
+    const rising = stations.some(s => s.kind !== 'rain' && s.trend === 'rising' && s.state !== 'stale');
+    const raining = stations.some(s => s.kind === 'rain' && s.h1 > 0);
+    const size = parseFloat(cssVar('--gauge-size')) || 36;
+    return L.divIcon({
+      className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2],
+      html: `<span class="gcluster is-${worst}${raining ? ' is-raining' : ''}"><span class="gcluster-n">${stations.length}</span></span>` +
+        (rising ? '<span class="gauge-trend is-rising">↑</span>' : ''),
+    });
+  }
+
+  function csoClusterIcon(cluster) {
+    const overflows = cluster.getAllChildMarkers().map(m => m.overflow).filter(Boolean);
+    const spilling = overflows.filter(o => o.state === 'spilling').length;
+    return L.divIcon({
+      className: '', iconSize: [32, 32], iconAnchor: [16, 16],
+      html: `<span class="ccluster${spilling ? ' is-spilling' : ''}">${overflows.length}</span>`,
+    });
+  }
+
+  // The cluster's tooltip lists what's in it, most urgent first.
+  function clusterTip(e, describe) {
+    const items = e.layer.getAllChildMarkers().map(describe).filter(Boolean);
+    const shown = items.slice(0, 8).map(esc).join('<br>');
+    const more = items.length > 8 ? `<br><span class="tip-sub">and ${items.length - 8} more</span>` : '';
+    e.layer.bindTooltip(shown + more, { ...TIP_OPTS, sticky: false, offset: [0, -20] }).openTooltip();
+  }
+
+  function makeClusters() {
+    const common = {
+      showCoverageOnHover: false, zoomToBoundsOnClick: true, spiderfyOnMaxZoom: false,
+      disableClusteringAtZoom: CLUSTER_OFF_ZOOM, removeOutsideVisibleBounds: true,
+    };
+    gaugeCluster = L.markerClusterGroup({ ...common, maxClusterRadius: 34, iconCreateFunction: gaugeClusterIcon }).addTo(map);
+    csoCluster = L.markerClusterGroup({ ...common, maxClusterRadius: 28, clusterPane: 'overflows',
+      iconCreateFunction: csoClusterIcon }).addTo(map);
+    gaugeCluster.on('clustermouseover', e => clusterTip(e, m => m.station &&
+      `${m.station.name}: ${gaugeText(m.station)}${m.station.kind === 'rain' ? ' mm' : ' m'}`));
+    csoCluster.on('clustermouseover', e => clusterTip(e, m => m.overflow &&
+      `${StationPopup.overflowName(m.overflow)}${m.overflow.state === 'spilling' ? ' (spilling)' : ''}`));
+  }
+
+  const liveGroups = { level: new ClusterPart(() => gaugeCluster), tidal: new ClusterPart(() => gaugeCluster),
+    rain: new ClusterPart(() => gaugeCluster) };
   let liveRegistered = false;
 
   // A river level within 30% of the top of its typical range is getting
@@ -466,7 +535,9 @@ const FloodMap = (() => {
     for (const s of live.stations) {
       if (!liveGroups[s.kind]) continue;
       counts[s.kind]++;
-      L.marker([s.lat, s.lon], { icon: gaugeIcon(s), title: s.name, riseOnHover: true, zIndexOffset: 500 })
+      const marker = L.marker([s.lat, s.lon], { icon: gaugeIcon(s), title: s.name, riseOnHover: true, zIndexOffset: 500 });
+      marker.station = s;
+      marker
         .bindTooltip(tip(s.name, StationPopup.summary(s)), { ...TIP_OPTS, sticky: false, offset: [0, -20] })
         .on('click', () => StationPopup.open(map, s))
         .addTo(liveGroups[s.kind]);
@@ -480,7 +551,8 @@ const FloodMap = (() => {
 
   // Storm overflows: spilling now or recently shows at every zoom; quiet and
   // offline overflows only once zoomed in, since there are hundreds of them.
-  const csoGroups = { now: L.layerGroup(), recent: L.layerGroup(), quiet: L.layerGroup() };
+  const csoGroups = { now: new ClusterPart(() => csoCluster), recent: new ClusterPart(() => csoCluster),
+    quiet: new ClusterPart(() => csoCluster) };
   let csoRegistered = false;
   const CSO_GROUP = { spilling: 'now', recent: 'recent', quiet: 'quiet', offline: 'quiet' };
 
@@ -502,9 +574,11 @@ const FloodMap = (() => {
         className: '', iconSize: [32, 32], iconAnchor: [16, 16],
         html: `<span class="cso is-${esc(o.state)}${o.works ? ' is-works' : ''}"></span>`,
       });
-      L.marker([o.lat, o.lon], { icon, title: o.name || o.id, riseOnHover: true,
-        zIndexOffset: group === 'now' ? 300 : group === 'recent' ? 200 : 100 })
-        .bindTooltip(tip(o.name || `Storm overflow ${o.id}`, StationPopup.overflowSummary(o)),
+      const marker = L.marker([o.lat, o.lon], { icon, title: StationPopup.overflowName(o), riseOnHover: true, pane: 'overflows',
+        zIndexOffset: group === 'now' ? 300 : group === 'recent' ? 200 : 100 });
+      marker.overflow = o;
+      marker
+        .bindTooltip(tip(StationPopup.overflowName(o), StationPopup.overflowSummary(o)),
           { ...TIP_OPTS, sticky: false, offset: [0, -8] })
         .on('click', () => StationPopup.openOverflow(map, o))
         .addTo(csoGroups[group]);
@@ -657,6 +731,7 @@ const FloodMap = (() => {
           <span class="swatch gauge-swatch level" style="--c: var(--gauge-high)"></span>above range</div>
         ${item('tidal', 'gauge-swatch tidal', '--gauge-tidal', 'Tidal level (m AOD)', '<span class="count" id="legend-count-tidal"></span>')}
         ${item('rain', 'gauge-swatch rain', '--gauge-rain', 'Rain in the last hour (mm)', '<span class="count" id="legend-count-rain"></span>')}
+        <div class="legend-key"><span class="cluster-key">3</span>gauges grouped together: zoom in</div>
         <div class="legend-key" aria-label="Trend badges on river and tidal gauges">
           <span class="trend-key is-rising"></span>rising
           <span class="trend-key is-falling"></span>falling
@@ -745,6 +820,7 @@ const FloodMap = (() => {
     map.attributionControl.addAttribution('Catchment: <a href="https://environment.data.gov.uk/catchment-planning/">Environment Agency</a>');
     map.setView([50.93, -3.90], 10, { animate: false });  // placeholder until the container has a size
     makePanes();
+    makeClusters();
     setTiles();
 
     addLegend();

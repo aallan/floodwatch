@@ -2,11 +2,12 @@
 PYTHON  := $(shell which python3)
 PORT    := 8090
 LEAFLET := 1.9.4
+MARKERCLUSTER := 1.5.3
 
 .PHONY: help libs data poll serve test test-py test-js og clean
 
 help:
-	@echo "make libs    download Leaflet $(LEAFLET) into site/lib and verify it"
+	@echo "make libs    download Leaflet $(LEAFLET) and Leaflet.markercluster $(MARKERCLUSTER) into site/lib and verify them"
 	@echo "make data    build the map overlays in site/data from OpenStreetMap"
 	@echo "make poll    run one poll of every feed, without the server"
 	@echo "make serve   run the server, which also polls every 5 minutes"
@@ -15,11 +16,15 @@ help:
 	@echo "make clean   remove downloaded libraries, overlays and the download cache"
 	@echo "             (the readings database in data/ is kept)"
 
-# Leaflet is pinned by version and by checksum (libs.sha256).
+# Leaflet and its marker-clustering plugin are pinned by version and by
+# checksum (libs.sha256).
 libs:
-	@mkdir -p site/lib/leaflet
+	@mkdir -p site/lib/leaflet site/lib/markercluster
 	@for f in leaflet.js leaflet.css; do \
 		test -f site/lib/leaflet/$$f || curl -sfL "https://unpkg.com/leaflet@$(LEAFLET)/dist/$$f" -o site/lib/leaflet/$$f || exit 1; \
+	done
+	@for f in leaflet.markercluster.js MarkerCluster.css; do \
+		test -f site/lib/markercluster/$$f || curl -sfL "https://unpkg.com/leaflet.markercluster@$(MARKERCLUSTER)/dist/$$f" -o site/lib/markercluster/$$f || exit 1; \
 	done
 	@shasum -a 256 -c libs.sha256
 
