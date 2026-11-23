@@ -1,6 +1,6 @@
 # Floodwatch
 
-![Floodwatch in a Safari window: the River Taw catchment in north Devon, with river level gauges as teal circles showing their readings in metres, rain gauges as drops, storm overflows spilling now as dark purple dots, clusters of gauges as white circles with a count, the Tarka and Dartmoor lines, the drought and flood warning tags in the header, and the layers legend open at the bottom left](docs/screenshot.png)
+![Floodwatch in a Safari window: the River Taw catchment in north Devon, with river level gauges as teal circles showing their readings in metres, rain gauges as drops, storm overflows spilling now as dark purple dots, clusters of gauges as white circles with a count, the rivers in their own colours, Exmoor and Dartmoor shaded pale green, the Tarka and Dartmoor lines, the drought and flood warning tags in the header, and the layers legend open at the bottom left](docs/screenshot.png)
 
 Floodwatch shows what the River Taw is doing: how high each gauge is and whether it's rising, how much rain has fallen in the last hour, which storm overflows are spilling, and what flood and weather warnings are in force across the catchment, from Dartmoor to Barnstaple. It runs at [tawriver.watch](https://tawriver.watch).
 
