@@ -13,7 +13,7 @@ help:
 	@echo "make serve   run the server, which also polls every 5 minutes"
 	@echo "make test    run the Python and JavaScript tests (needs Node 22 or later)"
 	@echo "make og      redraw the link preview image (needs Google Chrome and make data)"
-	@echo "make screenshot  retake the README's screenshot (needs Google Chrome and make serve)"
+	@echo "make screenshot  retake the README's screenshot (needs Google Chrome, Node and make serve)"
 	@echo "make clean   remove downloaded libraries, overlays and the download cache"
 	@echo "             (the readings database in data/ is kept)"
 

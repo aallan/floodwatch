@@ -5,7 +5,9 @@ archive/*.tmp
 .cache/
 data/
 
-# Secrets
+# Secrets. On the server the checkout is the floodwatch user's home, so its
+# SSH deploy key lives in .ssh/ inside it.
+.ssh/
 .env
 .env.*
 

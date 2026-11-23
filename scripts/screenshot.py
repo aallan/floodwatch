@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Draw the README's screenshot, docs/screenshot.png: the map in a Safari window.
 
-Google Chrome, headless, captures the page from a running server at the size
+Google Chrome, headless and driven by scripts/capture_page.mjs (so Node 22
+or later too), captures the page from a running server at the size
 of a 1250 x 768 point Safari window, the size of v1's screenshot, at which the
 map opens at zoom 10 with the whole catchment beside the legend. A second pass
 draws Safari's toolbar, rounded corners and the macOS window shadow around it,
@@ -11,7 +12,7 @@ on a transparent background, so it sits on GitHub's light and dark pages alike.
     python3 scripts/screenshot.py
     python3 scripts/screenshot.py --url http://localhost:8090/ --wait 20
 
-Standard library only.
+Standard library only, plus Node for the capture.
 """
 
 import argparse
@@ -19,6 +20,7 @@ import base64
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -96,18 +98,37 @@ def frame(page_png, address):
 </body></html>"""
 
 
-def chrome(binary, tmp, url, size, out, scale, wait_ms=0):
-    # The GPU stays on: headless Chrome lays the page out 87 px short of the
-    # window, then grows it, and without the GPU it never draws a map tile
-    # that was offscreen before the page grew.
-    args = [binary, "--headless", "--hide-scrollbars", f"--force-device-scale-factor={scale}",
-            f"--user-data-dir={Path(tmp) / 'profile'}", "--use-mock-keychain", "--no-first-run",
-            "--default-background-color=00000000", f"--window-size={size[0]},{size[1]}", f"--screenshot={out}"]
-    if wait_ms:
-        # Time for live.json, the overlays and the basemap tiles to arrive, in
-        # real time: a virtual time budget doesn't wait for the tiles.
-        args.append(f"--timeout={wait_ms}")
-    subprocess.run(args + [url], check=True, capture_output=True)
+def chrome(binary, tmp, url, size, out, scale):
+    """Render a static page, the window frame, with Chrome's own --screenshot."""
+    subprocess.run([binary, "--headless", "--hide-scrollbars", f"--force-device-scale-factor={scale}",
+                    f"--user-data-dir={Path(tmp) / 'frame-profile'}", "--use-mock-keychain", "--no-first-run",
+                    "--default-background-color=00000000", f"--window-size={size[0]},{size[1]}",
+                    f"--screenshot={out}", url], check=True, capture_output=True)
+
+
+def capture_page(binary, tmp, url, out, wait):
+    """Capture the live map through Chrome's DevTools protocol, with the
+    viewport fixed before the page loads (scripts/capture_page.mjs says why
+    --screenshot won't do), waiting in real time for the tiles."""
+    profile = Path(tmp) / "page-profile"
+    # The 2x scale is Chrome's own: emulating it through DevTools leaves
+    # hairline gaps between Leaflet's tiles.
+    browser = subprocess.Popen([binary, "--headless", "--hide-scrollbars", "--remote-debugging-port=0",
+                                f"--force-device-scale-factor={PAGE_SCALE}", f"--user-data-dir={profile}",
+                                "--use-mock-keychain", "--no-first-run", "--window-size=1600,1200", "about:blank"],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        port_file = profile / "DevToolsActivePort"
+        for _ in range(100):
+            if port_file.exists() and port_file.read_text().strip():
+                break
+            time.sleep(0.1)
+        port = port_file.read_text().split()[0]
+        subprocess.run(["node", str(ROOT / "scripts" / "capture_page.mjs"), port, url, str(out),
+                        str(WIDTH), str(HEIGHT), str(PAGE_SCALE), str(int(wait * 1000))], check=True)
+    finally:
+        browser.terminate()
+        browser.wait(timeout=10)
 
 
 def main():
@@ -121,7 +142,7 @@ def main():
         sys.exit("Google Chrome or Chromium is needed to take the screenshot")
     with tempfile.TemporaryDirectory() as tmp:
         shot = Path(tmp) / "page.png"
-        chrome(binary, tmp, args.url, (WIDTH, HEIGHT), shot, PAGE_SCALE, int(args.wait * 1000))
+        capture_page(binary, tmp, args.url, shot, args.wait)
         card = Path(tmp) / "frame.html"
         card.write_text(frame(shot.read_bytes(), args.address))
         top, right, bottom, left = MARGIN
