@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [2.0.0] — unreleased
+
+Floodwatch is rewritten from scratch, keeping only v1's data. The site moves from DigitalOcean's App Platform, where an hourly GitHub Actions job committed CSVs that the page downloaded and parsed on every visit, to its own server, which polls every feed every five minutes, keeps the readings in SQLite and sends the page about 10 KB of current readings, with each gauge's history fetched only when its popup opens.
+
+### Added
+- Readings every 5 minutes rather than every hour, for gauges, storm overflows, flood warnings, Met Office warnings and power cuts.
+- Gauge markers with the reading printed on them, a rising, falling or steady badge, and amber and red as a river nears and passes the top of its typical range, sized for phones.
+- Clustering of gauges, and of storm overflows, that would overlap, with the most urgent state among them shown on the cluster.
+- An "All time" range on every chart, with hourly or longer buckets that keep the highest level and the total rain, and "Download as CSV" with every reading a gauge has.
+- Met Office weather warnings for Devon, as a banner in the warning's colour.
+- National Grid Electricity Distribution's live power cuts in the catchment.
+- The Environment Agency's drought status and South West Water's hosepipe bans, as a tag in the header.
+- The next 48 hours of forecast rain at each rain gauge, and a fortnight's river flow forecast for the Taw at Umberleigh, from GloFAS through Open-Meteo, scaled to the measured flow.
+- The Tarka and Dartmoor lines into Exeter, the A377 and the A30 west of Exeter, the catchment's other rivers and, from zoom 12, its streams.
+- A catchment outline built from the Environment Agency's WFD operational catchment and river water bodies, and one test of which gauges, overflows, flood areas and power cuts belong to it.
+- `archive/`, every reading since 13 January 2026 and every spill since 3 June 2026 in v1's CSV format, pushed nightly from the server and loaded by a new server's first poll.
+- A dark theme, following the system setting, with a toggle.
+- systemd units and a Caddyfile for running on an Ubuntu server, in `deploy/`.
+- 178 Python tests and 26 JavaScript tests, run on every pull request.
+
+### Changed
+- The server, the poller and the overlay builder use only the Python standard library; the page uses Leaflet and Leaflet.markercluster, served from the site and checked against pinned checksums, and loads nothing else from outside but Esri's map tiles.
+- The flood warning banner lists each warning with its message and a "Show on map" button.
+- Storm overflows spilling now are shown when the page opens; those that spilled in the last 48 hours, are quiet or are offline can be switched on from the legend.
+- The legend moves to the bottom left, and the opening view fits the whole catchment beside it.
+
+### Removed
+- The App Platform app, `refresh.php`, and the hourly data workflow.
+- Chart.js and PapaParse.
+- The 16 storm overflows v1 listed that are outside the Taw catchment, in the Torridge estuary and on the Exmoor coast.
+
 ## [1.5.1] — 2026-09-10
 
 ### Changed

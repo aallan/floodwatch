@@ -6,14 +6,14 @@ labels: enhancement
 assignees: ''
 ---
 
-**Problem**
-What problem does this solve? E.g. "I find it hard to tell which stations are upstream vs downstream."
+## What you'd like
 
-**Proposed solution**
-A clear description of what you'd like to happen.
+What you'd like Floodwatch to show or do.
 
-**Alternatives considered**
-Any other approaches you've thought about.
+## Why
 
-**Additional context**
-Screenshots, links to similar projects, or EA API endpoints that might be relevant.
+What it would help you find out, or decide, that you can't now.
+
+## Data
+
+If it needs data the site doesn't already use, where that data comes from, with a link if you have one, and its licence if you know it.

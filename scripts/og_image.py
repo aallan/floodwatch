@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Draw the site's Open Graph image, site/img/og-image.png (1200 x 630).
 
-The card is HTML, with the county outline and its rivers drawn as SVG from the
+The card is HTML, with the catchment's outline and rivers drawn as SVG from the
 map's own overlays in site/data/, so run `make data` first. Google Chrome,
 headless, renders it to a PNG.
 
@@ -33,19 +33,26 @@ CHROME = [
     "google-chrome", "google-chrome-stable", "chromium", "chromium-browser",
 ]
 
-# The site's light-theme colours (site/css/style.css).
-BG, TEXT, SECONDARY, ACCENT = "#faf9f7", "#2d2b28", "#7a756d", "#2f7a86"
-BANDS = [("Rivers and rain", "#3f7fae"), ("Storm overflows", "#7b3fa0"),
-         ("Bathing waters", "#2b8a8f"), ("The sea", "#2f4f73")]
+# The site's colours (site/css/style.css): the light page, the slate header,
+# Floodwatch's teal, and each layer's own colour.
+BG, TEXT, SECONDARY, ACCENT = "#eceef2", "#2c3345", "#5d6782", "#1a8a7d"
+WATER = "#7fa9c9"
+RIVER_COLOURS = {"River Taw": "#1a8a7d", "River Mole": "#2e7dab", "Little Dart River": "#8a6e1a",
+                 "River Yeo": "#7a4a8a", "Lapford Yeo": "#ab5e2e", "Crooked Oak": "#5a8a3a",
+                 "Hollocombe Water": "#6a7a3a"}
+BANDS = [("River levels", "#1a8a7d"), ("Rain", "#4f6fc0"),
+         ("Flood warnings", "#c9a227"), ("Storm overflows", "#5b2a8a")]
 
 
 def mercator(lon, lat):
     return lon, math.degrees(math.log(math.tan(math.pi / 4 + math.radians(lat) / 2)))
 
 
-def lines(fc):
-    """Every ring and line in a FeatureCollection, as lists of (lon, lat)."""
+def lines(fc, keep=lambda f: True):
+    """Every ring and line in a FeatureCollection's features, as lists of (lon, lat)."""
     for f in fc["features"]:
+        if not keep(f):
+            continue
         g = f["geometry"]
         parts = {"Polygon": lambda c: c, "MultiPolygon": lambda c: [r for p in c for r in p],
                  "LineString": lambda c: [c], "MultiLineString": lambda c: c}[g["type"]](g["coordinates"])
@@ -68,11 +75,18 @@ def svg_map(boundary, rivers):
         return "M" + "L".join(f"{x:.1f},{y:.1f}" for x, y in pts) + ("Z" if closed else "")
 
     land = "".join(path(r, True) for r in rings)
-    water = "".join(path([mercator(*p[:2]) for p in ln], False) for ln in lines(rivers))
+
+    def river_paths(keep, colour, width):
+        d = "".join(path([mercator(*p[:2]) for p in ln], False) for ln in lines(rivers, keep))
+        return (f'<path d="{d}" fill="none" stroke="{colour}" stroke-width="{width}" '
+                'stroke-linecap="round" stroke-linejoin="round"/>')
+    # Other rivers first, thin and pale; then the coloured ones over them.
+    water = river_paths(lambda f: f["properties"].get("name") not in RIVER_COLOURS, WATER, 1.5)
+    water += "".join(river_paths(lambda f, n=name: f["properties"].get("name") == n, colour, 3.2)
+                     for name, colour in RIVER_COLOURS.items())
     return (f'<svg width="{WIDTH}" height="{HEIGHT}" viewBox="0 0 {WIDTH} {HEIGHT}">'
-            f'<path d="{land}" fill="#ffffff" stroke="{ACCENT}" stroke-width="2" stroke-linejoin="round" fill-rule="evenodd"/>'
-            f'<path d="{water}" fill="none" stroke="#3f7fae" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
-            '</svg>')
+            f'<path d="{land}" fill="#ffffff" stroke="{SECONDARY}" stroke-width="1.5" stroke-linejoin="round" '
+            f'fill-rule="evenodd"/>{water}</svg>')
 
 
 def html(boundary, rivers):
@@ -86,7 +100,7 @@ def html(boundary, rivers):
   .kicker {{ font-size: 21px; letter-spacing: 0.16em; text-transform: uppercase; color: {SECONDARY}; }}
   h1 {{ font-size: 76px; font-weight: 650; letter-spacing: -0.02em; margin: 26px 0 22px; line-height: 1; }}
   h1 span {{ color: {ACCENT}; }}
-  p {{ font-size: 29px; line-height: 1.35; margin: 0; color: #4a4741; }}
+  p {{ font-size: 29px; line-height: 1.35; margin: 0; color: {SECONDARY}; }}
   .bands {{ position: absolute; left: 0; right: 0; bottom: 0; height: 150px;
     display: grid; grid-template-columns: repeat({len(BANDS)}, 1fr); }}
   .bands div {{ display: flex; align-items: center; justify-content: center; color: #fff;
@@ -94,9 +108,9 @@ def html(boundary, rivers):
 </style></head><body>
 <div class="map">{svg_map(boundary, rivers)}</div>
 <div class="text">
-  <div class="kicker">Monitoring Cornwall · Kernow</div>
-  <h1>cornwall<span>.</span>watch</h1>
-  <p>Rivers, rain, storm overflows, bathing water and the sea around Cornwall, live.</p>
+  <div class="kicker">Floodwatch · River Taw</div>
+  <h1>tawriver<span>.</span>watch</h1>
+  <p>River levels, rain, flood warnings and storm overflows across the Taw catchment, live.</p>
 </div>
 <div class="bands">{bands}</div>
 </body></html>"""
@@ -107,7 +121,7 @@ def main():
     ap.add_argument("--html", type=Path, help="write the card's HTML here and stop")
     args = ap.parse_args()
     try:
-        boundary = json.loads((DATA / "boundary.geojson").read_text())
+        boundary = json.loads((DATA / "catchment.geojson").read_text())
         rivers = json.loads((DATA / "rivers.geojson").read_text())
     except FileNotFoundError as e:
         sys.exit(f"{e.filename} is missing; run `make data` first")

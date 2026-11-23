@@ -1,16 +1,14 @@
-## Summary
+## What this changes
 
-Brief description of what this PR does and why.
+What the pull request does, and why.
 
-## Changes
+## How it was tested
 
--
-
-## Test plan
-
-- [ ] Existing tests pass (`pytest tests/ -v` and `cd js-tests && npm test`)
-- [ ] New tests added (if applicable)
-- [ ] Tested in browser (if frontend change)
+- [ ] `make test` passes
+- [ ] A test covers the change, and fails without it
+- [ ] Checked in the browser, light and dark, on a phone-sized window too (for anything on the page)
+- [ ] A screenshot is attached (for anything that looks different)
+- [ ] The changelog's `Unreleased` section has a line (for anything a visitor or someone running the site would notice)
 
 ## Related issues
 
