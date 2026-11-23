@@ -25,7 +25,7 @@ const FloodWarnings = (() => {
     if (n(2)) parts.push(plural(n(2), 'flood warning', 'flood warnings'));
     if (n(3)) parts.push(plural(n(3), 'flood alert', 'flood alerts'));
     const text = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0];
-    return `${text} in force in Cornwall`;
+    return `${text} in force in the Taw catchment`;
   }
 
   function el(tag, cls, text) {
@@ -54,7 +54,7 @@ const FloodWarnings = (() => {
         summary.setAttribute('aria-expanded', 'false');
         $('#flood-details').hidden = true;
         if (!location.hash.startsWith('#/map')) location.hash = '#/map';
-        setTimeout(() => CornwallMap.focusFlood(w.id), 50);
+        setTimeout(() => FloodMap.focusFlood(w.id), 50);
       });
       box.appendChild(b);
     }
@@ -65,11 +65,11 @@ const FloodWarnings = (() => {
   // The pill in the header while nothing is in force, which opens to say so.
   function renderClear() {
     const pill = $('#flood-pill');
-    pill.title = 'No Environment Agency flood warnings or alerts in force in Cornwall';
+    pill.title = 'No Environment Agency flood warnings or alerts in force in the Taw catchment';
     $('.flood-pill-text', pill).textContent = 'No flood warnings';
     const checked = generated ? new Date(generated * 1000).toLocaleTimeString('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit' }) : null;
-    PillMenus.fill($('#flood-pill-panel'), 'No flood warnings in Cornwall', [
-      'The Environment Agency has no flood warnings or flood alerts in force in Cornwall or the Isles of Scilly.',
+    PillMenus.fill($('#flood-pill-panel'), 'No flood warnings on the Taw', [
+      'The Environment Agency has no flood warnings or flood alerts in force in the Taw catchment.',
       `If any are issued, a banner appears under the header and the areas are outlined on the map. ${checked ? `Last checked at ${checked}; ` : ''}checked every 5 minutes.`,
     ], 'Environment Agency · ', { text: 'Check for flooding', href: CHECK_FOR_FLOODING });
   }
@@ -79,7 +79,7 @@ const FloodWarnings = (() => {
     const banner = $('#flood-banner');
     const details = $('#flood-details');
     // The banner changes the header's height, and so the map's.
-    if (banner.hidden !== !warnings.length) setTimeout(() => CornwallMap.resize(), 0);
+    if (banner.hidden !== !warnings.length) setTimeout(() => FloodMap.resize(), 0);
     if (!warnings.length) {
       banner.hidden = true;
       status.hidden = false;
@@ -103,7 +103,7 @@ const FloodWarnings = (() => {
         warnings = d.warnings || [];
         generated = d.generated || null;
         render();
-        CornwallMap.setFloodWarnings(warnings);
+        FloodMap.setFloodWarnings(warnings);
       })
       .catch(e => console.warn('No flood warning data:', e));
   }

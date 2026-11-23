@@ -13,8 +13,8 @@ function route() {
   if (view === 'map') {
     // Start the map the first time it is visible: Leaflet sizes and fits
     // itself from the container, which has no size while the view is hidden.
-    if (!mapStarted) { mapStarted = true; CornwallMap.init('map'); }
-    else CornwallMap.resize();
+    if (!mapStarted) { mapStarted = true; FloodMap.init('map'); }
+    else FloodMap.resize();
   }
 }
 
@@ -43,7 +43,7 @@ function showLiveStatus(live) {
 
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
-  window.onThemeChange = () => CornwallMap.restyle();
+  window.onThemeChange = () => FloodMap.restyle();
   window.onLiveUpdate = showLiveStatus;
   window.addEventListener('hashchange', route);
   route();

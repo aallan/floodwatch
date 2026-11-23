@@ -1,6 +1,6 @@
 'use strict';
 
-// Met Office weather warnings for Cornwall: a banner under the header, in the
+// Met Office weather warnings for Devon: a banner under the header, in the
 // colour of the most severe warning, which opens to show each one. The Met
 // Office's terms ask for its content and links to be shown as supplied, so
 // each warning's title and description appear word for word, with its link.
@@ -53,7 +53,7 @@ const WeatherWarnings = (() => {
     // A warning that has ended stays in the file until the next poll.
     const now = Date.now() / 1000;
     const current = warnings.filter(w => !w.to || w.to > now);
-    if (banner.hidden !== !current.length) setTimeout(() => CornwallMap.resize(), 0);
+    if (banner.hidden !== !current.length) setTimeout(() => FloodMap.resize(), 0);
     if (!current.length) {
       banner.hidden = true;
       return;
@@ -63,7 +63,7 @@ const WeatherWarnings = (() => {
     banner.hidden = false;
     $('.flood-summary-text', banner).textContent = current.length === 1
       ? current[0].title
-      : `${current.length} Met Office weather warnings for Cornwall`;
+      : `${current.length} Met Office weather warnings for Devon`;
     details.textContent = '';
     current.forEach(w => details.appendChild(detail(w, now)));
   }

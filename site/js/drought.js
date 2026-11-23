@@ -1,6 +1,6 @@
 'use strict';
 
-// Drought status in Cornwall, from the Environment Agency's weekly report: a
+// Drought status for Devon, from the Environment Agency's weekly report: a
 // pill in the header at the most severe stage, which opens to show each
 // stage as the report words it, South West Water's hosepipe ban, and a link
 // to the report; or "No drought", which opens to say so. A drought lasts
@@ -20,7 +20,7 @@ const Drought = (() => {
     return e;
   }
 
-  // The most severe stage any part of Cornwall is at, or null.
+  // The most severe stage any part of the area is at, or null.
   function worst(stages) {
     const known = (stages || []).map(s => s.stage).filter(s => s in CLASS);
     return known.length ? ORDER.find(s => known.includes(s)) : null;
@@ -47,19 +47,19 @@ const Drought = (() => {
     const pill = $('.drought-pill', box);
     box.className = `drought pill-menu is-${clear ? 'clear' : CLASS[top] || 'ban'}`;
     $('.drought-pill-text', pill).textContent = clear ? 'No drought' : pillText(d.stages) || 'Hosepipe ban';
-    pill.title = clear ? 'No part of Cornwall is in drought'
-      : top ? `${pillText(d.stages)} in Cornwall` : 'Hosepipe ban in force';
+    pill.title = clear ? 'No part of Devon is in drought'
+      : top ? `${pillText(d.stages)} in the Devon, Cornwall and Isles of Scilly area` : 'Hosepipe ban in force';
     box.hidden = false;
 
     const details = $('#drought-details');
     if (clear) {
-      PillMenus.fill(details, 'No drought in Cornwall', [
-        "The Environment Agency's latest weekly report doesn't put any part of Cornwall or the Isles of Scilly in " +
+      PillMenus.fill(details, 'No drought in Devon', [
+        "The Environment Agency's latest weekly report doesn't put any part of Devon in " +
         'prolonged dry weather or drought, and South West Water has no hosepipe ban in force.',
       ], 'Environment Agency · ', reportLink(d));
       return;
     }
-    PillMenus.fill(details, 'Drought in Cornwall', [], 'Environment Agency · ', reportLink(d));
+    PillMenus.fill(details, 'Drought in Devon and Cornwall', [], 'Environment Agency · ', reportLink(d));
     const source = details.lastChild;
     for (const s of d.stages || []) {
       const item = el('div', `drought-item is-${CLASS[s.stage] || 'drought'}`);

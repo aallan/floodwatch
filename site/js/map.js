@@ -1,24 +1,37 @@
 'use strict';
 
-// The Cornwall map: basemap, boundary mask, waterways, railways, legend.
+// The Taw catchment map: basemap, catchment mask, waterways, railways, legend.
 // Colours come from CSS variables so the map follows light/dark mode.
 
-const CornwallMap = (() => {
+const FloodMap = (() => {
   const DATA = 'data/';
 
-  // Points around the edge of mainland Cornwall and of the Isles of Scilly:
-  // the opening view keeps all of them on screen and clear of the legend.
-  const MAINLAND = [
-    [50.94, -4.53], [50.83, -4.56], [50.55, -5.03], [50.42, -5.10], [50.32, -5.23], [50.22, -5.48],
-    [50.17, -5.68], [50.07, -5.72], [49.96, -5.21], [50.22, -4.80], [50.33, -4.64], [50.35, -4.45],
-    [50.31, -4.22], [50.40, -4.20], [50.53, -4.16], [50.64, -4.30], [50.93, -4.45],
-    // and inland, so that the legend can't hide the middle of the county
-    [50.83, -4.50], [50.64, -4.36], [50.62, -4.68], [50.50, -4.32], [50.45, -4.47], [50.47, -4.72],
-    [50.41, -4.67], [50.34, -4.79], [50.40, -4.95], [50.26, -5.05], [50.21, -5.30], [50.12, -5.45],
+  // Points around the edge of the catchment, from scripts/fetch_geodata.py's
+  // outline: the opening view keeps all of them on screen and clear of the
+  // legend.
+  const OUTLINE = [
+    [50.65, -3.97], [50.72, -3.96], [50.78, -3.93], [50.83, -3.94], [50.85, -3.97], [50.86, -3.94], [50.86, -4.00],
+    [50.89, -4.01], [50.90, -3.99], [50.91, -4.02], [50.94, -3.99], [50.98, -4.09], [51.00, -4.09], [51.01, -4.12],
+    [51.03, -4.11], [51.04, -4.17], [51.07, -4.17], [51.07, -4.11], [51.09, -4.12], [51.08, -4.06], [51.09, -4.05],
+    [51.08, -4.16], [51.10, -4.16], [51.08, -4.21], [51.12, -4.21], [51.13, -4.18], [51.16, -4.19], [51.18, -3.99],
+    [51.17, -3.85], [51.15, -3.83], [51.12, -3.81], [51.11, -3.77], [51.07, -3.69], [51.04, -3.60], [51.00, -3.61],
+    [50.99, -3.64], [50.94, -3.59], [50.90, -3.62], [50.87, -3.74], [50.84, -3.71], [50.81, -3.79], [50.76, -3.84],
+    [50.74, -3.84], [50.71, -3.93],
   ];
-  const SCILLY = [[49.98, -6.35], [49.89, -6.45], [49.86, -6.32], [49.92, -6.25]];
-  // Loose enough that the opening view can sit Cornwall beside the legend.
-  const MAX_BOUNDS = [[49.3, -7.6], [51.6, -2.4]];
+  // Loose enough that the opening view can sit the catchment beside the legend.
+  const MAX_BOUNDS = [[50.2, -4.9], [51.6, -2.9]];
+
+  // Floodwatch's river colours, by name; other rivers are drawn in the
+  // plain water colour. Each is a CSS variable, so it follows the theme.
+  const RIVER_COLOURS = {
+    'River Taw': '--river-taw',
+    'River Mole': '--river-mole',
+    'Little Dart River': '--river-little-dart',
+    'River Yeo': '--river-yeo',
+    'Lapford Yeo': '--river-lapford-yeo',
+    'Crooked Oak': '--river-crooked-oak',
+    'Hollocombe Water': '--river-hollocombe',
+  };
 
   const MAJOR_RIVER_KM = 20;     // rivers at least this long are labelled first
   const MAJOR_LABEL_ZOOM = 9;    // long rivers labelled from here
@@ -55,15 +68,13 @@ const CornwallMap = (() => {
     levels:    { on: true },
     tidal:     { on: true },
     rain:      { on: true },
+    // Spilling now and spilled recently show at every zoom; quiet and
+    // offline overflows once zoomed in (CSO_QUIET_ZOOM).
     csoNow:    { on: true },
-    // Off at first: there are hundreds of these, and the ones that matter
-    // today are those spilling now.
-    csoRecent: { on: false },
-    csoQuiet:  { on: false },
+    csoRecent: { on: true },
+    csoQuiet:  { on: true },
     floods:    { on: true },
     powercuts: { on: true },
-    bathing:   { on: true },
-    offshore:  { on: true },
   };
   // Legend sections whose heading switches the whole group.
   const GROUPS = {
@@ -74,7 +85,6 @@ const CornwallMap = (() => {
     waterways: ['rivers', 'streams'],
     railways: ['passenger', 'freight', 'stations'],
     roads: ['roads'],
-    coast: ['bathing', 'offshore'],
   };
   const parts = [];       // { layer, toggle, minZoom, z }
   const restylers = [];   // functions re-applying colours/weights
@@ -182,11 +192,12 @@ const CornwallMap = (() => {
     return [y, x];
   }
 
-  function label(latlng, text, cls) {
+  function label(latlng, text, cls, colour = null) {
+    const style = colour ? ` style="--label-colour: var(${colour})"` : '';
     return L.marker(latlng, {
       interactive: false,
       keyboard: false,
-      icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="map-label ${cls}">${esc(text)}</div>` }),
+      icon: L.divIcon({ className: '', iconSize: [0, 0], html: `<div class="map-label ${cls}"${style}>${esc(text)}</div>` }),
     });
   }
 
@@ -213,7 +224,7 @@ const CornwallMap = (() => {
     const rings = fc.features.flatMap(f => f.geometry.coordinates.map(poly => toLatLngs(poly[0])));
     const world = [[-89, -179], [-89, 179], [89, 179], [89, -179]];
 
-    // Dim everything outside Cornwall so the county reads as the subject.
+    // Dim everything outside the catchment so it reads as the subject.
     const mask = L.polygon([world, ...rings], {
       renderer: renderers.mask, interactive: false, stroke: false, fillRule: 'evenodd',
     });
@@ -236,10 +247,11 @@ const CornwallMap = (() => {
 
     const style = f => {
       const km = f.properties.length_km || 0;
-      const base = !f.properties.name ? 1.0 : km >= MAJOR_RIVER_KM ? 2.4 : 1.6;
+      const own = RIVER_COLOURS[f.properties.name];
+      const base = !f.properties.name ? 1.0 : own ? (km >= MAJOR_RIVER_KM ? 3.2 : 2.6) : km >= MAJOR_RIVER_KM ? 2.0 : 1.4;
       return {
-        color: cssVar('--water'), weight: base * zoomScale(),
-        opacity: f.properties.name ? 0.9 : 0.65, lineCap: 'round', lineJoin: 'round',
+        color: cssVar(own || '--water'), weight: base * zoomScale(),
+        opacity: f.properties.name ? 0.95 : 0.65, lineCap: 'round', lineJoin: 'round',
       };
     };
 
@@ -260,8 +272,10 @@ const CornwallMap = (() => {
     for (const f of named) {
       const line = longestPart(f.geometry);
       if (!line || line.length < 2) continue;
-      const isMajor = f.properties.length_km >= MAJOR_RIVER_KM;
-      label(pointAlong(line, 0.5), f.properties.name, `river${isMajor ? ' major' : ''}`).addTo(isMajor ? major : minor);
+      const own = RIVER_COLOURS[f.properties.name];
+      const isMajor = Boolean(own) || f.properties.length_km >= MAJOR_RIVER_KM;
+      const mark = label(pointAlong(line, 0.5), f.properties.name, `river${isMajor ? ' major' : ''}`, own);
+      mark.addTo(isMajor ? major : minor);
     }
 
     // Flow arrows: OSM waterways are drawn source to mouth.
@@ -502,66 +516,8 @@ const CornwallMap = (() => {
       .catch(e => console.warn('No storm overflow data:', e));
   }
 
-  // ---------------------------------------------------------------- coast
-  // Bathing waters, coloured by their classification, with a badge on days
-  // the pollution risk forecast is raised; and wave buoys and weather stations
-  // at sea and on the coast.
-  const coastGroups = { bathing: L.layerGroup(), offshore: L.layerGroup() };
-  let coastRegistered = false;
-  const BW_CLASS = { Excellent: 'excellent', Good: 'good', Sufficient: 'sufficient', Poor: 'poor' };
-
-  function registerCoast() {
-    if (coastRegistered) return;
-    addPart(coastGroups.bathing, 'bathing', Z.markers);
-    addPart(coastGroups.offshore, 'offshore', Z.markers);
-    coastRegistered = true;
-  }
-
-  function renderBathing(data) {
-    registerCoast();
-    coastGroups.bathing.clearLayers();
-    for (const w of data.bathing_waters) {
-      const cls = BW_CLASS[w.classification] || 'unclassified';
-      const icon = L.divIcon({
-        className: '', iconSize: [12, 12], iconAnchor: [6, 6],
-        html: `<span class="bw is-${cls}"></span>` +
-          (w.risk === 'increased' ? '<span class="trend for-bw is-risk"></span>' : ''),
-      });
-      L.marker([w.lat, w.lon], { icon, title: w.name, riseOnHover: true, zIndexOffset: w.risk === 'increased' ? 300 : 0 })
-        .bindTooltip(tip(w.name, StationPopup.bathingSummary(w)), { ...TIP_OPTS, sticky: false, offset: [0, -8] })
-        .on('click', () => StationPopup.openBathing(map, w))
-        .addTo(coastGroups.bathing);
-    }
-    setCount('bathing', data.bathing_waters.length);
-  }
-
-  function renderOffshore(data) {
-    registerCoast();
-    coastGroups.offshore.clearLayers();
-    for (const s of data.stations) {
-      const icon = L.divIcon({
-        className: '', iconSize: [14, 14], iconAnchor: [7, 7],
-        html: `<span class="buoy is-${esc(s.state)}"></span>`,
-      });
-      L.marker([s.lat, s.lon], { icon, title: s.name, riseOnHover: true })
-        .bindTooltip(tip(s.name, StationPopup.marineSummary(s)), { ...TIP_OPTS, sticky: false, offset: [0, -10] })
-        .on('click', () => StationPopup.openMarine(map, s))
-        .addTo(coastGroups.offshore);
-    }
-    setCount('offshore', data.stations.length);
-  }
-
-  function loadCoast() {
-    getJSON(DATA + 'bathing.json')
-      .then(d => { renderBathing(d); updateVisibility(); })
-      .catch(e => console.warn('No bathing water data:', e));
-    getJSON(DATA + 'marine.json')
-      .then(d => { renderOffshore(d); updateVisibility(); })
-      .catch(e => console.warn('No offshore station data:', e));
-  }
-
   // ---------------------------------------------------------------- power cuts
-  // NGED's live power cuts in Cornwall: a dark disc with a bolt, larger for
+  // NGED's live power cuts in the catchment: a dark disc with a bolt, larger for
   // more customers off.
   const powerGroup = L.layerGroup();
   let powerRegistered = false;
@@ -659,8 +615,8 @@ const CornwallMap = (() => {
   }
 
   function addLegend() {
-    // Bottom right on wider screens, clear of the Isles of Scilly in the
-    // south-west; bottom left on phones, where it starts collapsed.
+    // Bottom right on wider screens; bottom left on phones, where it starts
+    // collapsed.
     const ctl = L.control({ position: PHONE.matches ? 'bottomleft' : 'bottomright' });
     ctl.onAdd = () => {
       const div = L.DomUtil.create('div', 'map-legend');
@@ -707,21 +663,16 @@ const CornwallMap = (() => {
         <div class="legend-col">
         ${title('waterways', 'Waterways')}
         ${item('rivers', 'line', '--water', 'Rivers', '<span class="count" id="legend-count-rivers"></span>')}
+        ${Object.entries(RIVER_COLOURS).map(([name, colour]) =>
+          `<div class="legend-key river-key"><span class="river-swatch" style="--c: var(${colour})"></span>${esc(name)}</div>`).join('')}
         ${item('streams', 'line thin', '--water-minor', 'Streams', '<span class="count" id="legend-streams-hint"></span>')}
-        ${title('coast', 'Coast')}
-        ${item('bathing', 'bw-swatch', '--bw-excellent', 'Bathing waters', '<span class="count" id="legend-count-bathing"></span>')}
-        <div class="legend-key"><span class="bw-key is-excellent"></span>excellent<span class="bw-key is-good"></span>good</div>
-        <div class="legend-key"><span class="bw-key is-sufficient"></span>sufficient<span class="bw-key is-poor"></span>poor</div>
-        <div class="legend-key"><span class="bw-key is-risk"></span>pollution risk raised today</div>
-        ${item('offshore', 'buoy-swatch', '--sea', 'Buoys and weather stations', '<span class="count" id="legend-count-offshore"></span>')}
         ${title('railways', 'Railways')}
         ${item('passenger', 'line', '--rail', 'Passenger lines')}
-        ${item('freight', 'dash', '--rail-freight', 'Freight branches')}
         ${item('stations', 'dot', '--rail', 'Stations', '<span class="count" id="legend-count-stations"></span>')}
         ${title('roads', 'Roads')}
         ${item('roads', 'road', '--road', 'Major roads')}
         <div class="legend-title">Boundary</div>
-        ${item('boundary', 'area', '--accent', 'Cornwall')}
+        ${item('boundary', 'area', '--accent', 'Taw catchment')}
         </div>
         </div>`;
       syncLegend(div);
@@ -783,8 +734,8 @@ const CornwallMap = (() => {
     map.attributionControl.addAttribution('Overflows: <a href="https://www.arcgis.com/home/item.html?id=cabfce76b72a4a278a33d737c0708d42">South West Water</a>');
     map.attributionControl.addAttribution('Forecasts: <a href="https://open-meteo.com/">Open-Meteo</a>, <a href="https://nrfa.ceh.ac.uk/">NRFA</a>');
     map.attributionControl.addAttribution('Power cuts: Supported by <a href="https://connecteddata.nationalgrid.co.uk/dataset/live-power-cuts">NGED Open Data</a>');
-    map.attributionControl.addAttribution('Sea: <a href="https://www.metoffice.gov.uk/">Met Office</a> via <a href="https://www.ndbc.noaa.gov/">NOAA</a>, <a href="https://coastalmonitoring.org/">Coastal Monitoring</a>');
-    map.setView([50.45, -4.95], 9, { animate: false });  // placeholder until the container has a size
+    map.attributionControl.addAttribution('Catchment: <a href="https://environment.data.gov.uk/catchment-planning/">Environment Agency</a>');
+    map.setView([50.93, -3.90], 10, { animate: false });  // placeholder until the container has a size
     makePanes();
     setTiles();
 
@@ -802,9 +753,8 @@ const CornwallMap = (() => {
     // rest. Live readings are a single small file, so markers appear first.
     loadLive();
     loadOverflows();
-    loadCoast();
     loadPowerCuts();
-    setInterval(() => { loadLive(); loadOverflows(); loadCoast(); loadPowerCuts(); }, LIVE_REFRESH_MS);
+    setInterval(() => { loadLive(); loadOverflows(); loadPowerCuts(); }, LIVE_REFRESH_MS);
     const layer = (name, add) => getJSON(DATA + name)
       .then(fc => { add(fc); updateVisibility(); })
       .catch(e => console.warn(e));
@@ -833,24 +783,21 @@ const CornwallMap = (() => {
     restylers.forEach(fn => fn());
   }
 
-  // Fit Cornwall the first time the map is visible. Fitting while the view is
-  // hidden (zero size) would zoom all the way in.
+  // Fit the catchment the first time the map is visible. Fitting while the
+  // view is hidden (zero size) would zoom all the way in.
   let fitted = false;
 
   // The opening view: the highest whole zoom level at which the outline is
   // all on screen and clear of the zoom buttons and attribution. The open
-  // legend may sit over open sea, and over a corner of the mainland: no more
-  // than LEGEND_POINTS of the mainland's points, none deeper than
-  // LEGEND_DEPTH of the county's width in from its edges, and never over
-  // Scilly. At each zoom the placement covering least is used, the most
-  // central of those.
+  // legend may sit over the dimmed land outside, and over a corner of the
+  // catchment: no more than LEGEND_POINTS of its outline's points, and none
+  // deeper than LEGEND_DEPTH of its width in from its edges. At each zoom the
+  // placement covering least is used, the most central of those.
   const LEGEND_POINTS = 3;
-  const SCILLY_MIN_ZOOM = 9;
   const LEGEND_DEPTH = 0.1;
-  function openingView(mainland, islands, size, hard, soft, minZoom, maxZoom) {
+  function openingView(outline, size, hard, soft, minZoom, maxZoom) {
     const M = 12;
     const inside = (x, y, r, m) => x > r.left - m && x < r.right + m && y > r.top - m && y < r.bottom + m;
-    const outline = mainland.concat(islands);
     for (let z = maxZoom; z >= minZoom; z--) {
       const pts = outline.map(p => map.project(p, z));
       const minX = Math.min(...pts.map(p => p.x)), maxX = Math.max(...pts.map(p => p.x));
@@ -864,12 +811,11 @@ const CornwallMap = (() => {
         for (const oy of steps((size.y - h) / 2)) {
           // How many points the legend covers, and how far in it reaches.
           let covered = 0, depth = 0, ok = true;
-          pts.forEach((p, i) => {
+          pts.forEach(p => {
             const x = p.x - minX + ox, y = p.y - minY + oy;
             if (hard.some(r => inside(x, y, r, M))) ok = false;
             for (const r of soft) {
               if (!inside(x, y, r, 0)) continue;
-              if (i >= mainland.length) ok = false;   // an island
               covered++;
               depth = Math.max(depth, Math.min(x - r.left, y - r.top));
             }
@@ -898,18 +844,16 @@ const CornwallMap = (() => {
     const c = map.getContainer();
     const hard = [...c.querySelectorAll('.map-legend.collapsed, .leaflet-control-zoom, .leaflet-control-attribution')].map(rect);
     const soft = [...c.querySelectorAll('.map-legend:not(.collapsed)')].map(rect);
-    // Scilly too where everything fits at zoom 9 or closer, as on most
-    // screens. Below that the county is too small to read, so on a phone or a
-    // smaller window, the mainland alone, larger.
+    // Where the open legend can't be placed clear of the catchment, as on a
+    // phone, the view is fitted ignoring it.
     const size = map.getSize(), min = map.getMinZoom();
-    const view = openingView(MAINLAND, SCILLY, size, hard, soft, Math.max(min, SCILLY_MIN_ZOOM), 11)
-      || openingView(MAINLAND, [], size, hard, soft, min, 11)
-      || openingView(MAINLAND, [], size, [], [], min, 11);
+    const view = openingView(OUTLINE, size, hard, soft, min, 12)
+      || openingView(OUTLINE, size, [], [], min, 12);
     // The panning limit is set after the opening view, and takes it in, so it
     // never pulls the view back over the legend.
     map.setMaxBounds(null);
     if (view) map.setView(view.centre, view.zoom, { animate: false });
-    else map.fitBounds(L.latLngBounds(MAINLAND), { animate: false });
+    else map.fitBounds(L.latLngBounds(OUTLINE), { animate: false });
     map.setMaxBounds(L.latLngBounds(MAX_BOUNDS).extend(map.getBounds()));
     fitted = true;
   }

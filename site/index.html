@@ -3,22 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monitoring Cornwall</title>
-  <meta name="description" content="Which of Cornwall's rivers are high and rising, which storm overflows are spilling, how clean the water is at each beach, and what the rain, rivers and sea are doing now.">
+  <title>Floodwatch</title>
+  <meta name="description" content="Which of the River Taw's gauges are high and rising, which storm overflows are spilling, what flood warnings are in force, and what the rain and the rivers are doing now and are forecast to do next.">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="Monitoring Cornwall">
-  <meta property="og:url" content="https://cornwall.watch/">
-  <meta property="og:title" content="Monitoring Cornwall">
-  <meta property="og:description" content="Which of Cornwall's rivers are high and rising, which storm overflows are spilling, how clean the water is at each beach, and what the rain, rivers and sea are doing now.">
-  <meta property="og:image" content="https://cornwall.watch/img/og-image.png">
+  <meta property="og:site_name" content="Floodwatch">
+  <meta property="og:url" content="https://tawriver.watch/">
+  <meta property="og:title" content="Floodwatch: the River Taw">
+  <meta property="og:description" content="Which of the River Taw's gauges are high and rising, which storm overflows are spilling, what flood warnings are in force, and what the rain and the rivers are doing now and are forecast to do next.">
+  <meta property="og:image" content="https://tawriver.watch/img/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="The cornwall.watch card: the county's outline and rivers, over bands for rivers and rain, storm overflows, bathing waters and the sea.">
+  <meta property="og:image:alt" content="The tawriver.watch card: the Taw catchment's outline and rivers.">
   <meta property="og:locale" content="en_GB">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Monitoring Cornwall">
-  <meta name="twitter:description" content="Which of Cornwall's rivers are high and rising, which storm overflows are spilling, how clean the water is at each beach, and what the rain, rivers and sea are doing now.">
-  <meta name="twitter:image" content="https://cornwall.watch/img/og-image.png">
+  <meta name="twitter:title" content="Floodwatch: the River Taw">
+  <meta name="twitter:description" content="Which of the River Taw's gauges are high and rising, which storm overflows are spilling, what flood warnings are in force, and what the rain and the rivers are doing now and are forecast to do next.">
+  <meta name="twitter:image" content="https://tawriver.watch/img/og-image.png">
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg?v=1">
   <link rel="stylesheet" href="lib/leaflet/leaflet.css?v=1.9.4">
   <link rel="stylesheet" href="css/style.css?v=42">
@@ -27,7 +27,7 @@
 <body>
 <header>
   <div class="header-row">
-    <h1>Monitoring Cornwall <span class="ticker">KERNOW</span></h1>
+    <h1>Floodwatch <span class="ticker">RIVER TAW</span></h1>
     <nav id="nav">
       <a class="nav-btn" href="#/map">Map</a>
       <a class="nav-btn" href="#/about">About</a>
@@ -61,18 +61,18 @@
 
 <main>
   <section id="view-map" class="view">
-    <div class="map-box"><div id="map" role="region" aria-label="Map of Cornwall"></div></div>
+    <div class="map-box"><div id="map" role="region" aria-label="Map of the River Taw catchment"></div></div>
   </section>
 
   <section id="view-about" class="view">
     <div class="section">
       <h2>About</h2>
       <div class="panel">
-        <p>Monitoring Cornwall shows which of the county's rivers are high and rising, which storm overflows are
-          spilling, how clean the water is at each beach, where the power is off, and what the rain and the rivers
-          are forecast to do next. All of it is public data, published by the
-          Environment Agency, South West Water, the Met Office and others on their own sites; here it's on one
-          map, and most of it is checked every five minutes.</p>
+        <p>Floodwatch shows which of the River Taw's gauges are high and rising, which storm overflows are spilling,
+          what flood and weather warnings are in force, where the power is off, and what the rain and the river
+          are forecast to do next, across the Taw's catchment in north Devon, from Dartmoor to Barnstaple. All of it
+          is public data, published by the Environment Agency, South West Water, the Met Office and others on their
+          own sites; here it's on one map, and most of it is checked every five minutes.</p>
       </div>
     </div>
     <div class="section">
@@ -80,39 +80,35 @@
       <div class="panel">
         <dl class="about-list">
           <dt>Flood warnings</dt>
-          <dd>The Environment Agency's flood warnings and alerts in force in Cornwall, outlined on the map, with a
-            banner across the top of the page while any are in force, and a pill in the header saying so while none are.</dd>
+          <dd>The Environment Agency's flood warnings and alerts in force in the Taw catchment, outlined on the map,
+            with a banner across the top of the page while any are in force, and a pill in the header saying so while
+            none are.</dd>
           <dt>Weather warnings</dt>
-          <dd>The Met Office's yellow, amber and red warnings of severe weather that name Cornwall or the Isles of
-            Scilly, in a banner of the warning's colour while any are in force. Each one opens to show the Met
-            Office's own description of it, and links to it on the Met Office site.</dd>
+          <dd>The Met Office's yellow, amber and red warnings of severe weather that name Devon, in a banner of the
+            warning's colour while any are in force. Each one opens to show the Met Office's own description of it,
+            and links to it on the Met Office site.</dd>
           <dt>Drought</dt>
-          <dd>The Environment Agency's drought status for Cornwall from its weekly report, and South West Water's
-            hosepipe ban, in a pill in the header that opens to show each stage as the report words it, with a link
-            to the report.</dd>
+          <dd>The Environment Agency's drought status for its Devon, Cornwall and Isles of Scilly area from its weekly
+            report, and South West Water's hosepipe ban, in a pill in the header that opens to show each stage as the
+            report words it, with a link to the report.</dd>
           <dt>Power cuts</dt>
-          <dd>National Grid Electricity Distribution's power cuts in Cornwall, each with the customers off, the
+          <dd>National Grid Electricity Distribution's power cuts in the catchment, each with the customers off, the
             postcodes affected and when power is expected back on. To report a power cut, call 105.</dd>
           <dt>Rivers and rain</dt>
-          <dd>About 130 river level, tidal and rain gauges, reporting every 15 minutes. River gauges are green
-            within their typical range and red above it, with an arrow while the level is rising or falling. Rain
-            gauges have a 48-hour rain forecast, and the gauges on the Tamar, Lynher, Fowey and Camel a
-            fortnight's river flow forecast. Where the river's gauging station measures its flow, the chart shows the past
-            week of it, and the forecast is scaled to start from it.</dd>
+          <dd>The Environment Agency's river level, tidal and rain gauges in the catchment, and the rain gauges just
+            over its watershed, reporting every 15 minutes. River gauges are green within their typical range and red
+            above it, with an arrow while the level is rising or falling. Rain gauges have a 48-hour rain forecast,
+            and the gauge at Umberleigh a fortnight's river flow forecast for the Taw, scaled to start from the flow
+            measured there.</dd>
           <dt>Storm overflows</dt>
-          <dd>Nearly 400 storm overflows run by South West Water in Cornwall, which release storm sewage into rivers
-            and the sea when heavy rain overloads the sewers. The map opens on those spilling now, and each one's popup shows
-            its spills over the last 30 days and its yearly totals.</dd>
-          <dt>Coast</dt>
-          <dd>Cornwall's 90 designated bathing waters, coloured by their latest annual classification, with recent
-            sample results and, from May to September, the Environment Agency's daily pollution risk forecast.
-            Wave buoys and weather stations around the coast, from Bude to St Mary's Sound, and two more offshore,
-            the Seven Stones lightvessel and the E1 buoy, report waves, wind and sea temperature between them.
-            Port Isaac's station also gives the times of the next high and low waters.</dd>
+          <dd>South West Water's storm overflows in the catchment, which release storm sewage into the rivers and the
+            estuary when heavy rain overloads the sewers. Those spilling now or in the last 48 hours show at every
+            zoom, and the rest once zoomed in. Each one's popup shows its spills over the last 30 days and its yearly
+            totals.</dd>
           <dt>Background</dt>
-          <dd>Rivers, streams, railways and the A30, A38 and A39, from OpenStreetMap. Rivers end at the county
-            boundary rather than running out to sea down the middle of each estuary, and heritage railways
-            aren't shown.</dd>
+          <dd>The catchment's rivers, in Floodwatch's colours, its streams, the Tarka and Dartmoor lines, and the A30,
+            A39, A361 and A377, from OpenStreetMap. Rivers end where they meet the estuary rather than running down the
+            middle of it.</dd>
         </dl>
       </div>
     </div>
@@ -128,19 +124,16 @@
             <tr><td>Power cuts</td><td>National Grid Electricity Distribution's <a href="https://connecteddata.nationalgrid.co.uk/dataset/live-power-cuts" rel="noopener">live power cuts</a>, checked every 5 minutes. Supported by NGED Open Data.</td><td><a href="https://www.nationalgrid.co.uk/open-data-licence" rel="noopener">NGED Open Data Licence</a></td></tr>
             <tr><td>River, tidal and rain gauges</td><td>Environment Agency real-time flood-monitoring API, checked every 5 minutes. This uses Environment Agency flood and river level data from the real-time data API (Beta).</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
             <tr><td>Rain forecast</td><td><a href="https://open-meteo.com/" rel="noopener">Open-Meteo</a> weather forecast API, hourly rainfall for the next 48 hours at each rain gauge, fetched when a forecast is opened and kept for 15 minutes</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a></td></tr>
-            <tr><td>River flow forecast</td><td>GloFAS river discharge from the Copernicus Emergency Management Service, through <a href="https://open-meteo.com/en/docs/flood-api" rel="noopener">Open-Meteo's flood API</a>, for the Tamar, Lynher, Fowey and Camel. GloFAS models rivers on a grid about 5 km across, so its flows are scaled to match each river's long-run mean flow and, on the Tamar, Lynher and Fowey, to start from the flow measured at the river's gauging station. Its forecasts are a guide to the days ahead rather than a measurement.</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a></td></tr>
-            <tr><td>Measured river flow</td><td>Environment Agency <a href="https://environment.data.gov.uk/hydrology/doc/reference" rel="noopener">Hydrology API</a>, a reading every 15 minutes at the gauging stations on the Tamar, Lynher and Fowey, fetched when a flow forecast is opened and kept for 15 minutes. Recent readings are provisional.</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
+            <tr><td>River flow forecast</td><td>GloFAS river discharge from the Copernicus Emergency Management Service, through <a href="https://open-meteo.com/en/docs/flood-api" rel="noopener">Open-Meteo's flood API</a>, for the Taw at Umberleigh. GloFAS models rivers on a grid about 5 km across, so its flows are scaled to match the river's long-run mean flow and to start from the flow measured at Umberleigh. Its forecasts are a guide to the days ahead rather than a measurement.</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a></td></tr>
+            <tr><td>Measured river flow</td><td>Environment Agency <a href="https://environment.data.gov.uk/hydrology/doc/reference" rel="noopener">Hydrology API</a>, a reading every 15 minutes at Umberleigh, fetched when the flow forecast is opened and kept for 15 minutes. Recent readings are provisional.</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
             <tr><td>Mean river flows</td><td>Data from the UK National River Flow Archive, used to scale the modelled flows</td><td><a href="https://nrfa.ceh.ac.uk/help/costs-terms-and-conditions" rel="noopener">NRFA terms</a></td></tr>
             <tr><td>Storm overflows</td><td>South West Water's storm overflow activity feed, checked every 5 minutes</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a></td></tr>
             <tr><td>Storm overflow yearly totals</td><td>Event Duration Monitoring annual returns. © Environment Agency copyright and/or database right.</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
-            <tr><td>Bathing waters</td><td>Environment Agency bathing water quality data: classifications, in-season samples and daily pollution risk forecasts, checked every hour</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
-            <tr><td>Offshore stations</td><td>Met Office observations from the Seven Stones lightvessel and the E1 buoy, as republished by <a href="https://www.ndbc.noaa.gov/" rel="noopener">NOAA's National Data Buoy Center</a>, checked every 30 minutes</td><td><a href="https://www.weather.gov/disclaimer" rel="noopener">NOAA terms</a></td></tr>
-            <tr><td>Wave buoys and coastal weather stations</td><td>Real time data displayed on this page are from the <a href="https://coastalmonitoring.org/" rel="noopener">Regional Coastal Monitoring Programme</a>, made freely available under the terms of the Open Government Licence. Please note that these are real-time data and are not quality-controlled. Read through the Channel Coastal Observatory's API every 30 minutes, with tide predictions for Port Isaac.</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
-            <tr><td>Boundary</td><td>OpenStreetMap relations 57537 (Cornwall) and 158039 (Isles of Scilly)</td><td><a href="https://www.openstreetmap.org/copyright" rel="noopener">ODbL</a></td></tr>
+            <tr><td>Catchment boundary</td><td>Environment Agency WFD operational catchments and the <a href="https://environment.data.gov.uk/catchment-planning/" rel="noopener">Catchment Data Explorer</a>'s river water bodies</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
             <tr><td>Rivers and streams</td><td>OpenStreetMap <code>waterway=*</code> via the Overpass API</td><td><a href="https://www.openstreetmap.org/copyright" rel="noopener">ODbL</a></td></tr>
             <tr><td>Railways and stations</td><td>OpenStreetMap <code>railway=*</code> via the Overpass API</td><td><a href="https://www.openstreetmap.org/copyright" rel="noopener">ODbL</a></td></tr>
             <tr><td>Major roads</td><td>OpenStreetMap <code>highway=*</code> via the Overpass API</td><td><a href="https://www.openstreetmap.org/copyright" rel="noopener">ODbL</a></td></tr>
-            <tr><td>Place names</td><td>OpenStreetMap <code>place=town</code>, <code>village</code> and <code>hamlet</code> via the Overpass API, which rain gauges are named after</td><td><a href="https://www.openstreetmap.org/copyright" rel="noopener">ODbL</a></td></tr>
+            <tr><td>Place names</td><td>OpenStreetMap <code>place=town</code>, <code>village</code> and <code>hamlet</code> via the Overpass API, which rain gauges and power cuts are named after</td><td><a href="https://www.openstreetmap.org/copyright" rel="noopener">ODbL</a></td></tr>
             <tr><td>Basemap</td><td>Esri World Light Gray / Dark Gray Canvas</td><td><a href="https://www.esri.com/en-us/legal/terms/full-master-agreement" rel="noopener">Esri terms</a></td></tr>
           </tbody>
         </table>
@@ -151,7 +144,7 @@
       <h2>Licence</h2>
       <div class="panel">
         <p>The code is open source under the MIT licence, at
-          <a href="https://github.com/aallan/monitoring-cornwall" rel="noopener">github.com/aallan/monitoring-cornwall</a>.
+          <a href="https://github.com/aallan/floodwatch" rel="noopener">github.com/aallan/floodwatch</a>.
           The data stay under their publishers' licences, listed above. Corrections to rivers, railways or roads are
           best made on <a href="https://www.openstreetmap.org/" rel="noopener">OpenStreetMap</a>, and reach this map
           when it's next rebuilt.</p>
@@ -164,9 +157,9 @@
   <div class="footer-line"></div>
   <div class="footer-content">
     <span class="footer-note">Map data &copy; OpenStreetMap contributors</span>
-    <a href="https://github.com/aallan/monitoring-cornwall" target="_blank" rel="noopener" class="github-link">
+    <a href="https://github.com/aallan/floodwatch" target="_blank" rel="noopener" class="github-link">
       <img src="img/github.svg" alt="" class="github-icon" width="14" height="14">
-      aallan/monitoring-cornwall
+      aallan/floodwatch
     </a>
   </div>
 </footer>

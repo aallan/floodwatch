@@ -86,63 +86,6 @@ test('tooltip summaries', () => {
   assert.equal(overflowSummary({ state: 'spilling' }), 'spilling now');
 });
 
-test('bathing water counts and summaries', () => {
-  const { fmtCount } = StationPopup._internals;
-  assert.equal(fmtCount(10, '<'), '<10');
-  assert.equal(fmtCount(54, '='), '54');
-  assert.equal(fmtCount(12000, null), '12,000');
-  assert.equal(fmtCount(null, '<'), '—');
-  const { bathingSummary } = StationPopup;
-  assert.equal(bathingSummary({ classification: 'Excellent', class_year: 2025, risk: 'normal' }), 'Excellent (2025)');
-  assert.equal(bathingSummary({ classification: 'Good', class_year: 2025, risk: 'increased' }),
-    'Good (2025) · pollution risk raised today');
-  assert.equal(bathingSummary({}), 'not yet classified');
-});
-
-test('offshore readings', () => {
-  const { compass, marineRows } = StationPopup._internals;
-  assert.deepEqual(plain([0, 11, 12, 180, 350, 359, -10, 720].map(compass)),
-    ['N', 'N', 'NNE', 'S', 'N', 'N', 'N', 'N']);
-  assert.equal(compass(225), 'SW');
-  const rows = plain(marineRows({ wvht: 1.9, apd: 10, wspd: 7.7, wdir: 120, wtmp: 14, pres: 1025.8 }));
-  assert.deepEqual(rows, [['Waves', '1.9 m, every 10 s'], ['Wind', '17 mph from the ESE'],
-    ['Sea', '14.0 °C'], ['Pressure', '1026 hPa']]);
-  const { marineSummary } = StationPopup;
-  assert.equal(marineSummary({ state: 'live', wvht: 1.9, wtmp: 14 }), 'waves 1.9 m · sea 14.0 °C');
-  assert.equal(marineSummary({ state: 'no-data' }), 'no readings yet');
-});
-
-test('bathing samples are judged against the coastal standards', () => {
-  const { sampleBand, BACTERIA } = StationPopup._internals;
-  const [ecoli, entero] = BACTERIA;
-  assert.equal(sampleBand(10, ecoli), 'excellent');
-  assert.equal(sampleBand(250, ecoli), 'excellent');
-  assert.equal(sampleBand(251, ecoli), 'sufficient');
-  assert.equal(sampleBand(501, ecoli), 'poor');
-  assert.equal(sampleBand(100, entero), 'excellent');
-  assert.equal(sampleBand(150, entero), 'sufficient');
-  assert.equal(sampleBand(186, entero), 'poor');
-  assert.equal(sampleBand(null, entero), null);
-});
-
-test('coastal stations say what they are and where the waves come from', () => {
-  const { marineKind, marineRows } = StationPopup._internals;
-  assert.equal(marineKind({ source: 'ndbc', wvht: 1.9 }), 'Offshore weather station');
-  assert.equal(marineKind({ source: 'cco', wvht: 0.9, wspd: 5.8 }), 'Wave buoy and weather station');
-  assert.equal(marineKind({ source: 'cco', wvht: 1.1, wtmp: 14 }), 'Wave buoy');
-  assert.equal(marineKind({ source: 'cco', wspd: 3, pres: 1024 }), 'Weather station');
-  assert.deepEqual(plain(marineRows({ wvht: 1.31, dpd: 14.29, mwd: 282.7 })), [['Waves', '1.3 m, every 14 s, from the WNW']]);
-});
-
-test('tide times show the day only when it is not today', () => {
-  const { fmtTideTime, tideRows } = StationPopup._internals;
-  const now = utc(2026, 9, 30, 15, 0);                 // Fri 30 Oct, 15:00
-  assert.equal(fmtTideTime(utc(2026, 9, 30, 20, 9), now), '20:09');
-  assert.equal(fmtTideTime(utc(2026, 9, 31, 2, 24), now), 'Sat 02:24');
-  assert.deepEqual(plain(tideRows([[utc(2026, 9, 30, 20, 9), 'high', 7.076], [utc(2026, 9, 31, 2, 24), 'low', 1.764]], now)),
-    [['High water', '20:09, 7.1 m'], ['Low water', 'Sat 02:24, 1.8 m']]);
-});
-
 test('measured flow is averaged by day, for days with enough readings', () => {
   const { dailyMeans } = StationPopup._internals;
   const day = utc(2026, 10, 1);
@@ -168,4 +111,9 @@ test("the forecast's falling flow is scaled, and a rise from rain added at the m
     [d(4), 8, null, 19],                 // the middle rises 2 above its lowest, 1: 6 + 2
   ]);
   assert.equal(scaleForecast(days, 1, now), days);
+  // Rain on the first day of the forecast: the rise is added at the model's
+  // size, not multiplied, so a wet ensemble member can't send the top of the
+  // range to many times the river's highest flow.
+  const wet = [[d(0), 2, 2, 2], [d(1), 3, 2, 40]];
+  assert.deepEqual(plain(scaleForecast(wet, 6, now)), [[d(0), 2, 2, 2], [d(1), 13, 12, 50]]);
 });

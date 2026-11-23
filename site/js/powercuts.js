@@ -1,6 +1,6 @@
 'use strict';
 
-// Live power cuts in Cornwall, from NGED's open data: the tooltip and popup
+// Live power cuts in the Taw catchment, from NGED's open data: the tooltip and popup
 // for each one. map.js draws the markers.
 
 const PowerCuts = (() => {
