@@ -1,663 +1,270 @@
-# Floodwatch — River Taw Catchment Monitoring
+# Floodwatch
 
-![Floodwatch screenshot](images/screenshot.png)
+![Floodwatch in a Safari window: the River Taw catchment in north Devon, with river level gauges as teal circles showing their readings in metres, rain gauges as drops, storm overflows spilling now as dark purple dots, clusters of gauges as white circles with a count, the Tarka and Dartmoor lines, a flood alert banner under the header and the layers legend open at the bottom left](docs/screenshot.png)
 
-A real-time flood monitoring dashboard for the River Taw and its tributaries in Devon, UK. Displays river levels, tidal levels, rainfall data, active flood warnings from Environment Agency monitoring stations, and near-real-time storm overflow (CSO) activity from South West Water's EDM sensor network — all on an interactive map with flow visualisation and time-series charts.
+Floodwatch shows what the River Taw is doing: how high each gauge is and whether it's rising, how much rain has fallen in the last hour, which storm overflows are spilling, and what flood and weather warnings are in force across the catchment, from Dartmoor to Barnstaple. It runs at [tawriver.watch](https://tawriver.watch).
 
-The service is currently deployed as a Digital Ocean App at [tawriver.watch](https://tawriver.watch).
+Everything on the map is public data, from the Environment Agency, South West Water, the Met Office, National Grid Electricity Distribution and others, read every five minutes. Floodwatch also keeps what those sources don't: the Environment Agency's API holds about four weeks of readings, and South West Water's feed only each overflow's latest spill, so Floodwatch has kept every reading since 13 January 2026 and every spill since 3 June 2026, and serves the lot.
 
-## Prerequisites
+The site is one page with no framework and no build step. The server, the poller and the map-data builder use only the Python standard library, with readings kept in SQLite.
 
-**Python 3.12+** is the only requirement to run Floodwatch. The app uses only the Python standard library — no pip packages needed.
+- [What the map shows](#what-the-map-shows)
+- [Data sources](#data-sources)
+- [Running it](#running-it), locally and on a server
+- [The archive](#the-archive)
+- [How it works](#how-it-works)
+- [Tests](#tests), [project layout](#project-layout), [contributing](#contributing) and [licence](#licence)
 
-```bash
-brew install python              # macOS (via Homebrew)
-```
+## What the map shows
 
-For development (tests, linting), you'll also need:
+### Gauges
 
-```bash
-brew install node pre-commit ruff
-pip install pytest
-```
+The Environment Agency's gauges are the map's main layer, each with its latest reading printed on it.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development setup.
+| Marker | Reading | Colour |
+|---|---|---|
+| Circle | River level, in metres | Teal; amber once within 30% of the top of the gauge's typical range; red above it |
+| Diamond | Tidal level at Barnstaple, in metres above Ordnance Datum | Orange |
+| Drop | Rain in the last hour, in millimetres | Blue; a small pale drop with no number when it hasn't rained |
 
-## Quick Start
+River and tidal gauges carry a badge with an arrow when the level is rising, falling or steady, from a straight line fitted to the last hour's readings; a change of less than 1 cm an hour counts as steady. A gauge that has sent nothing for three hours turns grey and smaller.
 
-Fetch historical data (first time only — takes a few minutes):
+Gauges that would overlap on screen are gathered into a white circle with a count until zoom 13. Its edge takes the most urgent level among them, amber or red, and it carries a rising badge if any river among them is rising. Hovering lists each gauge and its reading, and clicking zooms in.
 
-```bash
-python fetch_data.py            # Full history
-python fetch_data.py --recent   # Quick update (merges last 2 days)
-```
+Clicking a gauge opens its chart for the last 24 hours, 7 days or 28 days, or all time. Over all time each point is the highest level, or the total rain, in an hour or more, so a flood isn't averaged away. River charts mark the top of the typical range and the record high. Rain gauges add the next 48 hours of forecast rain. The gauge at Umberleigh adds a fortnight's river flow forecast for the Taw, set against the flow measured there. Every gauge's popup links to a CSV of every reading it has.
 
-Start the local server:
+The map shows the gauges inside the catchment, and the rain gauges up to 2 km over its watershed, such as Kinsford Gate on Exmoor, since rain falling there runs into the Taw.
 
-```bash
-python serve.py
-```
+### Storm overflows
 
-Open in your browser:
+South West Water's storm overflows in the catchment release storm sewage into the rivers and the estuary when heavy rain overloads the sewers. Each is a purple dot, larger at a sewage treatment works than on the sewer network or at a pumping station.
 
-```bash
-open http://localhost:8080
-```
+| Dot | Meaning | Shown |
+|---|---|---|
+| Dark purple, with a halo | Spilling now | When the page opens |
+| Mid purple | Spilled in the last 48 hours | Once switched on in the legend |
+| Pale purple | No spill in the last 48 hours | Once switched on, from zoom 11 |
+| Hollow grey | Monitor offline | Once switched on, from zoom 11 |
 
-## Usage
+An overflow's popup shows its spills over the last 30 days and its spill hours and count for each year from the regulatory annual returns. South West Water's names are spelt out: "Chulmleigh WWTW SSO" is Chulmleigh wastewater treatment works' settled storm overflow.
 
-### `serve.py` — Local Development Server
+### Warnings
 
-Serves the static site and handles data refresh requests. No PHP, Node, or other runtime needed — just Python 3.
+While the Environment Agency has a flood warning or alert in force in the catchment, a bar under the header says so, giving the area's name when there's one and a count by severity when there are more. Opening it lists each with the Agency's message and a "Show on map" button. A warning's area is outlined on the map; an alert covers a wide area, so its area is a faint tint. While nothing is in force, a green tag in the header says so.
 
-```bash
-python serve.py              # Start on port 8080 (localhost only)
-python serve.py 3000         # Start on a custom port
-python serve.py --bind ::    # Listen on all interfaces
-python serve.py --stop       # Stop the running server
-```
+The Met Office's yellow, amber and red warnings that name Devon get a bar of their own, in the warning's colour.
 
-The server:
+### Drought and power cuts
 
-- Serves all static files (HTML, CSS, JS, CSV data, GeoJSON overlays)
-- Handles `POST /refresh.php` by proxying to the EA Flood Monitoring API directly in Python
-- Sets `Cache-Control: no-cache` headers on `.csv` and `.geojson` responses to prevent stale data
-- Binds to `::1` (localhost) by default — use `--bind ::` to listen on all interfaces
-- Tracks its own PID in `.server.pid` for clean start/stop lifecycle
-- Auto-kills any stale server instance on the same port
-- Rate-limits refresh requests to once per 5 minutes (returns HTTP 429)
+A tag in the header gives the Environment Agency's drought status for its Devon, Cornwall and Isles of Scilly area, from its weekly report, and South West Water's hosepipe ban when there is one. The report words some stages by reservoir, so the tag opens to show each one as written.
 
-Press `Ctrl+C` to stop, or use `python serve.py --stop` from another terminal.
+National Grid Electricity Distribution's power cuts in the catchment are dark discs with a yellow bolt, larger the more customers are off. Each popup gives the customers off and back on, when power is expected back, and the postcodes affected.
 
-### `fetch_data.py` — Data Fetcher
+### Background
 
-Downloads readings for all stations from the EA Flood Monitoring API and saves them as CSV files.
+The rivers come from OpenStreetMap, the seven Floodwatch has always shown in their own colours and with their names: the Taw, the Mole, the Little Dart, the River Yeo through Barnstaple, the Lapford Yeo, the Crooked Oak and Hollocombe Water. The catchment's other rivers are pale blue and named on hover, and its streams can be switched on from zoom 12. Rivers end where they meet the estuary, rather than running down the middle of it.
 
-```bash
-python fetch_data.py            # Full fetch — up to 2 years of history
-python fetch_data.py --recent   # Quick update — last 2 days, merged with existing data
-python fetch_data.py --recent 5 # Quick update — last 5 days
-```
+The Tarka Line runs from Barnstaple into Exeter St Davids and Exeter Central, with the Dartmoor Line off it to Okehampton. The A377 and the A30 west of Exeter are the only roads drawn, and the catchment's outline can be switched on from the legend.
 
-Run the full fetch once to seed the data directory, or again to backfill after a long gap. Use `--recent` for lightweight incremental updates — this is what the GitHub Actions workflow uses for hourly refreshes.
+The page follows the system's light or dark setting, with a toggle to override it.
 
-In `--recent` mode the script loads each station's existing CSV, fetches only the specified number of days from the API, merges and deduplicates by timestamp, and writes the combined result back. This keeps the full history intact while only making a handful of quick API calls.
+## Data sources
 
-This script:
+| Data | Source | Read | Licence |
+|---|---|---|---|
+| River, tidal and rain gauges | Environment Agency [real-time flood-monitoring API](https://environment.data.gov.uk/flood-monitoring/doc/reference) | Every 5 minutes | [Open Government Licence](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/) |
+| Flood warnings and alerts, and their areas | The same API | Every 5 minutes | Open Government Licence |
+| Storm overflows | South West Water's [storm overflow activity feed](https://www.arcgis.com/home/item.html?id=cabfce76b72a4a278a33d737c0708d42) | Every 5 minutes | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| Storm overflow names, types and yearly totals | Event Duration Monitoring [annual returns](https://www.arcgis.com/home/item.html?id=66fef44a4aab438991d7ce08fbc1de64) | Daily | Open Government Licence |
+| Weather warnings | Met Office [weather warnings](https://weather.metoffice.gov.uk/warnings-and-advice/uk-warnings) for South West England | Every 5 minutes | [Met Office terms](https://www.metoffice.gov.uk/policies/tandc) |
+| Drought status and hosepipe bans | Environment Agency's weekly [Dry weather and drought in England](https://www.gov.uk/government/publications/dry-weather-and-drought-in-england-2026-summary-reports) report, through the [GOV.UK Content API](https://content-api.publishing.service.gov.uk/) | Every 6 hours | Open Government Licence |
+| Power cuts | NGED's [live power cuts](https://connecteddata.nationalgrid.co.uk/dataset/live-power-cuts) | Every 5 minutes | [NGED Open Data Licence](https://www.nationalgrid.co.uk/open-data-licence) |
+| Rain forecast | [Open-Meteo](https://open-meteo.com/) weather forecast API | When a popup asks, kept 15 minutes | CC BY 4.0 |
+| River flow forecast | GloFAS, from the Copernicus Emergency Management Service, through Open-Meteo's [flood API](https://open-meteo.com/en/docs/flood-api) | When a popup asks, kept an hour | CC BY 4.0 |
+| Measured river flow | Environment Agency [Hydrology API](https://environment.data.gov.uk/hydrology/doc/reference) | When a popup asks, kept 15 minutes | Open Government Licence |
+| Mean river flow | UK [National River Flow Archive](https://nrfa.ceh.ac.uk/) | When needed, kept a week | [NRFA terms](https://nrfa.ceh.ac.uk/help/costs-terms-and-conditions) |
+| Catchment boundary | Environment Agency [WFD operational catchments](https://services3.arcgis.com/Bb8lfThdhugyc4G3/ArcGIS/rest/services/WFD_Surface_Water_Operational_Catchments_Cycle3/FeatureServer) and the [Catchment Data Explorer](https://environment.data.gov.uk/catchment-planning/)'s river water bodies | Weekly | Open Government Licence |
+| Rivers, streams, railways, stations, roads and place names | [OpenStreetMap](https://www.openstreetmap.org/), through the Overpass API | Weekly | [ODbL](https://www.openstreetmap.org/copyright) |
+| Basemap | Esri World Light Gray and Dark Gray Canvas | Loaded by the page | [Esri terms](https://www.esri.com/en-us/legal/terms/full-master-agreement) |
 
-- Fetches readings in 28-day chunks (full mode) or a single short request (`--recent` mode)
-- Merges new readings with existing CSV data when using `--recent`
-- Saves each station's data as a CSV in `data/`
-- Writes `data/stations.csv` with metadata for all stations
-- Deduplicates readings by timestamp
-- Includes polite 300ms delays between API requests
-- Stops fetching for a station after 3 consecutive empty chunks (full mode)
-- After EA stations, runs the CSO live fetcher (`process_cso()`) — queries the SWW FeatureServer once, updates `data/cso_sites.csv`, `data/cso_status.json`, and the per-site event logs `data/cso_<permit_id>.csv`. Failure is non-fatal: CSO API errors don't abort the EA fetch above
+## Running it
 
-### `fetch_cso_history.py` — One-off CSO Historical Backfill
+### Locally
+
+You'll need Python 3.10 or later, `make`, `curl` and `shasum`, and Node 22 or later for the JavaScript tests.
 
 ```bash
-python fetch_cso_history.py
+git clone https://github.com/aallan/floodwatch.git
+cd floodwatch
+make libs     # download Leaflet and Leaflet.markercluster into site/lib, and check them against libs.sha256
+make data     # build the map overlays in site/data
+make serve    # serve the site at http://localhost:8090, polling every 5 minutes
 ```
 
-Pulls per-site annual totals (hours, spill count, asset type, name) from the Annual Returns All-Years FeatureServer for 2021–2025 and writes `data/cso_sites_meta.csv` + `data/cso_annual_history.csv`. Re-run once a year after new annual returns are published — otherwise the outputs are static. The live hourly cron does not call this.
+The first poll lists the gauges and storm overflows, loads the history in `archive/`, then reads the warnings, power cuts and drought report and fills in each gauge's last four weeks from the Environment Agency, four gauges at a time. The gauges appear within a minute or two; the history fill takes a few minutes more.
 
-### `refresh.php` — LAMP Stack Backend (Optional)
+`make data` takes a few minutes on a first run, most of it waiting on the public [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) servers. Downloads are cached in `.cache/overpass/` for a day:
 
-If deploying to a LAMP server, this PHP script handles the same refresh logic as `serve.py`. The frontend's Refresh button POSTs to `/refresh.php` — whichever backend is available will respond.
-
-## What the Map Shows
-
-### Station Types
-
-| Marker | Type | Unit | Colour | Shape |
-|--------|------|------|--------|-------|
-| River Level | Stage height | m | Teal | Circle |
-| Tidal Level | Height above ordnance datum | mAOD | Amber | Diamond |
-| Rainfall | Tipping bucket gauge total | mm | Blue | Teardrop |
-| Storm Overflow (CSO) | EDM sensor state | — | Purple shades | Small circle |
-
-Each EA marker displays the latest reading value. Click any marker to open a popup with:
-
-- Current value and timestamp
-- Trend indicator (for level and tidal stations — see below)
-- Time-series chart with selectable ranges: **24h, 48h, 5d, 30d, All**
-- **Forecast** button on rainfall stations — 48-hour predicted rainfall from Open-Meteo (see Rainfall Forecast below)
-- "Top of normal range" reference line (dashed red) on level station charts
-- Station name, type, and river
-
-Storm overflow markers behave a bit differently (see Storm Overflows below) — they're smaller, status-coloured, and the popup shows recent spill events and historical annual totals rather than a continuous reading.
-
-Active flood warnings and alerts for the Taw catchment are shown in a banner below the header (see Flood Warnings below).
-
-### High Water Level Warning
-
-River level station markers turn **red** when the current reading exceeds 70% of the station's typical range high (the EA's 95th-percentile historical value). When the level drops back below the 70% threshold, the marker returns to its normal teal colour on the next data load or refresh.
-
-Tidal and rainfall stations are not affected — their markers always use their standard colours.
-
-### Chart Reference Line and Fixed Y-Axis
-
-Level station popup charts display a dashed red horizontal line at the "top of normal range" (`typicalRangeHigh` from the EA API — the 95th percentile of historical readings). The Y-axis is fixed from **0** to **typicalRangeHigh × 1.25** (rounded up to the next 0.5m) so the scale stays consistent when switching between 24h, 48h, 5d, and 30d views.
-
-Tidal and rainfall station charts start at 0 but auto-scale the Y-axis maximum since they don't have a meaningful typical range value.
-
-### Trend Indicators
-
-River level and tidal stations display a small coloured badge on the bottom-right corner of the marker showing whether the water level is rising, falling, or steady:
-
-| Badge | Meaning | Colour |
-|-------|---------|--------|
-| ↑ | Rising | Red |
-| ↓ | Falling | Green |
-| → | Steady | Grey |
-
-The trend is calculated by fitting a linear-regression slope over the last 1 hour of readings. A slope steeper than ±1 cm/hour (0.01 m/hr) counts as rising or falling; anything within that threshold is steady. This approach tracks the actual direction of the graph line, so the badge always matches what the user sees on the chart.
-
-The trend badge also appears in the popup next to the current value. Rainfall stations do not show a trend indicator.
-
-If there isn't enough recent data (fewer than 3 readings in the last hour), no badge is shown.
-
-### Flood Warnings and Alerts
-
-The EA issues two distinct types of notification through the same API endpoint (`/id/floods`):
-
-- **Flood Warnings** (severity 1–2) are issued for specific locations — e.g. "River Taw (Lower) from Newnham Bridge to Barnstaple, including Umberleigh". These mean flooding is expected or severe.
-- **Flood Alerts** (severity 3) are issued for broader catchment areas — e.g. "North Dartmoor Rivers" or "Lower Taw area". These mean flooding is possible and to be prepared.
-
-The dashboard monitors 15 EA flood area IDs covering both types:
-
-| Type | Areas monitored | Example |
-|------|----------------|---------|
-| Flood Warning Areas | 13 (River Taw upper/middle/lower, tidal, Okement, Landkey, tidal estuary) | `113FWF2E1B` — River Taw (Lower) |
-| Flood Alert Areas | 2 (North Dartmoor Rivers, Lower Taw area) | `113WAFTW12` — North Dartmoor Rivers |
-
-Warnings and alerts are fetched from the EA API on page load and on each refresh. When active warnings or alerts exist, a coloured banner appears below the header:
-
-| Severity | Label | Banner colour |
-|----------|-------|---------------|
-| 1 | Severe Flood Warning | Red (pulsing icon) |
-| 2 | Flood Warning | Amber |
-| 3 | Flood Alert | Yellow |
-
-Click the banner to expand and see details for each warning or alert, including the EA's situation message, the affected river, and when it was raised.
-
-When no warnings or alerts are in force, a small green "No warnings" indicator appears in the header alongside the last-updated timestamp. On phones, only the green dot is shown to save space.
-
-Severity level 4 ("Warning no longer in force") is filtered out — only active warnings and alerts appear.
-
-### Storm Overflows (CSO)
-
-The map shows ~75 Combined Sewer Overflow (CSO) sites within the Taw catchment, fed by Event Duration Monitor (EDM) sensors at each outfall. Data comes from South West Water's contribution to Water UK's [National Storm Overflow Hub](https://experience.arcgis.com/experience/cb89b71c060f40d394dca026445da4bc) — an open ArcGIS REST feed updated within an hour of any sensor state change.
-
-CSO markers are smaller than EA station markers (20px visible circle inside a 32px tap target) and use a single hue (purple) shaded by status:
-
-| Marker | Status | Meaning |
-|--------|--------|---------|
-| Saturated purple | Discharging now | EDM reports active discharge (status = 1) |
-| Medium purple | Spilled within 48h | Discharge ended within the last two days |
-| Pale lavender | Quiet | No recent discharge (older than 48h) |
-| Hollow with grey edge | Monitor offline | EDM not reporting (status = −1) — state unknown |
-
-#### Zoom-based visibility
-
-To avoid cluttering the catchment-overview view, the marker layer adapts to map zoom:
-
-- **Tier A (always visible)** — sites currently discharging, or that spilled within the last 48h
-- **Tier B (visible at zoom ≥ 11)** — quiet sites and offline monitors fade in as you zoom past the village-detail level
-
-This means at the default catchment zoom the map highlights only the spills that matter today; zoom in to see every overflow site.
-
-#### Popup contents
-
-Click any CSO marker for:
-
-- Site name (from the EA register) and receiving watercourse
-- Current state badge with "since X" timestamp
-- Asset type (e.g. *Inlet SO at WwTW*, *SO on sewer network*), permit ID, and last EDM ping time
-- **This month** + **Last 30 days** spill counts and total hours, computed from the polled event log
-- **Last 30 days** activity — shown as an event list when there are 3 or fewer recorded events in the window, and as a daily-hours histogram once more events accumulate
-- **Annual spill hours** — a multi-year bar chart from the regulatory annual returns (2021–2025)
-
-#### How the event log accumulates
-
-The SWW live feed only exposes the *most recent* event per site (`latestEventStart` / `latestEventEnd`). The hourly GitHub Actions cron polls the feed, compares against the per-site CSV in `data/cso_<permit_id>.csv`, and appends new events as they appear. So the "Last 30 days" panel fills out over time as polling accumulates history — it's not backfilled from any single source.
-
-The annual chart is different: it's backfilled once from Water UK's [Annual Returns All-Years FeatureServer](https://www.arcgis.com/home/item.html?id=66fef44a4aab438991d7ce08fbc1de64), which contains yearly totals (hours + spill counts) per site for 2021–2025. Re-run `python fetch_cso_history.py` annually to pick up new returns.
-
-Sub-hour spills entirely between two polls won't be recorded — an inherent limitation of polling at hourly granularity. For most sites this is a non-issue: 2024 events averaged ~14 hours at the worst spillers (e.g. Chulmleigh: 132 spills totalling 1,920 h).
-
-### Rainfall Forecast
-
-Rainfall station popups include a **Fcst** button that fetches a 48-hour hourly precipitation forecast from the [Open-Meteo API](https://open-meteo.com/) using each station's own latitude and longitude.
-
-- The forecast is shown as an **amber bar chart** to visually distinguish it from the blue historical line chart
-- The popup timestamp updates to show the forecast date range (e.g. "Forecast: 13 Feb–15 Feb")
-- Clicking the Fcst button again toggles back to the default 5-day historical view
-- Clicking any historical time range button (24h, 48h, etc.) also returns to the historical chart
-- Forecasts are cached in memory for 15 minutes per station to avoid unnecessary API calls
-- No API calls are made on page load — the Open-Meteo fetch only fires when the user clicks the Fcst button
-- Level and tidal stations do not show the Forecast button
-
-### River Discharge Forecast
-
-The Barnstaple (Tidal) station popup has a **tab UI** with two views: "Tidal Level" (the default historical chart) and "River Discharge". The discharge tab fetches a river discharge forecast from the [Open-Meteo Flood API](https://open-meteo.com/en/docs/flood-api) powered by the GloFAS v4 model.
-
-- Shows **7 days of hindcast** and **14 days of forecast** — 21 days total
-- The chart displays the **ensemble mean** as a solid amber line with a **min–max range band** showing forecast uncertainty (forecast days only)
-- Two reference lines from the NRFA 66-year record at Umberleigh (station 50001): **Normal flow (Mean)** at 18.3 m³/s and **High flow (Q10)** at 48.3 m³/s
-- A dashed vertical "Today" line separates observed from predicted data
-- Uses Umberleigh coordinates (NRFA 50001) for the GloFAS API call — Barnstaple's own coordinates resolve to a minor stream in the 5 km grid
-- The current value area updates to show today's mean discharge in **m³/s**
-- Discharge data is cached for 1 hour per station
-- No API call on page load — only fetches when the user clicks the "River Discharge" tab
-- Only available on the Barnstaple tidal popup, since it sits at the outlet of the full Taw catchment (1,346 km²) where the GloFAS model is most reliable
-- Uses `cell_selection=land` to ensure the model picks a land-based grid cell near the estuary
-
-### River Overlays
-
-Seven rivers are displayed as coloured GeoJSON overlays with flow direction arrows:
-
-| River | Colour | Role |
-|-------|--------|------|
-| River Taw | Teal (#1a8a7d) | Main stem — source to estuary |
-| River Mole | Blue (#2e7dab) | Tributary, joins near Newnham Bridge |
-| Little Dart River | Brown (#8a6e1a) | Tributary, joins upstream of Newnham Bridge |
-| River Yeo | Purple (#7a4a8a) | Tributary, joins near Barnstaple |
-| Lapford Yeo | Burnt orange (#ab5e2e) | Tributary, joins the Taw near Lapford |
-| Crooked Oak | Green (#5a8a3a) | Tributary, flows into the River Mole near South Molton |
-| Hollocombe Water | Olive (#6a7a3a) | Tributary, joins the Taw between Eggesford and Kings Nympton |
-
-Flow arrows (triangles) point downstream. The River Taw also has "UPSTREAM (Source)" and "DOWNSTREAM (Estuary)" labels. All rivers have a name label at their midpoint.
-
-The GeoJSON data comes from OpenStreetMap via the Overpass API. OSM waterway ways are digitised in flow direction (source to mouth), so the arrows follow the natural direction of the data.
-
-### Railway Overlays
-
-Two railway lines are displayed as dashed grey overlays with station markers:
-
-| Line | Route | Stations |
-|------|-------|----------|
-| Tarka Line | Exeter Central to Barnstaple | 14 stations (Exeter Central, Exeter St Davids, Newton St Cyres, Crediton, Yeoford, Copplestone, Morchard Road, Lapford, Eggesford, Kings Nympton, Portsmouth Arms, Umberleigh, Chapelton, Barnstaple) |
-| Dartmoor Line | Coleford Junction to Okehampton | 1 station (Okehampton) — shared stations shown on the Tarka Line |
-
-The Tarka and Dartmoor lines share track from Exeter to Coleford Junction (near Yeoford). Only the unique Dartmoor Line section from the junction to Okehampton is drawn separately to avoid duplication. Station markers show the station name on hover. Track data comes from OpenStreetMap (OSM relations 275887 and 276920).
-
-### Map Tiles
-
-Uses [Esri World Light Gray](https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer) — a light, muted basemap that keeps the focus on the data overlays. Stacked as two layers: `World_Light_Gray_Base` for terrain and boundaries, `World_Light_Gray_Reference` for place-name and road-number labels on top. (Previously CartoDB Positron; switched September 2026 after CARTO began watermarking unauthenticated tile requests.)
-
-### Mobile Responsiveness
-
-The dashboard adapts to smaller screens with two CSS breakpoints:
-
-| Breakpoint | Target | Key changes |
-|------------|--------|-------------|
-| ≤ 768px | Tablets | Compact header, smaller popups (320px), scrollable legend, compact chart height |
-| ≤ 480px | Phones | Hidden subtitle, compact "last updated" text below refresh button, collapsible legend toggle (top-right), 280px popups, larger zoom controls, initial zoom level 10 |
-
-On phones, the legend collapses to a single "Legend ▸" button in the top-right corner — tap to expand. The "last updated" timestamp is shown in a smaller font stacked below the Refresh button. The map starts at a wider zoom level to show all stations at a glance.
-
-## Monitoring Stations
-
-### River Taw (main stem, upstream to downstream)
-
-| # | Station | ID | Lat/Lon |
-|---|---------|-----|---------|
-| 1 | Sticklepath | 50149 | 50.738, -3.918 |
-| 2 | Taw Bridge | 50119 | 50.845, -3.886 |
-| 3 | Newnham Bridge | 50132 | 50.940, -3.908 |
-| 4 | Umberleigh | 50140 | 50.995, -3.985 |
-
-### Barnstaple Tidal
-
-| Station | ID | Lat/Lon | Unit |
-|---------|-----|---------|------|
-| Barnstaple (Tidal) | 50198 | 51.080, -4.065 | mAOD |
-
-### River Mole (tributary, upstream to downstream)
-
-| # | Station | ID | Lat/Lon |
-|---|---------|-----|---------|
-| 1 | North Molton | 50135 | 51.055, -3.795 |
-| 2 | Mole Mills | 50153 | 51.017, -3.822 |
-| 3 | Woodleigh | 50115 | 50.973, -3.910 |
-
-### Little Dart River (tributary)
-
-| Station | ID | Lat/Lon |
-|---------|-----|---------|
-| Chulmleigh | 50125 | 50.908, -3.864 |
-
-### River Yeo (tributary, joins near Barnstaple)
-
-| Station | ID | Lat/Lon |
-|---------|-----|---------|
-| Collard Bridge | 50114 | 51.100, -4.010 |
-
-### Lapford Yeo (tributary, joins the Taw near Lapford)
-
-| Station | ID | Lat/Lon |
-|---------|-----|---------|
-| Lapford | 50151 | 50.858, -3.811 |
-
-### Crooked Oak (tributary, flows into the River Mole)
-
-No monitoring stations on this river.
-
-### Hollocombe Water (tributary, joins the Taw between Eggesford and Kings Nympton)
-
-No monitoring stations on this river.
-
-### Rainfall Stations
-
-**East of the Taw:**
-
-| Station | ID | Lat/Lon |
-|---------|-----|---------|
-| Lapford Bowerthy | 50199 | 50.873, -3.799 |
-| Molland Sindercombe | E85220 | 51.038, -3.736 |
-| Crediton Knowle | E84360 | 50.800, -3.738 |
-| Kinsford Gate | 45183 | 51.114, -3.795 |
-
-**West of the Taw:**
-
-| Station | ID | Lat/Lon |
-|---------|-----|---------|
-| Allisland | 50103 | 50.881, -4.153 |
-| Kenwith Castle | 50194 | 51.024, -4.236 |
-| Bratton Fleming Haxton | E82120 | 51.117, -3.941 |
-| Halwill | 47158 | 50.772, -4.229 |
-
-### Storm Overflow (CSO) Sites
-
-Around 75 CSO sites within the Taw catchment, all operated by South West Water. The exact list is not hard-coded — it's discovered each run by querying the SWW live FeatureServer and filtering by the `receivingWaterCourse` field against an allowlist of catchment river names (River Taw, Mole, Yeo, Little Dart, Dalch, Bray, Crooked Oak, Nadrid Water, Castle Hill Stream, Mully Brook, Hawkridge Brook, Bryn Brook, Common Lake Stream, Goodleigh Stream) with an exclude list for false-positive substring matches (Torridge, Venn, Dodscott, Bideford).
-
-The 2024 catchment had this asset-type breakdown:
-
-| Asset type | Count |
-|---|---|
-| Inlet SO at WwTW | 23 |
-| SO on sewer network | 22 |
-| Storm tank at WwTW | 15 |
-| Storm discharge at pumping station | 13 |
-
-## Data Sources
-
-### Environment Agency Flood Monitoring API
-
-All river-level, tidal, and rainfall data comes from the **Environment Agency Flood Monitoring API**:
-
-```
-https://environment.data.gov.uk/flood-monitoring
+```bash
+python3 scripts/fetch_geodata.py --refresh   # ignore the cache and download everything again
+python3 scripts/fetch_geodata.py --cached    # rebuild from the cache, however old
 ```
 
-This is the same data that powers the government's [Check for Flooding](https://check-for-flooding.service.gov.uk/) service. Readings are taken every 15 minutes.
+The other targets:
 
-### South West Water Storm Overflow Activity
-
-Live CSO discharge state comes from SWW's contribution to Water UK's National Storm Overflow Hub, an open ArcGIS REST FeatureService:
-
-```
-https://services-eu1.arcgis.com/OMdMOtfhATJPcHe3/arcgis/rest/services/NEH_outlets_PROD/FeatureServer/0
-```
-
-No authentication required. Returns one row per site with status (1 = discharging, 0 = not discharging, −1 = monitor offline), `latestEventStart` / `latestEventEnd` (the most recent event only), and `lastUpdated` (EDM last-ping). Updated within an hour of a sensor state change.
-
-### Annual EDM Returns (historical backfill)
-
-Yearly spill totals (hours, count, asset type, site name) come from the public All-Years FeatureServer:
-
-```
-https://services1.arcgis.com/JZM7qJpmv7vJ0Hzx/arcgis/rest/services/edm_annual_returns_all_years_public/FeatureServer/0
+```bash
+make poll     # run one poll of every feed, without the server
+make test     # run the Python and JavaScript tests
+make og       # redraw the link preview card, site/img/og-image.png (needs Google Chrome and make data)
+make screenshot  # retake docs/screenshot.png, the map in a Safari window, from the running server (needs Google Chrome)
+make clean    # remove the libraries, overlays and download cache; the database stays
 ```
 
-Covers 2021–2025. The dataset also bridges old WaSC permit IDs to the new DEFRA `SBB*` IDs via `wasc_supplementary_permit_ref_opt` ↔ `unique_id`, so we can join historical rows to live-feed sites without a separate ID-lookup table.
+### On a server
 
-### Measure ID Format
-
-Each station has a unique measure identifier that encodes the station, parameter, qualifier, interval, and unit:
+The public site runs as one process on an Ubuntu 24.04 server, with [Caddy](https://caddyserver.com/) in front for HTTPS, and pushes the archive back to this repository every night. `deploy/` holds the configuration:
 
 ```
-{stationId}-{parameter}-{qualifier}-{type}-{interval}-{unit}
+deploy/floodwatch.service           the web server and poller
+deploy/floodwatch-data.service      rebuilds the map overlays
+deploy/floodwatch-data.timer        runs that rebuild early every Sunday
+deploy/floodwatch-archive.service   exports the archive, commits it and pushes it
+deploy/floodwatch-archive.timer     runs that at 02:30 every night
+deploy/Caddyfile                    HTTPS for tawriver.watch, and the redirect from www
 ```
 
-Examples:
-- `50132-level-stage-i-15_min-m` — Newnham Bridge river level (instantaneous, metres)
-- `50198-level-tidal_level-i-15_min-mAOD` — Barnstaple tidal level (metres above ordnance datum)
-- `50199-rainfall-tipping_bucket_raingauge-t-15_min-mm` — Lapford Bowerthy rainfall (total, mm)
+Point the domain's DNS at the server first, A and AAAA records for the bare name and `www`, so Caddy can get its certificates when it starts. Then, as root:
 
-### API Endpoints Used
+```bash
+apt update && apt install -y git make curl gnupg python3 debian-keyring debian-archive-keyring apt-transport-https
+curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/gpg.key | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt > /etc/apt/sources.list.d/caddy-stable.list
+apt update && apt install -y caddy
 
-| Purpose | Endpoint |
-|---------|----------|
-| Recent readings | `GET /id/measures/{measureId}/readings?since={ISO8601}&_sorted&_limit=10000` |
-| Date range | `GET /id/measures/{measureId}/readings?startdate={YYYY-MM-DD}&enddate={YYYY-MM-DD}&_sorted&_limit=100000` |
-| Flood warnings | `GET /id/floods?county=Devon` |
-| Rainfall forecast | `GET https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=precipitation&forecast_days=2&timezone=Europe/London` |
-| River discharge | `GET https://flood-api.open-meteo.com/v1/flood?latitude={lat}&longitude={lon}&daily=river_discharge_mean,river_discharge_max,river_discharge_min&forecast_days=14&past_days=7&cell_selection=land` |
-| Station lookup | `GET /id/stations?RLOIid={id}` |
-| CSO live state | `POST .../NEH_outlets_PROD/FeatureServer/0/query` (form-encoded — WHERE clause exceeds GET URL limits) |
-| CSO annual history | `POST .../edm_annual_returns_all_years_public/FeatureServer/0/query` |
-
-### Refresh Logic
-
-When you click **Refresh Data**, the app determines the gap between the last known reading and now for each station:
-
-- **Gap ≤ 5 days:** Single API request using `?since=` — fast and efficient
-- **Gap > 5 days:** Fetches in 28-day chunks working backwards to the last known timestamp — fills the entire gap without missing data
-- **No existing data:** Fetches the last 28 days as a starting point
-
-This gap-fill logic applies identically across the frontend (JavaScript), `serve.py` (Python), and `refresh.php` (PHP).
-
-#### Activity Log
-
-An activity log appears in the bottom-right corner of the map during refresh, showing:
-
-- A progress bar (e.g. "7/19 stations")
-- Per-station status: fetching, success with reading count, errors, and warnings for large gaps
-- A summary line on completion
-
-The log fades away a few seconds after the refresh completes.
-
-#### Backend Detection and Caching
-
-On page load, the app probes for a backend by sending an `OPTIONS` request to `/refresh`. If the response includes `Access-Control-Allow-Methods: POST`, a backend is present (LAMP or serve.py). Otherwise the app assumes it's running as a static site.
-
-| Deployment | After fetching from EA API |
-|------------|---------------------------|
-| **LAMP / serve.py** | Caches to `localStorage`, then POSTs to backend to persist updated CSVs server-side |
-| **Static (App Platform, etc.)** | Caches the last 7 days of readings in `localStorage` so they survive page reloads |
-
-All deployments cache refreshed data to `localStorage` — this means a page reload always shows the most recent data you've fetched, even if the browser's HTTP cache serves stale CSV files. On LAMP/serve.py, the backend sync happens after the local cache, so data is persisted in both places.
-
-On page load, any cached readings from `localStorage` are merged on top of the CSV data, so the map immediately reflects the most recent data — even before hitting Refresh. CSV requests include a cache-busting parameter to bypass browser HTTP caching.
-
-After a refresh, station markers are re-created with updated values and trend badges.
-
-## Data Files
-
-All data lives in the `data/` directory:
-
-```
-data/
-  stations.csv                          # Station metadata (all 19 EA stations)
-  level_50149_sticklepath.csv           # River level CSVs (11 files)
-  level_50119_taw_bridge.csv
-  level_50132_newnham_bridge.csv
-  level_50140_umberleigh.csv
-  level_50198_barnstaple_(tidal).csv
-  level_50135_north_molton.csv
-  level_50153_mole_mills.csv
-  level_50115_woodleigh.csv
-  level_50125_chulmleigh.csv
-  level_50151_lapford.csv
-  level_50114_collard_bridge.csv
-  rainfall_50199.csv                    # Rainfall CSVs (8 files)
-  rainfall_E85220.csv
-  rainfall_E84360.csv
-  rainfall_45183.csv
-  rainfall_50103.csv
-  rainfall_50194.csv
-  rainfall_E82120.csv
-  rainfall_47158.csv
-  cso_sites.csv                         # CSO site list — id, river, lat, lon
-  cso_status.json                       # CSO current-snapshot — all sites' state
-  cso_sites_meta.csv                    # CSO static metadata — name, asset type, designations
-  cso_annual_history.csv                # CSO yearly totals 2021-2025 (one-off backfill)
-  cso_SBB00257.csv                      # Per-site CSO event log (~75 files)
-  cso_SBB01336.csv                      # ...one per discovered site
-  ...
-  river_taw.geojson                     # River geometry (7 files)
-  river_mole.geojson
-  river_little_dart.geojson
-  river_yeo.geojson
-  river_lapford_yeo.geojson
-  river_crooked_oak.geojson
-  river_hollacombe_water.geojson
-  tarka_line.geojson                    # Railway track geometry (2 files)
-  dartmoor_line.geojson
-  tarka_stations.geojson                # Railway station points (2 files)
-  dartmoor_stations.geojson
+useradd --system --home-dir /srv/floodwatch --shell /usr/sbin/nologin floodwatch
+install -d -o floodwatch -g floodwatch -m 750 /srv/floodwatch /srv/floodwatch/.ssh
+runuser -u floodwatch -- ssh-keygen -t ed25519 -N '' -C floodwatch-archive -f /srv/floodwatch/.ssh/id_ed25519
+cat /srv/floodwatch/.ssh/id_ed25519.pub
 ```
 
-### CSV Formats
+Add that public key to the repository as a deploy key with write access. The nightly archive pushes to `main`, whose branch protection requires the `python-tests` and `js-tests` checks, so the deploy key also needs to be allowed to bypass that rule, with a repository ruleset that lists deploy keys as a bypass actor. Then:
 
-**EA station readings** (`level_*.csv`, `rainfall_*.csv`, `level_50198_barnstaple_(tidal).csv`):
+```bash
+runuser -u floodwatch -- ssh -o StrictHostKeyChecking=accept-new -T git@github.com   # records GitHub's host key
+cd /srv/floodwatch
+runuser -u floodwatch -- git clone git@github.com:aallan/floodwatch.git .
+runuser -u floodwatch -- make libs
+runuser -u floodwatch -- make data
 
-```csv
-dateTime,value,unit,station_id,station_label
-2026-02-10T10:15:00Z,0.523,m,50149,Sticklepath
-2026-02-10T10:30:00Z,0.521,m,50149,Sticklepath
+cp deploy/*.service deploy/*.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now floodwatch floodwatch-data.timer floodwatch-archive.timer
+cp deploy/Caddyfile /etc/caddy/Caddyfile
+systemctl reload caddy
+
+ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443 && ufw --force enable
 ```
 
-| Column | Description |
-|--------|-------------|
-| `dateTime` | ISO 8601 timestamp in UTC |
-| `value` | Reading value (float) |
-| `unit` | `m`, `mAOD`, or `mm` |
-| `station_id` | EA station reference |
-| `station_label` | Human-readable name |
+The service runs as the unprivileged `floodwatch` user and can write only to `data/`, `site/data/` and `.cache/`; the archive service writes only to `data/` and `.git`. Its log is in the journal, `journalctl -u floodwatch -f`, and the archive's in `journalctl -u floodwatch-archive`.
 
-**CSO per-site event log** (`cso_<permit_id>.csv`):
+To update, pull and restart. The first poll after a restart reads every feed straight away, whatever its schedule:
 
-```csv
-start_time,end_time,duration_min,is_ongoing
-2026-06-02T10:13:20.300000Z,2026-06-02T11:34:00.300000Z,80,false
-2026-06-03T13:24:05.260000Z,,,true
+```bash
+cd /srv/floodwatch && runuser -u floodwatch -- git pull && systemctl restart floodwatch
 ```
 
-| Column | Description |
-|--------|-------------|
-| `start_time` | ISO 8601 UTC — when the spill started |
-| `end_time` | ISO 8601 UTC, or empty if still discharging |
-| `duration_min` | Minutes — empty for ongoing events |
-| `is_ongoing` | `true` if the spill is still active, `false` if ended |
+## The archive
 
-**CSO status snapshot** (`cso_status.json`) — keyed by permit ID with the current `status`, `latestEventStart`/`End`, and `lastUpdated`. Rewritten in full on every fetch. The frontend reads this once at startup to colour all markers in a single pass instead of loading 75 event CSVs.
+`archive/` holds every reading and spill Floodwatch has, in the CSV format v1 published:
 
-## Deployment
+- `stations.csv`, one row per gauge, with the series its readings are from
+- `level_<id>_<name>.csv` and `rainfall_<id>.csv`, one per gauge, with every 15-minute reading: `dateTime,value,unit,station_id,station_label`
+- `cso_<id>.csv`, one per storm overflow, with every spill: `start_time,end_time,duration_min,is_ongoing`
 
-Floodwatch can be deployed four ways, from simplest to most involved. See **[INSTALL.md](INSTALL.md)** for full step-by-step instructions, costs, and data transfer estimates for each option.
+Every night `scripts/archive.py push` writes the database out to `archive/`, and commits and pushes the files that changed. It works in a separate git worktree, `data/archive-worktree`, reset to the tip of `main` each night, so the checkout the server runs from is never touched and a deploy's `git pull` stays a fast-forward; if a push fails, the next night starts afresh. A gauge's existing file is reused and written exactly as v1 wrote it, so a night's commit adds that day's lines and nothing else. Files of gauges that are no longer listed are left alone.
 
-| Method | Backend | Cost | Best for |
-|--------|---------|------|----------|
-| **Local** (`python serve.py`) | Python dev server | Free | Development and testing |
-| **App Platform** (recommended) | Static site — no backend needed | Free tier ($0/mo) | Production — zero maintenance, automatic SSL and CDN |
-| **LAMP Droplet** | Apache + PHP | $6/mo | Full server-side control with persistent CSV refresh |
-| **Generic LAMP** | Any Apache/Nginx + PHP stack | Varies | Existing hosting infrastructure |
+On a new server the first poll loads `archive/` into the database, once the gauges and overflows are listed, so a fresh deploy starts with all the history there is. Readings and spills it already holds are kept, so the load is safe to repeat; `python3 scripts/archive.py restore` runs it by hand, and loads v1's own `data/` directory too.
 
-All deployments serve the same `index.html` single-page app. The difference is how the Refresh button works: on LAMP/serve.py it persists updated CSVs server-side, while on App Platform it caches to `localStorage` and relies on hourly GitHub Actions commits to keep the CSV baseline fresh.
+## How it works
+
+The poller, in `monitor/`, runs every 5 minutes, reading each feed in turn: the gauges, the storm overflows, the flood warnings, the weather warnings, the power cuts and the drought report, and then filling any gaps in the gauges' history. The feeds are independent, so one failing doesn't stop the others, and every request gives up after two minutes, however slowly an answer arrives.
+
+### The catchment
+
+Two Environment Agency datasets make the catchment's outline. The WFD operational catchment "Taw and North Devon Streams" covers all the land draining to the Taw, Barnstaple included, and stops at the estuary's banks; but it also takes in the Exmoor coast, from Croyde round to Lynmouth. The river water bodies inside it are numbered by hydrometric area, and those draining to the Taw are in area 50, the same as the gauging station at Umberleigh; but they leave out the land draining straight into the estuary. The outline is the operational catchment wherever it's in one of the Taw's water bodies or in a box round the estuary, about 1,200 km². The two datasets were digitised separately, so they're combined on a grid about 5 m square and the outline traced from it.
+
+The same builder writes the catchments around the Taw's: the Torridge, Barnstaple Bay, the Exmoor coast and the rest. Gauges, storm overflows, power cuts and flood areas belong to the catchment when they're inside it, or near it and nearer to it than to any of those, which takes in the outfalls and the tidal gauge in the estuary, outside the outline, and leaves out those just over the watershed. Flood areas are judged by their centre, and any the Agency lists on the Taw are kept wherever their centre falls.
+
+### Gauges
+
+Once a day the poller lists the Environment Agency's level and rainfall stations within 45 km, keeps those that belong to the catchment, and reads each river gauge's typical range and record high. Every 5 minutes it makes one request per kind of reading for the latest value from every station in England, keeps the catchment's, and writes `site/data/live.json`, about 10 KB with every gauge's latest reading, trend and state, which is everything the map needs to draw its markers.
+
+A gauge whose newest reading is more than 15 minutes past what the database holds has missed some, because the server was down or because the gauge uploads in batches, so its readings are fetched from the last one held. A gauge's history is fetched from `/api/stations/<id>/readings` only when its popup opens. Up to 28 days the chart gets every reading; over a longer range, or all time, the readings are put into buckets of an hour or more, enough that the chart has no more than 3,000 points, keeping each bucket's highest level or its total rain. `/api/stations/<id>/readings.csv` returns every reading at full resolution.
+
+### Storm overflows
+
+South West Water's feed reports each overflow's current state and only its latest spill, so the spill log is built up by polling. Every 5 minutes the poller reads all of South West Water's overflows in one request and, for each of the catchment's, compares the latest spill with the last one logged: a new start time is a new spill, and the same start time with the overflow now quiet closes the open one. A spill that starts and ends between two polls is still caught, because the feed keeps it as the latest until the next one, but if two spills happen between polls the earlier is missed. Once a day the poller reads names, asset types and yearly totals from the annual returns, matching rows to overflows by permit ID; rows before 2024 are matched through South West Water's own permit reference.
+
+### Flow forecast
+
+Flow forecasts come from [GloFAS](https://global-flood.emergency.copernicus.eu/), the Copernicus global flood model, through Open-Meteo's flood API. GloFAS routes rivers on a grid of cells about 5 km across, so `scripts/calibrate_flow.py` compares the model's 2015–2024 flows in the 25 cells around Umberleigh with the gauged record, and the forecast uses the cell just upstream of the gauge, which carries the Taw. Its flows are scaled so their long-run mean matches the gauged mean, 18.3 m³/s, read from the National River Flow Archive. The flow measured at Umberleigh every 15 minutes comes from the Hydrology API, and the forecast is scaled again by the ratio of measured to modelled flow on the last full day, so it starts from the river as it is: its lowest flow so far is multiplied by the ratio, and any rise from rain is added at the model's own size.
+
+### The map's overlays
+
+`scripts/fetch_geodata.py` builds the catchment's outline and its neighbours, and fetches the rivers, streams, railways, stations, roads and place names from Overpass, writing simplified GeoJSON to `site/data/`. Each river is drawn from its OpenStreetMap ways grouped by name, joined source to mouth so its flow arrows point downstream, and ended at its tidal limit, where it crosses the coastline. Three rivers in the catchment are named River Yeo, so each is named after where it runs: River Yeo, Lapford Yeo and Molland Yeo. Where OpenStreetMap leaves a stretch of a river unnamed, such as 3.5 km of the Little Dart above Witheridge, a chain of up to six unnamed ways running from the end of one stretch to the start of the next joins the river. The railways come from the Tarka and Dartmoor lines' route relations, which list all the track their trains run on.
 
 ## Tests
 
-181 tests (91 Python + 90 JavaScript) cover the data pipeline, server logic, frontend utility functions, UI interactions, and the CSO event-log state machine. See **[TESTING.md](TESTING.md)** for full details of what each test covers and why.
+`make test` runs both suites, which use only Python's `unittest` and Node's built-in test runner, so there's nothing to install beyond Python and Node. The 195 Python tests cover the poller, the gauges, the spill log, the archive's export, restore and nightly push, the history buckets and CSV download, which positions belong to the catchment, the overlay builder's outline tracing, river naming and gap filling, the warnings, the drought report, power cuts, forecasts, and the server's endpoints and headers; each runs against a temporary database, with every outside service replaced by fixed responses, several of them trimmed copies of real ones in `tests/fixtures/`. The 26 JavaScript tests load the page's scripts into a sandbox and check the gauges' states and numbers, what a cluster shows, the chart arithmetic, the flow forecast's scaling, the spelt-out overflow names, the warning banner's wording and the power cut popups. GitHub Actions runs both on every push to `main` and every pull request.
 
-## Project Structure
+## Project layout
 
 ```
-floodwatch/
-  index.html                          # Single-page app (HTML shell, ~75 lines)
-  fetch_data.py                       # EA data fetcher + CSO live fetcher (hourly)
-  fetch_cso_history.py                # One-off CSO historical backfill (annual)
-  serve.py                            # Local Python dev server with refresh proxy
-  refresh.php                         # PHP refresh endpoint for LAMP deployment
-  README.md                           # This file
-  INSTALL.md                          # Deployment guide (4 methods)
-  TESTING.md                          # Test suite documentation
-  CONTRIBUTING.md                     # How to contribute
-  CODE_OF_CONDUCT.md                  # Contributor Covenant
-  CHANGELOG.md                        # Version history
-  LICENSE                             # MIT licence
-  .editorconfig                       # Consistent formatting across editors
-  .pre-commit-config.yaml             # Pre-commit hooks (ruff lint + format)
-  .gitignore                          # Excludes .server.pid, __pycache__, .DS_Store, .claude, node_modules, .pytest_cache
-  .do/app.yaml                        # Digital Ocean App Platform spec
-  .github/workflows/update-data.yml   # Hourly GitHub Actions data refresh
-  .github/workflows/tests.yml         # CI: Python + JS tests on push/PR
-  .github/dependabot.yml              # Automated dependency update PRs
-  .github/SECURITY.md                 # Security vulnerability reporting
-  .github/ISSUE_TEMPLATE/             # Bug report and feature request templates
-  .github/pull_request_template.md    # PR template
-  css/
-    floodwatch.css                    # All application styles
-  js/
-    floodwatch.js                     # Main application logic
-    floodwatch-core.js                # Extracted utility functions (UMD module)
-  js-tests/
-    package.json                      # Vitest + jsdom devDependencies
-    package-lock.json                 # Lockfile for reproducible installs
-    vitest.config.js                  # jsdom environment config
-    floodwatch-core.test.js           # 25 core utility tests
-    floodwatch.test.js                # 15 UI integration tests
-    floodwatch-cso.test.js            # 30 CSO marker + popup tests
-  tests/
-    conftest.py                       # Shared pytest fixtures
-    test_fetch_data.py                # 41 tests for fetch_data.py
-    test_fetch_cso.py                 # 27 tests for the CSO fetcher state machine
-    test_serve.py                     # 18 tests for serve.py logic
-    test_serve_handler.py             # 5 tests for HTTP handler behaviour
-    fixtures/
-      sample_readings.json            # Mock EA API response
-      sample_level.csv                # Sample CSV for load/merge tests
-      cso_live_sample.json            # Captured SWW FeatureServer response
-      cso_history_chulmleigh.json     # Captured All-Years response (Chulmleigh)
-      cso_catchment_2024_summary.json # 74-site 2024 catchment snapshot
-  pyproject.toml                      # pytest config (no production deps)
-  images/                             # Static images
-    screenshot.png                    # README screenshot
-    opengraph.png                     # Social media preview (1200×630)
-  data/                               # CSV data files, GeoJSON overlays, CSO event logs
-  .server.pid                         # Auto-managed server PID file (gitignored)
+serve.py                   HTTP server for site/ and /api/, and the poller thread
+monitor/poll.py            the 5-minute poll cycle
+monitor/ea.py              Environment Agency client: stations, latest readings, history
+monitor/live.py            writes site/data/live.json
+monitor/history.py         a gauge's history for its chart, in buckets over long ranges, and as CSV
+monitor/archive.py         exports to archive/ and restores from it
+monitor/region.py          which positions belong to the catchment
+monitor/overflows.py       South West Water storm overflows: list, spill log, yearly totals
+monitor/floods.py          Environment Agency flood warnings and alerts, and their areas
+monitor/weather.py         Met Office weather warnings for Devon
+monitor/drought.py         Environment Agency drought status and hosepipe bans
+monitor/powercuts.py       NGED's live power cuts in the catchment
+monitor/forecast.py        rain and river flow forecasts, and measured flow
+monitor/net.py             HTTP requests with a time limit on the whole answer
+monitor/cache.py           popup data fetched on demand, with an in-memory cache
+monitor/db.py              SQLite schema and connection
+monitor/geo.py             geometry shared with the overlay builder
+scripts/fetch_geodata.py   the catchment, its neighbours and the map's overlays
+scripts/archive.py         export, restore and push the archive
+scripts/calibrate_flow.py  finds the GloFAS cell that carries a river past a gauge
+scripts/og_image.py        draws site/img/og-image.png, the link preview card
+scripts/screenshot.py      takes docs/screenshot.png, the map in a Safari window
+archive/                   every reading and spill, in v1's CSV format
+site/index.html            the page
+site/css/style.css         layout and theme, light and dark
+site/js/map.js             basemap, overlays, markers, clusters, legend and the opening view
+site/js/stations.js        gauge and overflow popups and their charts
+site/js/floods.js          the flood warning banner and header tag
+site/js/weather.js         the Met Office warning banner
+site/js/drought.js         the drought tag
+site/js/powercuts.js       power cut popups
+site/js/app.js             tab routing, the status line and the version
+site/js/utils.js           escaping, formatting and the theme toggle
+tests/                     Python tests, one file per module, and fixtures/
+tests/js/                  JavaScript tests
+deploy/                    systemd units and the Caddyfile
+libs.sha256                checksums for the downloaded libraries
 ```
 
-## Technology
+## Contributing
 
-| Component | Technology |
-|-----------|-----------|
-| Map | [Leaflet.js](https://leafletjs.com/) 1.9.4 |
-| Basemap tiles | [Esri World Light Gray](https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer) (Base + Reference) |
-| Charts | [Chart.js](https://www.chartjs.org/) 4.4.1 with date-fns adapter |
-| CSV parsing | [PapaParse](https://www.papaparse.com/) 5.4.1 |
-| River geometry | [OpenStreetMap](https://www.openstreetmap.org/) via [Overpass API](https://overpass-api.de/) |
-| Data source (river/rainfall) | [EA Flood Monitoring API](https://environment.data.gov.uk/flood-monitoring/doc/reference) |
-| Data source (storm overflow) | [SWW Storm Overflow Activity (ArcGIS)](https://www.arcgis.com/home/item.html?id=cabfce76b72a4a278a33d737c0708d42) — published to Water UK's [National Storm Overflow Hub](https://experience.arcgis.com/experience/cb89b71c060f40d394dca026445da4bc) |
-| Data source (annual EDM) | [Annual Returns All-Years FeatureServer](https://www.arcgis.com/home/item.html?id=66fef44a4aab438991d7ce08fbc1de64) (open ArcGIS REST) |
-| Rainfall forecast | [Open-Meteo API](https://open-meteo.com/) |
-| Discharge forecast | [Open-Meteo Flood API](https://open-meteo.com/en/docs/flood-api) (GloFAS v4) |
-| Dev server | Python 3 standard library (`http.server`) |
-| Production backend | PHP (`refresh.php`) |
-| Python tests | [pytest](https://docs.pytest.org/) 8+ |
-| JavaScript tests | [Vitest](https://vitest.dev/) 3 + [jsdom](https://github.com/jsdom/jsdom) |
+Bug reports, corrections and pull requests are welcome; [CONTRIBUTING.md](CONTRIBUTING.md) covers setting up and the conventions. Everyone taking part is expected to follow the [code of conduct](CODE_OF_CONDUCT.md), and security problems should be reported as [SECURITY.md](.github/SECURITY.md) describes. Changes are listed in the [changelog](CHANGELOG.md).
 
 ## Licence
 
-The code in this repository is licensed under the MIT licence.
+The code is released under the [MIT licence](LICENSE).
 
-Copyright &copy; 2026 Alasdair Allan
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+The map data is © OpenStreetMap contributors, under the [Open Database Licence](https://www.openstreetmap.org/copyright). This uses Environment Agency flood and river level data from the real-time data API (Beta), under the [Open Government Licence](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/), as are the catchment boundaries, the measured river flows from the Hydrology API, and the drought reports, which are Crown copyright. Storm overflow activity is © South West Water, under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), and the overflow annual returns are © Environment Agency copyright and/or database right, under the Open Government Licence. Weather and river flow forecasts are from [Open-Meteo](https://open-meteo.com/), under CC BY 4.0, with river flows generated using Copernicus Emergency Management Service information. Mean river flows are data from the UK National River Flow Archive. Weather warnings are the Met Office's, and contain public sector information licensed under the Open Government Licence v3.0. Power cut data is from National Grid Electricity Distribution, under the [NGED Open Data Licence](https://www.nationalgrid.co.uk/open-data-licence): Supported by NGED Open Data. Basemap tiles are © [Esri](https://www.esri.com/). [Leaflet](https://leafletjs.com/) is released under the BSD 2-Clause licence, and [Leaflet.markercluster](https://github.com/Leaflet/Leaflet.markercluster) under the MIT licence.

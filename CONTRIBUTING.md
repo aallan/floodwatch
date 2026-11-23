@@ -1,106 +1,56 @@
 # Contributing to Floodwatch
 
-Thanks for your interest in contributing to Floodwatch! This document explains how to get involved.
+Floodwatch is a small project with one maintainer, and bug reports, corrections and pull requests are all welcome. A gauge in the wrong place, a storm overflow that belongs to the next catchment, a river drawn short or a warning that never showed up are as useful as code.
 
-## Reporting Bugs
+## Reporting a problem
 
-Open an issue on GitHub using the **Bug report** template. Include:
+Open an [issue](https://github.com/aallan/floodwatch/issues/new/choose) using the bug report or feature request template. For anything on the map, say which gauge, overflow or place it is, roughly when you saw it, and whether you were on a phone or a computer; a screenshot helps more than a description. Security problems go by email instead, as [SECURITY.md](.github/SECURITY.md) describes.
 
-- What you expected to happen
-- What actually happened
-- Steps to reproduce (if possible)
-- Browser and OS version (for frontend issues)
-- Python version (for backend issues)
+## Setting up
 
-## Suggesting Features
-
-Open an issue using the **Feature request** template. Describe the problem you're trying to solve and any ideas you have for a solution.
-
-## Development Setup
-
-1. Install prerequisites (macOS with Homebrew):
-   ```bash
-   brew install python node pre-commit ruff
-   ```
-
-2. Clone the repository:
-   ```bash
-   git clone https://github.com/aallan/floodwatch.git
-   cd floodwatch
-   ```
-
-3. Install test dependencies and pre-commit hooks:
-   ```bash
-   pip install pytest               # Python tests
-   cd js-tests && npm install       # JavaScript tests
-   cd ..
-   pre-commit install               # Lint + format on every commit
-   ```
-
-4. Fetch historical data:
-   ```bash
-   python fetch_data.py --recent    # Quick — last 2 days
-   ```
-
-5. Start the dev server:
-   ```bash
-   python serve.py
-   open http://localhost:8080
-   ```
-
-## Running Tests
+You'll need Python 3.10 or later, Node 22 or later, `make`, `curl` and `shasum`. There's nothing to install from PyPI or npm to run the site or its tests.
 
 ```bash
-pytest tests/ -v                    # 91 Python tests
-cd js-tests && npm test             # 90 JavaScript tests
+git clone https://github.com/aallan/floodwatch.git
+cd floodwatch
+make libs
+make data
+make serve
 ```
 
-All tests must pass before a pull request can be merged. See [TESTING.md](TESTING.md) for details on what each test covers.
+The site is then at http://localhost:8090. The [README](README.md#running-it) says what the first poll does, and how to rebuild the map overlays from the download cache.
 
-## Submitting a Pull Request
+[Ruff](https://docs.astral.sh/ruff/) checks the Python, in CI and, if you want it before each commit, through [pre-commit](https://pre-commit.com/):
 
-1. Fork the repo and create a branch from `main`:
-   ```bash
-   git checkout -b my-feature main
-   ```
+```bash
+pip install pre-commit
+pre-commit install
+```
 
-2. Make your changes. Follow the existing code style (enforced by ruff via pre-commit):
-   - **Python:** 4-space indentation, type hints on function signatures
-   - **JavaScript:** 2-space indentation, single quotes
-   - **HTML:** minimal shell in `index.html`; styles in `css/floodwatch.css`, logic in `js/floodwatch.js`
+## Conventions
 
-3. Add or update tests if your change affects the data pipeline, server logic, or frontend utility functions.
+- The server, the poller and the scripts use the Python standard library and nothing else. A change that needs a package from PyPI needs a very good reason.
+- The page is plain HTML, CSS and JavaScript with no framework and no build step. Leaflet and Leaflet.markercluster are the only libraries; `make libs` downloads them and checks them against `libs.sha256`, so an upgrade changes the version in the `Makefile` and the checksums together.
+- The page loads nothing from anywhere but its own server and Esri's tile servers, and the Content Security Policy in `serve.py` enforces that. New data from an outside service is fetched by the server and passed to the page through `/api/`.
+- Each feed lives in its own module in `monitor/` and fails on its own, without stopping the rest of the poll.
+- Whether something belongs to the catchment is decided by `monitor/region.py`, for every layer, rather than by a box or a radius of its own.
+- `archive/` is written by the server every night. Don't edit it by hand, and keep code changes and archive changes in separate commits.
+- Text on the page, in comments and in the documentation is British English, with headings in sentence case.
 
-4. Run the test suite and make sure everything passes.
+## Tests
 
-5. Commit with a clear message describing what changed and why:
-   ```bash
-   git commit -m "Add support for additional rainfall stations"
-   ```
+```bash
+make test       # both suites
+make test-py    # the Python tests, with unittest
+make test-js    # the JavaScript tests, with Node's test runner
+```
 
-6. Push and open a pull request against `main`.
+The Python tests run against a temporary database, and every outside service is replaced by a fixed response, so they need no network. Fixtures in `tests/fixtures/` are trimmed copies of real responses; when a service changes the shape of what it sends, update the fixture from a real response rather than writing one by hand. The JavaScript tests load the page's scripts into a sandbox, through `tests/js/load.mjs`, and test their functions directly.
 
-## What We're Looking For
+A change to behaviour comes with a test that fails without it.
 
-Contributions that improve:
+## Pull requests
 
-- **Data accuracy** — better handling of EA API edge cases, missing readings, or unit mismatches
-- **Performance** — faster data loading, smarter caching, smaller payload sizes
-- **Accessibility** — screen reader support, keyboard navigation, colour contrast
-- **Mobile experience** — better touch interactions, responsive layout improvements
-- **Documentation** — clearer explanations, typo fixes, additional deployment guides
-- **Test coverage** — more edge cases, integration tests, or new test fixtures
+Branch from `main` and open the pull request against it. GitHub Actions runs Ruff and both test suites, and `main` won't accept a merge until the `python-tests` and `js-tests` checks pass. Keep each pull request to one change, say in its description what it changes and why, and include a screenshot of anything that looks different on the map. Add a line to the `Unreleased` section of the [changelog](CHANGELOG.md) for anything a visitor to the site or someone running it would notice.
 
-## What to Avoid
-
-- Don't add build tools or transpilers — the frontend is deliberately vanilla HTML/CSS/JS
-- Don't add Python dependencies beyond pytest — the backend uses only the standard library
-- Don't commit changes to CSV data files — these are updated automatically by GitHub Actions
-
-## Code of Conduct
-
-This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you agree to uphold this code.
-
-## Questions?
-
-Open a discussion or issue on GitHub. There are no silly questions.
+By contributing you agree that your work is released under the project's [MIT licence](LICENSE), and that you'll follow the [code of conduct](CODE_OF_CONDUCT.md).

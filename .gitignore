@@ -1,14 +1,24 @@
-.server.pid
-__pycache__/
-.DS_Store
-.claude
-data/.last_refresh
-node_modules/
-.pytest_cache/
+# Built on the machine that serves the site, never committed
+site/lib/
+site/data/
+archive/*.tmp
+.cache/
+data/
+
+# Secrets
 .env
 .env.*
+
+# Local tooling
+.claude/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+node_modules/
 venv/
 .venv/
 .idea/
 .vscode/
 *.log
+.DS_Store

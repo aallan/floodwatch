@@ -1,30 +1,25 @@
-# Security Policy
+# Security policy
 
-## Supported Versions
+## Reporting a vulnerability
 
-Only the latest version on the `main` branch is actively maintained.
+Please don't report a security problem in a public issue. Email **alasdair@babilim.co.uk** instead, with what you found, how to reproduce it and what you think it allows. You'll get an answer within 48 hours, and another once the problem has been looked at. Please allow time for a fix to be deployed before you say anything in public; you'll be credited in the changelog unless you'd rather not be.
 
-## Reporting a Vulnerability
+Only the latest version, the one running at [tawriver.watch](https://tawriver.watch) and on `main`, is maintained.
 
-If you discover a security vulnerability in Floodwatch, please report it responsibly:
+## What's in scope
 
-1. **Do not** open a public GitHub issue.
-2. Email **alasdair@babilim.co.uk** with a description of the vulnerability and steps to reproduce it.
-3. Allow reasonable time for the issue to be assessed and patched before disclosing publicly.
+Floodwatch is one Python process serving a static page and a small read-only API, behind Caddy. Problems with any of these are in scope:
 
-You will receive an acknowledgement within 48 hours and a follow-up once the issue has been triaged.
+- `serve.py`: serving files from `site/` and nothing outside it, and the endpoints under `/api/`, which take a station or overflow ID checked against a fixed pattern and a number of days, and read the database without writing to it.
+- The response headers: a Content Security Policy that lets the page load scripts, styles and data only from its own server and images only from its own server and Esri's tile servers, and refuses framing, along with `X-Content-Type-Options` and `Referrer-Policy`.
+- The page: everything taken from an outside feed, a station name, a warning's message, a power cut's postcodes, is escaped before it goes into the page.
+- The libraries: Leaflet and Leaflet.markercluster are served from the site itself, at versions pinned in the `Makefile` and checked against `libs.sha256` when they're downloaded.
+- The poller's handling of what the feeds send, which is parsed as data and never run.
+- The nightly archive: the server holds a deploy key with write access to this repository, which it uses only to push `archive/`. A way to use the server to push anything else, or to read the key, is in scope.
+- The GitHub Actions workflow, whose actions are pinned to commit SHAs and which runs with read-only permissions.
 
-## Scope
+## What isn't
 
-Floodwatch is a client-side dashboard that reads from public government APIs. The main security surface areas are:
-
-- **XSS prevention** — all user-visible data is escaped before rendering
-- **Content-Security-Policy** — restricts script and resource origins
-- **API proxy** — `serve.py` and `refresh.php` proxy EA API requests server-side
-- **Rate limiting** — refresh endpoint is rate-limited to prevent misuse
-
-## Out of Scope
-
-- The EA Flood Monitoring API itself (report to the Environment Agency)
-- The Open-Meteo API (report to Open-Meteo)
-- Third-party CDN-hosted libraries (Leaflet, Chart.js, PapaParse)
+- The services Floodwatch reads: report problems with the Environment Agency's APIs to the Environment Agency, with the storm overflow feed to South West Water, and so on.
+- The accuracy of the data itself. A gauge reading or warning that looks wrong is a bug report, not a vulnerability; open an issue.
+- Denial of service by volume against the public site.

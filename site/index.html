@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Floodwatch</title>
+  <meta name="description" content="Which of the River Taw's gauges are high and rising, which storm overflows are spilling, what flood warnings are in force, and what the rain and the rivers are doing now and are forecast to do next.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Floodwatch">
+  <meta property="og:url" content="https://tawriver.watch/">
+  <meta property="og:title" content="Floodwatch: the River Taw">
+  <meta property="og:description" content="Which of the River Taw's gauges are high and rising, which storm overflows are spilling, what flood warnings are in force, and what the rain and the rivers are doing now and are forecast to do next.">
+  <meta property="og:image" content="https://tawriver.watch/img/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="The tawriver.watch card: the Taw catchment's outline and rivers.">
+  <meta property="og:locale" content="en_GB">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Floodwatch: the River Taw">
+  <meta name="twitter:description" content="Which of the River Taw's gauges are high and rising, which storm overflows are spilling, what flood warnings are in force, and what the rain and the rivers are doing now and are forecast to do next.">
+  <meta name="twitter:image" content="https://tawriver.watch/img/og-image.png">
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg?v=2">
+  <link rel="stylesheet" href="lib/leaflet/leaflet.css?v=1.9.4">
+  <link rel="stylesheet" href="lib/markercluster/MarkerCluster.css?v=1.5.3">
+  <link rel="stylesheet" href="css/style.css?v=42">
+  <script src="js/utils.js?v=3"></script>
+</head>
+<body>
+<header>
+  <div class="header-row">
+    <div class="brand">
+      <h1><img src="img/favicon.svg?v=2" alt="" class="logo" width="26" height="26">Floodwatch <span class="ticker">RIVER TAW</span></h1>
+      <div class="brand-meta"><a href="https://github.com/aallan/floodwatch" target="_blank" rel="noopener"><svg class="github-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>View on GitHub</a><span id="version" class="version"></span></div>
+    </div>
+    <nav id="nav">
+      <a class="nav-btn" href="#/map">Map</a>
+      <a class="nav-btn" href="#/about">About</a>
+    </nav>
+    <div id="status" class="status-line"></div>
+    <div class="header-buttons">
+      <div id="drought" class="drought pill-menu" hidden>
+        <button type="button" class="drought-pill" aria-expanded="false" aria-controls="drought-details"><span class="drought-dot" aria-hidden="true"></span><span class="drought-pill-text"></span></button>
+        <div id="drought-details" class="pill-panel" hidden></div>
+      </div>
+      <div id="flood-status" class="pill-menu" hidden>
+        <button type="button" id="flood-pill" class="flood-pill" aria-expanded="false" aria-controls="flood-pill-panel"><span class="flood-pill-dot" aria-hidden="true"></span><span class="flood-pill-text"></span></button>
+        <div id="flood-pill-panel" class="pill-panel" hidden></div>
+      </div>
+      <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode"></button>
+    </div>
+  </div>
+  <div id="flood-banner" class="flood-banner" hidden>
+    <button type="button" class="flood-summary" aria-expanded="false" aria-controls="flood-details">
+      <svg class="flood-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20L12 3z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M12 10v4.5M12 17.2v.3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><span class="flood-summary-text"></span><span class="flood-chevron" aria-hidden="true"></span>
+    </button>
+    <div id="flood-details" class="flood-details" hidden></div>
+  </div>
+  <div id="weather-banner" class="flood-banner" hidden>
+    <button type="button" class="flood-summary" aria-expanded="false" aria-controls="weather-details">
+      <svg class="flood-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20L12 3z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><path d="M12 10v4.5M12 17.2v.3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><span class="flood-summary-text"></span><span class="flood-chevron" aria-hidden="true"></span>
+    </button>
+    <div id="weather-details" class="flood-details" hidden></div>
+  </div>
+</header>
+
+<main>
+  <section id="view-map" class="view">
+    <div class="map-box"><div id="map" role="region" aria-label="Map of the River Taw catchment"></div></div>
+  </section>
+
+  <section id="view-about" class="view">
+    <div class="section">
+      <h2>About</h2>
+      <div class="panel">
+        <p>Floodwatch shows which of the River Taw's gauges are high and rising, which storm overflows are spilling,
+          what flood and weather warnings are in force, where the power is off, and what the rain and the river
+          are forecast to do next, across the Taw's catchment in north Devon, from Dartmoor to Barnstaple. All of it
+          is public data, published by the Environment Agency, South West Water, the Met Office and others on their
+          own sites; here it's on one map, and most of it is checked every five minutes.</p>
+      </div>
+    </div>
+    <div class="section">
+      <h2>On the map</h2>
+      <div class="panel">
+        <dl class="about-list">
+          <dt>Flood warnings</dt>
+          <dd>The Environment Agency's flood warnings and alerts in force in the Taw catchment, outlined on the map,
+            with a banner across the top of the page while any are in force, and a pill in the header saying so while
+            none are.</dd>
+          <dt>Weather warnings</dt>
+          <dd>The Met Office's yellow, amber and red warnings of severe weather that name Devon, in a banner of the
+            warning's colour while any are in force. Each one opens to show the Met Office's own description of it,
+            and links to it on the Met Office site.</dd>
+          <dt>Drought</dt>
+          <dd>The Environment Agency's drought status for its Devon, Cornwall and Isles of Scilly area from its weekly
+            report, and South West Water's hosepipe ban, in a pill in the header that opens to show each stage as the
+            report words it, with a link to the report.</dd>
+          <dt>Power cuts</dt>
+          <dd>National Grid Electricity Distribution's power cuts in the catchment, each with the customers off, the
+            postcodes affected and when power is expected back on. To report a power cut, call 105.</dd>
+          <dt>Rivers and rain</dt>
+          <dd>The Environment Agency's river level, tidal and rain gauges in the catchment, and the rain gauges just
+            over its watershed, reporting every 15 minutes. River gauges are green within their typical range and red
+            above it, with an arrow while the level is rising or falling. Rain gauges have a 48-hour rain forecast,
+            and the gauge at Umberleigh a fortnight's river flow forecast for the Taw, scaled to start from the flow
+            measured there.</dd>
+          <dt>Storm overflows</dt>
+          <dd>South West Water's storm overflows in the catchment, which release storm sewage into the rivers and the
+            estuary when heavy rain overloads the sewers. The map opens on those spilling now; those that spilled in
+            the last 48 hours, and the rest once zoomed in, can be switched on from the legend. Each one's popup shows
+            its spills over the last 30 days and its yearly totals.</dd>
+          <dt>Background</dt>
+          <dd>The catchment's rivers, in Floodwatch's colours, and its streams; the Tarka and Dartmoor lines into
+            Exeter; and the A377 and the A30 west of Exeter, from OpenStreetMap. Rivers end where they meet the
+            estuary rather than running down the middle of it.</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Data sources</h2>
+      <div class="panel">
+        <table class="data-table sources">
+          <thead><tr><th>Layer</th><th>Source</th><th>Licence</th></tr></thead>
+          <tbody>
+            <tr><td>Flood warnings and alerts</td><td>Environment Agency real-time flood-monitoring API, checked every 5 minutes, with flood area outlines from the same API</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
+            <tr><td>Weather warnings</td><td>Met Office <a href="https://weather.metoffice.gov.uk/warnings-and-advice/uk-warnings" rel="noopener">weather warnings</a> for South West England, from its RSS feed, checked every 5 minutes. Contains public sector information licensed under the Open Government Licence v3.0.</td><td><a href="https://www.metoffice.gov.uk/policies/tandc" rel="noopener">Met Office terms</a></td></tr>
+            <tr><td>Drought status and hosepipe bans</td><td>The Environment Agency's weekly <a href="https://www.gov.uk/government/publications/dry-weather-and-drought-in-england-2026-summary-reports" rel="noopener">Dry weather and drought in England</a> report, read through GOV.UK's content API every 6 hours</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
+            <tr><td>Power cuts</td><td>National Grid Electricity Distribution's <a href="https://connecteddata.nationalgrid.co.uk/dataset/live-power-cuts" rel="noopener">live power cuts</a>, checked every 5 minutes. Supported by NGED Open Data.</td><td><a href="https://www.nationalgrid.co.uk/open-data-licence" rel="noopener">NGED Open Data Licence</a></td></tr>
+            <tr><td>River, tidal and rain gauges</td><td>Environment Agency real-time flood-monitoring API, checked every 5 minutes. This uses Environment Agency flood and river level data from the real-time data API (Beta).</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
+            <tr><td>Rain forecast</td><td><a href="https://open-meteo.com/" rel="noopener">Open-Meteo</a> weather forecast API, hourly rainfall for the next 48 hours at each rain gauge, fetched when a forecast is opened and kept for 15 minutes</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a></td></tr>
+            <tr><td>River flow forecast</td><td>GloFAS river discharge from the Copernicus Emergency Management Service, through <a href="https://open-meteo.com/en/docs/flood-api" rel="noopener">Open-Meteo's flood API</a>, for the Taw at Umberleigh. GloFAS models rivers on a grid about 5 km across, so its flows are scaled to match the river's long-run mean flow and to start from the flow measured at Umberleigh. Its forecasts are a guide to the days ahead rather than a measurement.</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a></td></tr>
+            <tr><td>Measured river flow</td><td>Environment Agency <a href="https://environment.data.gov.uk/hydrology/doc/reference" rel="noopener">Hydrology API</a>, a reading every 15 minutes at Umberleigh, fetched when the flow forecast is opened and kept for 15 minutes. Recent readings are provisional.</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
+            <tr><td>Mean river flows</td><td>Data from the UK National River Flow Archive, used to scale the modelled flows</td><td><a href="https://nrfa.ceh.ac.uk/help/costs-terms-and-conditions" rel="noopener">NRFA terms</a></td></tr>
+            <tr><td>Storm overflows</td><td>South West Water's storm overflow activity feed, checked every 5 minutes</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a></td></tr>
+            <tr><td>Storm overflow yearly totals</td><td>Event Duration Monitoring annual returns. © Environment Agency copyright and/or database right.</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
+            <tr><td>Catchment boundary</td><td>Environment Agency WFD operational catchments and the <a href="https://environment.data.gov.uk/catchment-planning/" rel="noopener">Catchment Data Explorer</a>'s river water bodies</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
+            <tr><td>Rivers and streams</td><td>OpenStreetMap <code>waterway=*</code> via the Overpass API</td><td><a href="https://www.openstreetmap.org/copyright" rel="noopener">ODbL</a></td></tr>
+            <tr><td>Railways and stations</td><td>OpenStreetMap route relations for the Tarka Line (275887) and Dartmoor Line (276920), and <code>railway=station</code>, via the Overpass API</td><td><a href="https://www.openstreetmap.org/copyright" rel="noopener">ODbL</a></td></tr>
+            <tr><td>Major roads</td><td>OpenStreetMap <code>highway=*</code> via the Overpass API</td><td><a href="https://www.openstreetmap.org/copyright" rel="noopener">ODbL</a></td></tr>
+            <tr><td>Place names</td><td>OpenStreetMap <code>place=town</code>, <code>village</code> and <code>hamlet</code> via the Overpass API, which rain gauges and power cuts are named after</td><td><a href="https://www.openstreetmap.org/copyright" rel="noopener">ODbL</a></td></tr>
+            <tr><td>Basemap</td><td>Esri World Light Gray / Dark Gray Canvas</td><td><a href="https://www.esri.com/en-us/legal/terms/full-master-agreement" rel="noopener">Esri terms</a></td></tr>
+          </tbody>
+        </table>
+        <p class="map-note" id="data-generated"></p>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Licence</h2>
+      <div class="panel">
+        <p>The code is open source under the MIT licence, at
+          <a href="https://github.com/aallan/floodwatch" rel="noopener">github.com/aallan/floodwatch</a>.
+          The data stay under their publishers' licences, listed above. Corrections to rivers, railways or roads are
+          best made on <a href="https://www.openstreetmap.org/" rel="noopener">OpenStreetMap</a>, and reach this map
+          when it's next rebuilt.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="footer-line"></div>
+  <div class="footer-content">
+    <span class="footer-note">Map data &copy; OpenStreetMap contributors</span>
+    <a href="https://github.com/aallan/floodwatch" target="_blank" rel="noopener" class="github-link">
+      <svg class="github-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+      aallan/floodwatch
+    </a>
+  </div>
+</footer>
+
+<script src="lib/leaflet/leaflet.js?v=1.9.4"></script>
+<script src="lib/markercluster/leaflet.markercluster.js?v=1.5.3"></script>
+<script src="js/stations.js?v=19"></script>
+<script src="js/powercuts.js?v=1"></script>
+<script src="js/map.js?v=45"></script>
+<script src="js/floods.js?v=3"></script>
+<script src="js/weather.js?v=1"></script>
+<script src="js/drought.js?v=3"></script>
+<script src="js/app.js?v=10"></script>
+</body>
+</html>

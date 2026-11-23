@@ -1,0 +1,12 @@
+# Archive the readings and spills to GitHub every night.
+
+[Unit]
+Description=Nightly archive of Floodwatch's readings and spills
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -6,25 +6,24 @@ labels: bug
 assignees: ''
 ---
 
-**Describe the bug**
-A clear description of what the bug is.
+## What happened
 
-**To reproduce**
-Steps to reproduce the behaviour:
-1. Go to '...'
-2. Click on '...'
-3. See error
+What you saw, and what you expected to see instead.
 
-**Expected behaviour**
-What you expected to happen.
+## Where
 
-**Screenshots**
-If applicable, add screenshots to help explain the problem.
+The gauge, storm overflow, warning or place, if it's something on the map, and roughly when you saw it.
 
-**Environment**
-- Browser and version: [e.g. Safari 18, Chrome 133]
-- OS: [e.g. macOS 15, iOS 18]
-- Deployment method: [e.g. local serve.py, App Platform, LAMP]
+## Steps to reproduce
 
-**Additional context**
-Any other information — console errors, affected stations, timestamps of bad readings, etc.
+1.
+2.
+3.
+
+## Device and browser
+
+For example: iPhone 15, Safari; or Windows 11, Firefox 133. Say if the page was in dark mode.
+
+## Screenshots
+
+If you can, attach one; it usually says more than a description.
