@@ -95,6 +95,20 @@ class Archive(DBTestCase):
         self.assertEqual(spill, [{"start_time": "2026-11-22T10:00:00Z", "end_time": "2026-11-22T11:30:00Z",
                                   "duration_min": "90", "is_ongoing": "false"}])
 
+    def test_ids_that_arent_plain_ids_never_become_file_names(self):
+        # The IDs come from outside feeds; the nightly push commits the files.
+        m = self.add_station("../../serve", name="Nowhere")
+        self.add_readings(m, [(1_793_361_600, 0.5)])
+        self.con.execute("INSERT INTO overflow_events VALUES ('../X', 1793361600, 1793365200)")
+        self.con.commit()
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "archive"
+            archive.export(self.con, out)
+            names = sorted(p.name for p in Path(tmp).rglob("*") if p.is_file())
+            self.assertNotIn("serve", " ".join(names))
+            self.assertFalse(any("X" in n for n in names if n.startswith("cso_")))
+            self.assertTrue(all(p.parent == out for p in Path(tmp).rglob("*.csv")))
+
     def test_no_archive_restores_nothing(self):
         self.assertEqual(archive.restore(self.con, self.dir), (0, 0, {}))
 

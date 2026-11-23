@@ -24,7 +24,7 @@ Floodwatch is rewritten from scratch, keeping only v1's data. The site moves fro
 - `archive/`, every reading since 13 January 2026 and every spill since 3 June 2026 in v1's CSV format, pushed nightly from the server and loaded by a new server's first poll.
 - A dark theme, following the system setting, with a toggle.
 - systemd units and a Caddyfile for running on an Ubuntu server, in `deploy/`.
-- 194 Python tests and 26 JavaScript tests, run on every pull request.
+- 195 Python tests and 26 JavaScript tests, run on every pull request.
 
 ### Changed
 - The server, the poller and the overlay builder use only the Python standard library; the page uses Leaflet and Leaflet.markercluster, served from the site and checked against pinned checksums, and loads nothing else from outside but Esri's map tiles.
