@@ -653,8 +653,8 @@ const FloodMap = (() => {
         ${item('powercuts', 'pcut-swatch', '--power-bg', 'Live power cuts', '<span class="count" id="legend-count-powercuts"></span>')}
         ${title('live', 'Live readings')}
         ${item('levels', 'gauge-swatch level', '--gauge-normal', 'River level (m)', '<span class="count" id="legend-count-levels"></span>')}
-        <div class="legend-key gauge-key"><span class="swatch gauge-swatch level" style="--c: var(--gauge-approach)"></span>near the top of its range
-          <span class="swatch gauge-swatch level" style="--c: var(--gauge-high)"></span>above it</div>
+        <div class="legend-key gauge-key"><span class="swatch gauge-swatch level" style="--c: var(--gauge-approach)"></span>near top of range
+          <span class="swatch gauge-swatch level" style="--c: var(--gauge-high)"></span>above range</div>
         ${item('tidal', 'gauge-swatch tidal', '--gauge-tidal', 'Tidal level (m AOD)', '<span class="count" id="legend-count-tidal"></span>')}
         ${item('rain', 'gauge-swatch rain', '--gauge-rain', 'Rain in the last hour (mm)', '<span class="count" id="legend-count-rain"></span>')}
         <div class="legend-key" aria-label="Trend badges on river and tidal gauges">
@@ -670,7 +670,7 @@ const FloodMap = (() => {
         </div>
         <div class="legend-col">
         ${title('waterways', 'Waterways')}
-        ${item('rivers', 'line', '--water', 'Rivers', '<span class="count" id="legend-count-rivers"></span>')}
+        ${item('rivers', 'line', '--water', 'Rivers')}
         ${Object.entries(RIVER_COLOURS).map(([name, colour]) =>
           `<div class="legend-key river-key"><span class="river-swatch" style="--c: var(${colour})"></span>${esc(name)}</div>`).join('')}
         ${item('streams', 'line thin', '--water-minor', 'Streams', '<span class="count" id="legend-streams-hint"></span>')}
@@ -767,7 +767,7 @@ const FloodMap = (() => {
       .then(fc => { add(fc); updateVisibility(); })
       .catch(e => console.warn(e));
     layer('catchment.geojson', addCatchment);
-    layer('rivers.geojson', fc => setCount('rivers', addRivers(fc)));
+    layer('rivers.geojson', addRivers);
     layer('roads.geojson', addRoads);
     layer('railways.geojson', addRailways);
     layer('stations.geojson', fc => setCount('stations', addStations(fc)));

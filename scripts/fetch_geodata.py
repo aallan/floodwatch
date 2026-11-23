@@ -543,37 +543,66 @@ def nearest_name(line, places):
     return min(places, key=lambda nq: min(dist(p, nq[1]) for p in line[::5] + [line[-1]]))[0]
 
 
+# The most unnamed ways a gap in a river is bridged across: enough for the
+# Little Dart above Witheridge, few enough not to wander down another stream.
+MAX_BRIDGE_WAYS = 6
+
+
 def bridge_gaps(by_name, streams):
     """Join unnamed waterways that fill a gap in a named river.
 
-    OSM sometimes leaves a stretch of a river unnamed, such as the Lapford
-    Yeo below its headwaters, where an unnamed way doubles as a parish
-    boundary. An unnamed way that runs from the end of one stretch of a river
-    to the start of another of the same river is part of it.
+    OSM sometimes leaves a stretch of a river unnamed: below the Lapford
+    Yeo's headwaters, where the way doubles as a parish boundary, and on the
+    Little Dart above Witheridge, where a chain of unnamed ways carries it
+    for 3.5 km. A chain of up to MAX_BRIDGE_WAYS unnamed ways, followed
+    downstream from the end of one stretch of a river to the start of
+    another stretch of the same river, is part of it. A way can be joined
+    part-way along, where the river meets it at one of its points: the river
+    takes the part below that point, and the part above stays a stream.
     """
-    ends, starts = defaultdict(set), defaultdict(set)
-    for name, lines in by_name.items():
-        if name:
-            for l in lines:
-                ends[l[-1]].add(name)
-                starts[l[0]].add(name)
+    unnamed = [pts for pts in by_name.get("", []) if len(pts) >= 2] + \
+              [pts for nm, pts in streams if not nm and len(pts) >= 2]
+    at_point = defaultdict(list)  # a point -> (way, index) for each unnamed way through it
+    for i, pts in enumerate(unnamed):
+        for k, pt in enumerate(pts[:-1]):
+            at_point[pt].append((i, k))
+    cut = {}  # way -> the index the river takes it from
+    for name, lines in list(by_name.items()):
+        if not name:
+            continue
+        starts = {l[0] for l in lines}
+        for gap_end in {l[-1] for l in lines} - starts:
+            # Breadth first, so the shortest chain wins.
+            frontier, seen, found = [(gap_end, [])], {gap_end}, None
+            while frontier and found is None:
+                nxt = []
+                for point, path in frontier:
+                    for i, k in at_point.get(point, ()):
+                        end = unnamed[i][-1]
+                        if i in cut or end in seen:
+                            continue
+                        if end in starts:
+                            found = path + [(i, k)]
+                            break
+                        if len(path) + 1 < MAX_BRIDGE_WAYS:
+                            seen.add(end)
+                            nxt.append((end, path + [(i, k)]))
+                    if found:
+                        break
+                frontier = nxt
+            for i, k in found or ():
+                cut[i] = k
+                by_name[name].append(unnamed[i][k:])
+    if not cut:
+        return
+    # What's left of each way joined part-way stays where it was.
+    rest = {id(unnamed[i]): unnamed[i][:k + 1] if k else None for i, k in cut.items()}
 
-    def owner(pts):
-        found = ends.get(pts[0], set()) & starts.get(pts[-1], set())
-        return next(iter(found)) if len(found) == 1 else None
-
-    keep = []
-    for pts in by_name.get("", []):
-        name = owner(pts) if len(pts) >= 2 else None
-        (by_name[name] if name else keep).append(pts)
+    def trim(pts):
+        return rest.get(id(pts), pts)
     if "" in by_name:
-        by_name[""] = keep
-    for i, (nm, pts) in enumerate(list(streams)):
-        name = None if nm or len(pts) < 2 else owner(pts)
-        if name:
-            by_name[name].append(pts)
-            streams[i] = None
-    streams[:] = [s for s in streams if s is not None]
+        by_name[""] = [t for t in (trim(pts) for pts in by_name[""]) if t]
+    streams[:] = [(nm, t) for nm, t in ((nm, trim(pts)) for nm, pts in streams) if t]
 
 
 def fetch_waterways(land, coast, bbox):

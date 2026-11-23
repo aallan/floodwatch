@@ -136,6 +136,24 @@ class Gaps(unittest.TestCase):
         self.assertEqual(streams, [("Some Brook", [(1, 0), (2, 0)]), ("", [(9, 9), (8, 8)])])
         self.assertEqual(by_name[""], [[(5, 5), (6, 6)]])
 
+    def test_a_chain_of_unnamed_ways_joined_part_way_along(self):
+        # As on the Little Dart: the gap runs down one unnamed way, onto
+        # another part-way along, and on to where the named river resumes.
+        by_name = {"Little Dart River": [[(0, 0), (1, 0)], [(4, 0), (5, 0)]]}
+        streams = [("", [(1, 0), (2, 0)]),
+                   ("", [(2, 5), (2, 1), (2, 0), (3, 0)]),   # joined at (2, 0)
+                   ("", [(3, 0), (4, 0)])]
+        fg.bridge_gaps(by_name, streams)
+        self.assertEqual(by_name["Little Dart River"][2:], [[(1, 0), (2, 0)], [(2, 0), (3, 0)], [(3, 0), (4, 0)]])
+        self.assertEqual(streams, [("", [(2, 5), (2, 1), (2, 0)])])  # the stretch above the join stays a stream
+
+    def test_a_gap_too_many_ways_long_isnt_bridged(self):
+        n = fg.MAX_BRIDGE_WAYS + 1
+        by_name = {"River Yeo": [[(0, 0), (1, 0)], [(n + 1, 0), (n + 2, 0)]]}
+        streams = [("", [(i, 0), (i + 1, 0)]) for i in range(1, n + 1)]
+        fg.bridge_gaps(by_name, streams)
+        self.assertEqual(len(by_name["River Yeo"]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
