@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+- Diagrams in the README of how the site is put together, the poll cycle, the spill log, the archive and the server, and figures of how the catchment's outline is made and of the flow forecast's scaling, drawn by `make figures`.
+
+### Changed
+- The README's screenshot is captured with Chrome's viewport fixed before the page loads, so no basemap tiles go missing.
+- The documentation and the About page are brought up to date with the server as deployed: the setup steps in the order they work, the ruleset that lets the nightly archive push, and what the first export did to v1's files.
+- The first nightly export rewrote v1's archive files once, to v2's format: spill times to the second, spill durations rounded to the nearest minute, Barnstaple's tidal gauge labelled "Barnstaple", and `stations.csv` sorted by ID. No readings or spills changed. Each night since only adds lines.
+
+### Fixed
+- `.ssh/` is ignored, since on the server the checkout is the `floodwatch` user's home, and the deploy key sits inside it.
+
 ## [2.0.0] — 2026-11-23
 
 Floodwatch is rewritten from scratch, keeping only v1's data. The site moves from DigitalOcean's App Platform, where an hourly GitHub Actions job committed CSVs that the page downloaded and parsed on every visit, to its own server, which polls every feed every five minutes, keeps the readings in SQLite and sends the page about 10 KB of current readings, with each gauge's history fetched only when its popup opens.

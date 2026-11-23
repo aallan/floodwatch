@@ -4,7 +4,7 @@
 
 Floodwatch shows what the River Taw is doing: how high each gauge is and whether it's rising, how much rain has fallen in the last hour, which storm overflows are spilling, and what flood and weather warnings are in force across the catchment, from Dartmoor to Barnstaple. It runs at [tawriver.watch](https://tawriver.watch).
 
-Everything on the map is public data, from the Environment Agency, South West Water, the Met Office, National Grid Electricity Distribution and others, read every five minutes. Floodwatch also keeps what those sources don't: the Environment Agency's API holds about four weeks of readings, and South West Water's feed only each overflow's latest spill, so Floodwatch has kept every reading since 13 January 2026 and every spill since 3 June 2026, and serves the lot.
+Everything on the map is public data, from the Environment Agency, South West Water, the Met Office, National Grid Electricity Distribution and others, read every five minutes. The Environment Agency's API holds about four weeks of readings, and South West Water's feed only each overflow's latest spill, so Floodwatch keeps its own copy of every reading since 13 January 2026 and every spill since 3 June 2026, and serves the lot.
 
 The site is one page with no framework and no build step. The server, the poller and the map-data builder use only the Python standard library, with readings kept in SQLite.
 
@@ -101,9 +101,9 @@ make data     # build the map overlays in site/data
 make serve    # serve the site at http://localhost:8090, polling every 5 minutes
 ```
 
-The first poll lists the gauges and storm overflows, loads the history in `archive/`, then reads the warnings, power cuts and drought report and fills in each gauge's last four weeks from the Environment Agency, four gauges at a time. The gauges appear within a minute or two; the history fill takes a few minutes more.
+The first poll lists the gauges and loads their readings from `archive/`, lists the storm overflows and loads their spill logs, reads the warnings, power cuts and drought report, and then fetches from the Environment Agency whatever the archive doesn't hold, four gauges at a time. The Agency can take a minute or more to answer for its station list the first time it's asked, so the gauges appear within a few minutes, and the history fill takes a few more.
 
-`make data` takes a few minutes on a first run, most of it waiting on the public [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) servers. Downloads are cached in `.cache/overpass/` for a day:
+`make data` takes a few minutes on a first run, most of it waiting on the public [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API) servers, and the builder tries up to eight times, across two of them, when they're busy. Downloads are cached in `.cache/overpass/` for a day; when Overpass is slow, a copy of another machine's `.cache/overpass/` and `--cached` gets round it:
 
 ```bash
 python3 scripts/fetch_geodata.py --refresh   # ignore the cache and download everything again
@@ -116,24 +116,36 @@ The other targets:
 make poll     # run one poll of every feed, without the server
 make test     # run the Python and JavaScript tests
 make og       # redraw the link preview card, site/img/og-image.png (needs Google Chrome and make data)
+make figures  # redraw the figures in docs/ (needs make data, and the live site for the flow forecast)
 make screenshot  # retake docs/screenshot.png, the map in a Safari window, from the running server (needs Google Chrome and Node)
 make clean    # remove the libraries, overlays and download cache; the database stays
 ```
 
 ### On a server
 
-The public site runs as one process on an Ubuntu 24.04 server, with [Caddy](https://caddyserver.com/) in front for HTTPS, and pushes the archive back to this repository every night. `deploy/` holds the configuration:
+The public site runs as one process on a small Ubuntu 24.04 droplet, with [Caddy](https://caddyserver.com/) in front for HTTPS, and pushes the archive back to this repository every night.
+
+```mermaid
+flowchart LR
+  visitor(["Visitor"]) -- "https://tawriver.watch" --> caddy["Caddy, ports 80 and 443<br/>certificates, compression"]
+  caddy --> serve["floodwatch.service<br/>serve.py on port 8090, with the poller"]
+  dtimer["floodwatch-data.timer<br/>Sundays, 04:30"] --> dsvc["floodwatch-data.service<br/>make data"]
+  atimer["floodwatch-archive.timer<br/>every night, 02:30"] --> asvc["floodwatch-archive.service<br/>scripts/archive.py push"]
+  asvc -- "deploy key" --> github[("GitHub, main")]
+```
+
+`deploy/` holds the configuration:
 
 ```
 deploy/floodwatch.service           the web server and poller
-deploy/floodwatch-data.service      rebuilds the map overlays
+deploy/floodwatch-data.service      rebuilds the map overlays, giving up after an hour
 deploy/floodwatch-data.timer        runs that rebuild early every Sunday
-deploy/floodwatch-archive.service   exports the archive, commits it and pushes it
+deploy/floodwatch-archive.service   exports the archive, commits it and pushes it, giving up after 30 minutes
 deploy/floodwatch-archive.timer     runs that at 02:30 every night
 deploy/Caddyfile                    HTTPS for tawriver.watch, and the redirect from www
 ```
 
-Point the domain's DNS at the server first, A and AAAA records for the bare name and `www`, so Caddy can get its certificates when it starts. Then, as root:
+As root on the new server, install Caddy and make the `floodwatch` user, whose home is the checkout, with an SSH key of its own:
 
 ```bash
 apt update && apt install -y git make curl gnupg python3 debian-keyring debian-archive-keyring apt-transport-https
@@ -147,12 +159,17 @@ runuser -u floodwatch -- ssh-keygen -t ed25519 -N '' -C floodwatch-archive -f /s
 cat /srv/floodwatch/.ssh/id_ed25519.pub
 ```
 
-Add that public key to the repository as a deploy key with write access. The nightly archive pushes to `main`, whose branch protection requires the `python-tests` and `js-tests` checks, so the deploy key also needs to be allowed to bypass that rule, with a repository ruleset that lists deploy keys as a bypass actor. Then:
+Add that public key to the repository as a deploy key, under **Settings → Deploy keys**, with write access. The nightly archive pushes straight to `main`, so the key also has to be allowed past `main`'s protection. A classic branch protection rule can't exempt a deploy key, so `main` is protected by a repository ruleset instead. It requires a pull request and the `python-tests` and `js-tests` checks, blocks force pushes and deletion, and lists **Deploy keys** and **Repository admin** as always allowed to bypass it.
+
+Then fetch the code into the user's home, which already holds `.ssh/` (ignored by git), build, and start everything:
 
 ```bash
 runuser -u floodwatch -- ssh -o StrictHostKeyChecking=accept-new -T git@github.com   # records GitHub's host key
 cd /srv/floodwatch
-runuser -u floodwatch -- git clone git@github.com:aallan/floodwatch.git .
+runuser -u floodwatch -- git init -q -b main .
+runuser -u floodwatch -- git remote add origin git@github.com:aallan/floodwatch.git
+runuser -u floodwatch -- git fetch -q origin
+runuser -u floodwatch -- git checkout -q -t origin/main
 runuser -u floodwatch -- make libs
 runuser -u floodwatch -- make data
 
@@ -165,9 +182,13 @@ systemctl reload caddy
 ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443 && ufw --force enable
 ```
 
-The service runs as the unprivileged `floodwatch` user and can write only to `data/`, `site/data/` and `.cache/`; the archive service writes only to `data/` and `.git`. Its log is in the journal, `journalctl -u floodwatch -f`, and the archive's in `journalctl -u floodwatch-archive`.
+Watch the first poll with `journalctl -u floodwatch -f`, where the archive restore reports how many readings and spills it loaded. Before anyone else sees it, look at the site through an SSH tunnel from your own machine, `ssh -L 8091:localhost:8090 root@<server>`, at http://localhost:8091.
 
-To update, pull and restart. The first poll after a restart reads every feed straight away, whatever its schedule:
+Then point the domain at the server: A and AAAA records for the bare name and for `www`, or for a `*` wildcard, which covers `www`. Caddy fetches its certificates once Let's Encrypt can reach the server by name; if it tried before the DNS changed, it waits longer after each failure, and `systemctl restart caddy` makes it try again straight away.
+
+The web service runs as the unprivileged `floodwatch` user and can write only to `data/`, `site/data/` and `.cache/`; the archive service writes only to `data/` and `.git`. Their logs are in the journal, `journalctl -u floodwatch` and `journalctl -u floodwatch-archive`. The archive keeps the data; a nightly backup from the hosting provider keeps the rest, Caddy's certificates and the deploy key among it.
+
+To update, pull and restart. The header shows the version `git describe` gives when the server starts, and the first poll after a restart reads every feed straight away, whatever its schedule:
 
 ```bash
 cd /srv/floodwatch && runuser -u floodwatch -- git pull && systemctl restart floodwatch
@@ -181,15 +202,59 @@ cd /srv/floodwatch && runuser -u floodwatch -- git pull && systemctl restart flo
 - `level_<id>_<name>.csv` and `rainfall_<id>.csv`, one per gauge, with every 15-minute reading: `dateTime,value,unit,station_id,station_label`
 - `cso_<id>.csv`, one per storm overflow, with every spill: `start_time,end_time,duration_min,is_ongoing`
 
-Every night `scripts/archive.py push` writes the database out to `archive/`, and commits and pushes the files that changed. It works in a separate git worktree, `data/archive-worktree`, reset to the tip of `main` each night, so the checkout the server runs from is never touched and a deploy's `git pull` stays a fast-forward; if a push fails, the next night starts afresh. A gauge's existing file is reused and written exactly as v1 wrote it, so a night's commit adds that day's lines and nothing else. Files of gauges that are no longer listed are left alone.
+```mermaid
+flowchart LR
+  db[("The server's database")] -- "02:30 every night:<br/>export, commit, push" --> main[("archive/ on main")]
+  main -- "git clone" --> fresh["A new server"]
+  fresh -- "first poll:<br/>restore" --> db2[("Its database")]
+```
 
-On a new server the first poll loads `archive/` into the database, once the gauges and overflows are listed, so a fresh deploy starts with all the history there is. Readings and spills it already holds are kept, so the load is safe to repeat; `python3 scripts/archive.py restore` runs it by hand, and loads v1's own `data/` directory too.
+Every night `scripts/archive.py push` writes the database out to `archive/`, and commits and pushes the files that changed, as the author "Floodwatch archive". It works in a separate git worktree, `data/archive-worktree`, reset to the tip of `main` each night, so the checkout the server runs from is never touched and a deploy's `git pull` stays a fast-forward; if a push fails, the next night starts afresh. Each gauge's file is reused and written the same way every night, so a night's commit adds that day's lines and nothing else, and the test workflow skips commits that only touch `archive/`. Files of gauges that are no longer listed are left alone.
+
+The first export rewrote the files v1 left, once, in v2's format. v2 records spill times to the second, where v1 kept fractions of one, rounds spill durations to the nearest minute, labels Barnstaple's tidal gauge "Barnstaple", and sorts `stations.csv` by ID. The readings and spills themselves didn't change.
+
+On a new server the first poll loads the archive's readings as soon as the gauges are listed, before it stores the latest, and its spill logs once the overflows are listed, however many cycles that takes. Readings and spills it already holds are kept, so the load is safe to repeat; `python3 scripts/archive.py restore` runs it by hand, and loads v1's own `data/` directory too. Station and overflow IDs are checked against a strict pattern before they become file names, when exporting and when restoring.
 
 ## How it works
 
-The poller, in `monitor/`, runs every 5 minutes, reading each feed in turn: the gauges, the storm overflows, the flood warnings, the weather warnings, the power cuts and the drought report, and then filling any gaps in the gauges' history. The feeds are independent, so one failing doesn't stop the others, and every request gives up after two minutes, however slowly an answer arrives.
+```mermaid
+flowchart LR
+  feeds["Public feeds, every 5 minutes<br/>Environment Agency: gauges, flood warnings<br/>South West Water: storm overflows<br/>Met Office: weather warnings<br/>NGED: power cuts<br/>GOV.UK: the drought report"]
+  subgraph server["serve.py"]
+    poller["The poller"]
+    db[("SQLite<br/>data/monitor.db")]
+    files["site/data/<br/>live.json, overflows.json…"]
+    api["/api/<br/>history, CSV, forecasts"]
+  end
+  ondemand["Open-Meteo, GloFAS,<br/>Hydrology API, NRFA"]
+  page["The page"]
+  feeds --> poller
+  poller --> db
+  poller --> files
+  db --> api
+  ondemand -. "when a popup asks" .-> api
+  files --> page
+  api --> page
+```
+
+The whole site is one Python process. The poller, in `monitor/`, runs in a thread of `serve.py` every 5 minutes, reads the feeds into SQLite, and writes the small JSON files the page loads when it opens. Everything bigger, a gauge's history, a CSV, a forecast, is fetched from `/api/` only when a popup asks for it.
+
+```mermaid
+flowchart TD
+  gauges["Gauges: the station list once a day, the archive's readings once on a new server,<br/>then the latest reading from every gauge, into live.json"]
+  overflows["Storm overflows: the list and yearly totals once a day,<br/>then every overflow's status, into the spill log and overflows.json"]
+  spills["The archive's spill logs, once on a new server"]
+  warnings["Flood warnings: the flood areas once a day, then the warnings in force"]
+  rest["Met Office warnings, power cuts, and the drought report every 6 hours"]
+  fill["Gaps in the gauges' history, four gauges at a time"]
+  gauges --> overflows --> spills --> warnings --> rest --> fill
+```
+
+Each step fails on its own, so one feed being down doesn't stop the others, and a failing daily refresh of a list doesn't stop the live readings that use it, which carry on against yesterday's list while the refresh is tried again next cycle. A request that's cut off or reset is tried again, and every request gives up after two minutes, however slowly an answer arrives.
 
 ### The catchment
+
+![How the catchment's outline is made, in three panels: the operational catchment, which takes in the Exmoor coast; the Taw's water bodies and a box round the estuary; and the outline where they overlap, shown among the neighbouring catchments, the Torridge and the Exe among them](docs/catchment.svg)
 
 Two Environment Agency datasets make the catchment's outline. The WFD operational catchment "Taw and North Devon Streams" covers all the land draining to the Taw, Barnstaple included, and stops at the estuary's banks; but it also takes in the Exmoor coast, from Croyde round to Lynmouth. The river water bodies inside it are numbered by hydrometric area, and those draining to the Taw are in area 50, the same as the gauging station at Umberleigh; but they leave out the land draining straight into the estuary. The outline is the operational catchment wherever it's in one of the Taw's water bodies or in a box round the estuary, about 1,200 km². The two datasets were digitised separately, so they're combined on a grid about 5 m square and the outline traced from it.
 
@@ -197,17 +262,33 @@ The same builder writes the catchments around the Taw's: the Torridge, Barnstapl
 
 ### Gauges
 
-Once a day the poller lists the Environment Agency's level and rainfall stations within 45 km, keeps those that belong to the catchment, and reads each river gauge's typical range and record high. Every 5 minutes it makes one request per kind of reading for the latest value from every station in England, keeps the catchment's, and writes `site/data/live.json`, about 10 KB with every gauge's latest reading, trend and state, which is everything the map needs to draw its markers.
+Once a day the poller lists the Environment Agency's level and rainfall stations within 45 km, keeps those that belong to the catchment, and reads each river gauge's typical range and record high. Every 5 minutes it makes one request per kind of reading for the latest value from every station in England, keeps the catchment's, and writes `site/data/live.json`, about 7 KB with every gauge's latest reading, trend and state, which is everything the map needs to draw its markers.
 
 A gauge whose newest reading is more than 15 minutes past what the database holds has missed some, because the server was down or because the gauge uploads in batches, so its readings are fetched from the last one held. A gauge's history is fetched from `/api/stations/<id>/readings` only when its popup opens. Up to 28 days the chart gets every reading; over a longer range, or all time, the readings are put into buckets of an hour or more, enough that the chart has no more than 3,000 points, keeping each bucket's highest level or its total rain. `/api/stations/<id>/readings.csv` returns every reading at full resolution.
 
 ### Storm overflows
 
-South West Water's feed reports each overflow's current state and only its latest spill, so the spill log is built up by polling. Every 5 minutes the poller reads all of South West Water's overflows in one request and, for each of the catchment's, compares the latest spill with the last one logged: a new start time is a new spill, and the same start time with the overflow now quiet closes the open one. A spill that starts and ends between two polls is still caught, because the feed keeps it as the latest until the next one, but if two spills happen between polls the earlier is missed. Once a day the poller reads names, asset types and yearly totals from the annual returns, matching rows to overflows by permit ID; rows before 2024 are matched through South West Water's own permit reference.
+South West Water's feed reports each overflow's current state and only its latest spill, so the spill log is built up by polling. Every 5 minutes the poller reads all of South West Water's overflows in one request and, for each of the catchment's, compares the latest spill with the last one logged:
+
+```mermaid
+flowchart TD
+  latest["The feed's latest spill for an overflow"] --> when{"Its start time,<br/>against the last one logged"}
+  when -- "later" --> new["A new spill. If the last one was still open,<br/>it ended when this one began."]
+  when -- "the same" --> quiet{"Overflow quiet now,<br/>with an end time?"}
+  quiet -- "yes" --> close["The open spill ended then"]
+  quiet -- "no" --> wait["Still spilling: nothing changes"]
+  when -- "earlier" --> ignore["The feed went backwards:<br/>keep what's logged"]
+```
+
+A spill that starts and ends between two polls is still caught, because the feed keeps it as the latest until the next one, but if two spills happen between polls the earlier is missed. Now and then the feed reports an overflow quiet with no usable end time; the spill then counts as having ended when the quiet status began, so it isn't shown as recent for ever. Once a day the poller reads names, asset types and yearly totals from the annual returns, matching rows to overflows by permit ID; rows before 2024 are matched through South West Water's own permit reference.
 
 ### Flow forecast
 
-Flow forecasts come from [GloFAS](https://global-flood.emergency.copernicus.eu/), the Copernicus global flood model, through Open-Meteo's flood API. GloFAS routes rivers on a grid of cells about 5 km across, so `scripts/calibrate_flow.py` compares the model's 2015–2024 flows in the 25 cells around Umberleigh with the gauged record, and the forecast uses the cell just upstream of the gauge, which carries the Taw. Its flows are scaled so their long-run mean matches the gauged mean, 18.3 m³/s, read from the National River Flow Archive. The flow measured at Umberleigh every 15 minutes comes from the Hydrology API, and the forecast is scaled again by the ratio of measured to modelled flow on the last full day, so it starts from the river as it is: its lowest flow so far is multiplied by the ratio, and any rise from rain is added at the model's own size.
+Flow forecasts come from [GloFAS](https://global-flood.emergency.copernicus.eu/), the Copernicus global flood model, through Open-Meteo's flood API. GloFAS routes rivers on a grid of cells about 5 km across, so `scripts/calibrate_flow.py` compares the model's 2015–2024 flows in the 25 cells around Umberleigh with the gauged record, and the forecast uses the cell just upstream of the gauge, which carries the Taw. Its flows are scaled so their long-run mean matches the gauged mean, 18.3 m³/s, read from the National River Flow Archive. The flow measured at Umberleigh every 15 minutes comes from the Hydrology API, and the forecast is scaled again by the ratio of measured to modelled flow on the last full day, so it starts from the river as it is. Its lowest flow so far is multiplied by the ratio, and any rise from rain is added at the model's own size.
+
+![The River Taw at Umberleigh on 23 November 2026: the measured flow peaked at 125 cubic metres a second on 20 November and stood near 50, while the GloFAS model's own flow stayed below 10; the forecast, scaled by 15, starts from the measured flow and stays near 50 for the fortnight ahead](docs/flow-forecast.svg)
+
+On a day like this one, after a wet week the model missed, the measured flow was fifteen times the modelled. Scaling the whole forecast by that would also multiply any rise the model expects from rain by fifteen, so only its starting level is scaled.
 
 ### The map's overlays
 
@@ -215,7 +296,7 @@ Flow forecasts come from [GloFAS](https://global-flood.emergency.copernicus.eu/)
 
 ## Tests
 
-`make test` runs both suites, which use only Python's `unittest` and Node's built-in test runner, so there's nothing to install beyond Python and Node. The 195 Python tests cover the poller, the gauges, the spill log, the archive's export, restore and nightly push, the history buckets and CSV download, which positions belong to the catchment, the overlay builder's outline tracing, river naming and gap filling, the warnings, the drought report, power cuts, forecasts, and the server's endpoints and headers; each runs against a temporary database, with every outside service replaced by fixed responses, several of them trimmed copies of real ones in `tests/fixtures/`. The 26 JavaScript tests load the page's scripts into a sandbox and check the gauges' states and numbers, what a cluster shows, the chart arithmetic, the flow forecast's scaling, the spelt-out overflow names, the warning banner's wording and the power cut popups. GitHub Actions runs both on every push to `main` and every pull request.
+`make test` runs both suites, which use only Python's `unittest` and Node's built-in test runner, so there's nothing to install beyond Python and Node. The 195 Python tests cover the poller, the gauges, the spill log, the archive's export, restore and nightly push, the history buckets and CSV download, which positions belong to the catchment, the overlay builder's outline tracing, river naming and gap filling, the warnings, the drought report, power cuts, forecasts, and the server's endpoints and headers; each runs against a temporary database, with every outside service replaced by fixed responses, several of them trimmed copies of real ones in `tests/fixtures/`. The 26 JavaScript tests load the page's scripts into a sandbox and check the gauges' states and numbers, what a cluster shows, the chart arithmetic, the flow forecast's scaling, the spelt-out overflow names, the warning banner's wording and the power cut popups. GitHub Actions runs both on every pull request and every push to `main`, except the nightly archive's, which only touch `archive/`.
 
 ## Project layout
 
@@ -241,9 +322,11 @@ scripts/fetch_geodata.py   the catchment, its neighbours and the map's overlays
 scripts/archive.py         export, restore and push the archive
 scripts/calibrate_flow.py  finds the GloFAS cell that carries a river past a gauge
 scripts/og_image.py        draws site/img/og-image.png, the link preview card
+scripts/figures.py         draws the figures in docs/: the catchment's outline and the flow forecast
 scripts/screenshot.py      takes docs/screenshot.png, the map in a Safari window
 scripts/capture_page.mjs   captures the page for it at an exact size, through Chrome's DevTools protocol
 archive/                   every reading and spill, in v1's CSV format
+docs/                      the README's screenshot and figures
 site/index.html            the page
 site/css/style.css         layout and theme, light and dark
 site/js/map.js             basemap, overlays, markers, clusters, legend and the opening view

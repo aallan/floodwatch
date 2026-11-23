@@ -36,6 +36,7 @@ pre-commit install
 - Whether something belongs to the catchment is decided by `monitor/region.py`, for every layer, rather than by a box or a radius of its own.
 - `archive/` is written by the server every night. Don't edit it by hand, and keep code changes and archive changes in separate commits.
 - Text on the page, in comments and in the documentation is British English, with headings in sentence case.
+- The README's diagrams are [Mermaid](https://mermaid.js.org/), which GitHub draws from the text, so they're edited like any other text. Its figures are drawn by `make figures`, and its screenshot by `make screenshot`; redraw them when what they show changes.
 
 ## Tests
 
