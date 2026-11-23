@@ -1,6 +1,7 @@
 # Built on the machine that serves the site, never committed
 site/lib/
 site/data/
+archive/*.tmp
 .cache/
 data/
 

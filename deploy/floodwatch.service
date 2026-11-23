@@ -1,0 +1,32 @@
+# The web server and its poller, run as the unprivileged 'floodwatch' user.
+# Install with: sudo cp deploy/*.service deploy/*.timer /etc/systemd/system/
+
+[Unit]
+Description=Floodwatch web server and poller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=floodwatch
+Group=floodwatch
+WorkingDirectory=/srv/floodwatch
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 serve.py 8090
+Restart=always
+RestartSec=5
+
+# The process can write only to its data directories.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+ReadWritePaths=/srv/floodwatch/data /srv/floodwatch/site/data /srv/floodwatch/.cache
+
+[Install]
+WantedBy=multi-user.target

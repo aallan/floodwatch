@@ -11,7 +11,7 @@ import argparse
 import threading
 import time
 
-from . import db, drought, ea, floods, live, overflows, powercuts, weather
+from . import archive, db, drought, ea, floods, live, overflows, powercuts, weather
 
 # Stations report every 15 minutes but not in step, and the EA publishes each
 # reading some minutes after it is taken, so polling more often than the
@@ -34,6 +34,7 @@ def cycle():
         # run, or after the server has been down, it can take minutes.
         gaps = None
         for name, poll in (("gauge", poll_gauges), ("overflow", poll_overflows),
+                           ("archive", restore_archive),
                            ("flood warning", poll_floods), ("weather warning", poll_weather),
                            ("power cut", poll_powercuts), ("drought", poll_drought)):
             try:
@@ -67,6 +68,22 @@ def poll_gauges(con, fresh=False):
     live.write(con)
     ea.log(f"gauges: {len(latest)} latest readings")
     return latest, held
+
+
+def restore_archive(con, fresh=False):
+    """On a new server, load the history in archive/ once, after the gauges
+    and overflows are listed and before gaps are filled from the API, so
+    those fetch only what the archive doesn't hold."""
+    if db.get_meta(con, "archive_restored"):
+        return
+    if not con.execute("SELECT 1 FROM stations LIMIT 1").fetchone():
+        return  # the station list failed; try again next cycle
+    readings, spills, skipped = archive.restore(con)
+    db.set_meta(con, "archive_restored", int(time.time()))
+    con.commit()
+    live.write(con)
+    overflows.write_summary(con)
+    ea.log(f"archive: restored {readings} readings and {spills} spills" + (f"; skipped {len(skipped)} stations" if skipped else ""))
 
 
 def fill_gauge_gaps(con, latest, held):

@@ -1,0 +1,16 @@
+# Caddy serves the site over HTTPS, getting and renewing certificates for
+# every name below once their DNS points at this server. Install with:
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
+
+tawriver.watch {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8090 {
+		header_down -Server
+	}
+	header Strict-Transport-Security "max-age=31536000"
+}
+
+# The other name redirects, keeping the path.
+www.tawriver.watch {
+	redir https://tawriver.watch{uri} permanent
+}

@@ -1,0 +1,28 @@
+# Exports every reading and spill to archive/, and commits and pushes it to
+# GitHub if anything changed; started nightly by floodwatch-archive.timer,
+# or by hand with
+#   sudo systemctl start floodwatch-archive
+#
+# It pushes with the floodwatch user's SSH deploy key, in
+# /srv/floodwatch/.ssh, which needs write access to the repository and
+# permission to push to main past its branch protection.
+
+[Unit]
+Description=Floodwatch nightly archive to GitHub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=floodwatch
+Group=floodwatch
+WorkingDirectory=/srv/floodwatch
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 HOME=/srv/floodwatch
+ExecStart=/usr/bin/python3 scripts/archive.py push
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+# data/ for the database: SQLite needs its shared-memory file even to read.
+ReadWritePaths=/srv/floodwatch/archive /srv/floodwatch/.git /srv/floodwatch/data

@@ -1,0 +1,22 @@
+# Rebuilds the map overlays from the Environment Agency and OpenStreetMap;
+# started weekly by floodwatch-data.timer, or by hand with
+#   sudo systemctl start floodwatch-data
+
+[Unit]
+Description=Floodwatch map overlays
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=floodwatch
+Group=floodwatch
+WorkingDirectory=/srv/floodwatch
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/make data
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/srv/floodwatch/data /srv/floodwatch/site/data /srv/floodwatch/.cache
