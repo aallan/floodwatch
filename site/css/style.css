@@ -721,7 +721,7 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 .flood-details {
     position: absolute; left: -4px; right: 0; top: 100%; z-index: 1100;
     max-height: min(60vh, 32rem); overflow-y: auto;
-    background: var(--bg-card); border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+    background: var(--bg-card); color: var(--text); border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
     border-radius: 0; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 .flood-summary[aria-expanded="true"] { border-bottom: 1px solid color-mix(in srgb, var(--tone) 35%, transparent); }
@@ -904,3 +904,7 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
     box-sizing: border-box; color: #2c3345; font-size: 8px; font-weight: 800; flex: none; margin-right: 4px;
     display: inline-flex; align-items: center; justify-content: center;
 }
+
+/* Menus that drop down from the dark header are cards, with the card's own
+   dark text rather than the header's light text. */
+.flood-details, .pill-panel { color: var(--text); }
