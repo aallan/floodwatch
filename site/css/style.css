@@ -466,7 +466,11 @@ body.map-mode footer { display: none; }
 .legend-item .count { margin-left: auto; color: var(--text-tertiary); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
 
 /* Swatches: filled when the layer is on, hollow when off (house legend) */
-.swatch { flex: 0 0 22px; height: 10px; position: relative; }
+/* A width as well as a flex basis: the picture is drawn by ::before, so the
+   swatch has no content, and Safari sizes a flex container from its items'
+   content rather than their basis. Without it, Safari makes each key pair
+   22px too narrow, and the next one overlaps the end of its label. */
+.swatch { flex: 0 0 22px; width: 22px; height: 10px; position: relative; }
 .swatch::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); }
 .swatch.line::before { height: 3px; border-radius: 2px; background: var(--c); }
 .swatch.line.thin::before { height: 1.5px; }
@@ -850,11 +854,8 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
     display: flex; align-items: center; gap: 0.15rem 0.6rem; flex-wrap: wrap;
     font-size: 0.72rem; color: var(--text-tertiary); padding: 0.1rem 0.1rem 0.15rem 1.85rem;
 }
-/* An icon and its label, kept together on one line. The space between them
-   is a margin rather than a gap: Safari leaves a flex gap out of the pair's
-   width, and the next pair then overlaps the end of its label. */
-.key-pair { display: inline-flex; align-items: center; white-space: nowrap; flex: none; }
-.key-pair > :first-child { margin-right: 0.3rem; }
+/* An icon and its label, kept together on one line */
+.key-pair { display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; flex: none; }
 .trend-key {
     width: 12px; height: 12px; border-radius: 50%; color: #fff; font-size: 8px; font-weight: 700;
     display: inline-flex; align-items: center; justify-content: center;
