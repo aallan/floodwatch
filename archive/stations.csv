@@ -1,20 +1,45 @@
 id,label,lat,lon,river,type,rloi,measure_id
-50149,Sticklepath,50.737824,-3.917597,River Taw,level,3100,50149-level-stage-i-15_min-m
-50119,Taw Bridge,50.845457,-3.886253,River Taw,level,3123,50119-level-stage-i-15_min-m
-50132,Newnham Bridge,50.939901,-3.907581,River Taw,level,3113,50132-level-stage-i-15_min-m
-50140,Umberleigh,50.99542,-3.985089,River Taw,level,3106,50140-level-stage-i-15_min-m
-50198,Barnstaple (Tidal),51.080046,-4.064537,River Taw,tidal,9013,50198-level-tidal_level-i-15_min-mAOD
-50135,North Molton,51.055152,-3.795036,River Mole,level,3110,50135-level-stage-i-15_min-m
-50153,Mole Mills,51.016893,-3.822486,River Mole,level,3096,50153-level-stage-i-15_min-m
-50115,Woodleigh,50.973061,-3.909695,River Mole,level,3127,50115-level-stage-i-15_min-m
-50125,Chulmleigh,50.907767,-3.863651,Little Dart River,level,3118,50125-level-stage-i-15_min-m
-50151,Lapford,50.857808,-3.810592,River Yeo,level,3098,50151-level-stage-i-15_min-m
-50114,Collard Bridge,51.099972,-4.010005,River Yeo,level,3128,50114-level-stage-i-15_min-m
-50199,Lapford Bowerthy,50.873373,-3.798545,,rainfall,,50199-rainfall-tipping_bucket_raingauge-t-15_min-mm
-E85220,Molland Sindercombe,51.037989,-3.736447,,rainfall,,E85220-rainfall-tipping_bucket_raingauge-t-15_min-mm
-E84360,Crediton Knowle,50.799653,-3.737529,,rainfall,,E84360-rainfall-tipping_bucket_raingauge-t-15_min-mm
-45183,Kinsford Gate,51.114443,-3.795033,,rainfall,,45183-rainfall-tipping_bucket_raingauge-t-15_min-mm
-50103,Allisland,50.880864,-4.152815,,rainfall,,50103-rainfall-tipping_bucket_raingauge-t-15_min-mm
-50194,Kenwith Castle,51.024089,-4.236452,,rainfall,,50194-rainfall-tipping_bucket_raingauge-t-15_min-mm
-E82120,Bratton Fleming Haxton,51.116609,-3.940857,,rainfall,,E82120-rainfall-tipping_bucket_raingauge-t-15_min-mm
+45113,Coleford,50.79965,-3.73753,,rainfall,,45113-rainfall-tipping_bucket_raingauge-t-15_min-mm
+45158,Hawkridge,51.06991,-3.64344,,rainfall,,45158-rainfall-tipping_bucket_raingauge-t-15_min-mm
+45183,Kinsford Gate,51.11444,-3.79503,,rainfall,,45183-rainfall-tipping_bucket_raingauge-t-15_min-mm
 47158,Halwill,50.771514,-4.228634,,rainfall,,47158-rainfall-tipping_bucket_raingauge-t-15_min-mm
+50103,Allisland,50.880864,-4.152815,,rainfall,,50103-rainfall-tipping_bucket_raingauge-t-15_min-mm
+50104,Bradiford,51.09042,-4.0695,,level,,50104-level-stage-i-15_min-mAOD
+50105,Belstone,50.7032,-3.97755,,rainfall,,50105-rainfall-tipping_bucket_raingauge-t-15_min-mm
+50106,South Tawton,50.73747,-3.91805,,rainfall,,50106-rainfall-tipping_bucket_raingauge-t-15_min-mm
+50108,Witheridge,50.92501,-3.71374,,rainfall,,50108-rainfall-tipping_bucket_raingauge-t-15_min-mm
+50109,Knowstone,50.98512,-3.66181,,rainfall,,50109-rainfall-tipping_bucket_raingauge-t-15_min-mm
+50110,South Molton,51.01689,-3.82263,,rainfall,,50110-rainfall-tipping_bucket_raingauge-t-15_min-mm
+50111,Blackmoor Gate,51.16343,-3.9371,,rainfall,,50111-rainfall-tipping_bucket_raingauge-t-15_min-mm
+50114,Collard Bridge,51.09997,-4.01,River Yeo,level,3128,50114-level-stage-i-15_min-m
+50115,Woodleigh,50.97306,-3.9097,River Mole,level,3127,50115-level-stage-i-15_min-m
+50119,Taw Bridge,50.84546,-3.88625,River Taw,level,3123,50119-level-stage-i-15_min-m
+50124,Braunton,51.10053,-4.16425,River Caen (Tidal),level,,50124-level-stage-i-15_min-m
+50125,Chulmleigh,50.90777,-3.86365,Little Dart River,level,3118,50125-level-stage-i-15_min-m
+50126,Coney Gut,51.07318,-4.04128,Coney Gut,level,,50126-level-stage-i-15_min-mASD
+50130,Leehamford,51.14317,-3.89226,River Bray,level,,50130-level-stage-i-15_min-m
+50132,Newnham Bridge,50.9399,-3.90758,River Taw,level,3113,50132-level-stage-i-15_min-m
+50133,Newtown Bridge,51.07672,-3.86681,River Bray,level,,50133-level-stage-i-15_min-m
+50135,North Molton,51.05515,-3.79504,River Mole,level,3110,50135-level-stage-i-15_min-m
+50136,Plaistow Mill,51.11868,-4.04845,Bradiford Water,level,,50136-level-stage-i-15_min-m
+50137,Portmarsh Lane,51.07494,-4.05092,Coney Gut,level,,50137-level-stage-i-15_min-mASD
+50139,Swimbridge,51.05314,-3.96941,Landkey Brook,level,,50139-level-stage-i-15_min-mASD
+50140,Umberleigh,50.99542,-3.98509,River Taw,level,3106,50140-level-stage-i-15_min-m
+50149,Sticklepath,50.73782,-3.9176,River Taw,level,3100,50149-level-stage-i-15_min-m
+50151,Lapford,50.85781,-3.81059,River Yeo,level,3098,50151-level-stage-i-15_min-m
+50152,Stoneybridge,51.1339,-4.15312,River Caen,level,,50152-level-stage-i-15_min-m
+50153,Mole Mills,51.01689,-3.82249,River Mole,level,3096,50153-level-stage-i-15_min-m
+50188,West Down,51.17849,-4.10656,,rainfall,,50188-rainfall-tipping_bucket_raingauge-t-15_min-mm
+50189,Braunton Butts Bridge,51.11129,-4.16179,River Caen,level,,50189-level-stage-i-15_min-m
+50194,Kenwith Castle,51.024089,-4.236452,,rainfall,,50194-rainfall-tipping_bucket_raingauge-t-15_min-mm
+50198,Barnstaple,51.08005,-4.06454,River Taw,tidal,9013,50198-level-tidal_level-i-15_min-mAOD
+50199,Lapford Bowerthy,50.87337,-3.79854,,rainfall,,50199-rainfall-tipping_bucket_raingauge-t-15_min-mm
+Barstaple_Yeo_FC,Barnstaple Raleigh Meadow,51.08705,-4.05262,,level,,Barstaple_Yeo_FC-level-stage-i-15_min-mAOD
+E80903,North Tawton North Street Upstream,50.801,-3.89881,,level,,E80903-level-stage-i-15_min-mASD
+E82120,Bratton Fleming Haxton,51.11661,-3.94086,,rainfall,,E82120-rainfall-tipping_bucket_raingauge-t-15_min-mm
+E84069,Landkey Newland Tanners Road,51.06106,-4.00024,Halford Stream,level,,E84069-level-stage-i-15_min-m
+E84236,Sticklepath GS,50.72798,-3.93746,River Taw,level,,E84236-level-stage-i-15_min-m
+E84360,Crediton Knowle,50.79965,-3.73753,,rainfall,,E84360-rainfall-tipping_bucket_raingauge-t-15_min-mm
+E84500,Dean,51.19512,-3.97851,,rainfall,,E84500-rainfall-tipping_bucket_raingauge-t-15_min-mm
+E85183,Coldridge Park Mill Bridge,50.86236,-3.85316,,level,,E85183-level-stage-i-15_min-mASD
+E85220,Molland Sindercombe,51.03799,-3.73645,,rainfall,,E85220-rainfall-tipping_bucket_raingauge-t-15_min-mm
