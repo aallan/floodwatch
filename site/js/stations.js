@@ -5,11 +5,12 @@
 
 const StationPopup = (() => {
   const TZ = 'Europe/London';
-  const RANGES = [[1, '24 hours'], [7, '7 days'], [28, '28 days']];
+  const ALL = 'all';            // every reading the station has, from /api/ in buckets
+  const RANGES = [[1, '24 hours'], [7, '7 days'], [28, '28 days'], [ALL, 'All time']];
   const FORECAST = 'forecast';  // the rain gauges' extra range: the next 48 hours
   const FLOW = 'flow';          // some level gauges' extra range: modelled river flow
   const HISTORY_DAYS = 28;
-  const history = new Map();  // station id -> Promise of the API response
+  const history = new Map();  // station id and range -> Promise of the API response
 
   // Formatting ---------------------------------------------------------------
   const unitLabel = u => (u === 'mAOD' ? 'm AOD' : u === 'mASD' ? 'm' : u || '');
@@ -126,8 +127,30 @@ const StationPopup = (() => {
     return ticks;
   }
 
+  // Over all time, the first of each month, or every few months on a long
+  // record. Months are found in UTC: an hour's difference doesn't show at
+  // this scale.
+  function monthTicks(from, to) {
+    const months = (to - from) / (30.4 * 86400);
+    const step = months > 36 ? 6 : months > 18 ? 3 : months > 8 ? 2 : 1;
+    const d = new Date(from * 1000);
+    let y = d.getUTCFullYear(), m = d.getUTCMonth() + 1;
+    const ticks = [];
+    for (;;) {
+      if (m > 11) { y += Math.floor(m / 12); m %= 12; }
+      const t = Date.UTC(y, m, 1) / 1000;
+      if (t > to) break;
+      if (m % step === 0) ticks.push(t);
+      m++;
+    }
+    return ticks;
+  }
+
   function tickLabel(t, days) {
     const d = new Date(t * 1000);
+    if (days === ALL) {
+      return d.toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'short', ...(d.getUTCMonth() === 0 ? { year: 'numeric' } : {}) });
+    }
     if (days <= 1) return d.toLocaleTimeString('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
     if (days <= 7) return d.toLocaleDateString('en-GB', { timeZone: TZ, weekday: 'short' });
     return d.toLocaleDateString('en-GB', { timeZone: TZ, day: 'numeric', month: 'short' });
@@ -136,15 +159,18 @@ const StationPopup = (() => {
   function drawChart(host, readout, key, s, data, days) {
     host.textContent = '';
     const now = Math.floor(Date.now() / 1000);
-    const from = now - days * 86400;
+    const all = days === ALL;
+    const first = data.first || (data.readings.length ? data.readings[0][0] : now - 86400);
+    const from = all ? Math.min(first, now - 86400) - 1 : now - days * 86400;
     const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, class: 'stn-chart', role: 'img',
-      'aria-label': `${s.name}: readings over the last ${days === 1 ? '24 hours' : days + ' days'}` });
+      'aria-label': `${s.name}: readings ${all ? 'since ' + fmtDate(first) : 'over the last ' + (days === 1 ? '24 hours' : days + ' days')}` });
     host.appendChild(svg);
     const x = t => M.l + (t - from) / (now - from) * (W - M.l - M.r);
 
     let points, axis, barWidth = 0;
     if (s.kind === 'rain') {
-      const { size, bars } = rainBuckets(data.readings, days, from);
+      // Over all time the server has already totalled the rain into buckets.
+      const { size, bars } = all ? { size: data.bucket, bars: data.readings } : rainBuckets(data.readings, days, from);
       points = bars;
       axis = niceScale(0, Math.max(1, ...bars.map(b => b[1])));
       barWidth = Math.max(1, (x(from + size) - x(from)) - 1);
@@ -167,7 +193,7 @@ const StationPopup = (() => {
       el('text', { x: M.l - 5, y: y(v) + 3, 'text-anchor': 'end', class: 'stn-axis' }, svg).textContent =
         v.toLocaleString('en-GB', { maximumFractionDigits: 2 });
     }
-    for (const t of timeTicks(from, now, days)) {
+    for (const t of all ? monthTicks(from, now) : timeTicks(from, now, days)) {
       el('line', { x1: x(t), x2: x(t), y1: M.t, y2: H - M.b, class: 'stn-grid' }, svg);
       el('text', { x: x(t), y: H - 6, 'text-anchor': 'middle', class: 'stn-axis' }, svg).textContent = tickLabel(t, days);
     }
@@ -188,11 +214,13 @@ const StationPopup = (() => {
         el('rect', { x: x(t), y: y(v), width: barWidth, height: y(0) - y(v), class: 'stn-bar' }, svg);
       }
     } else {
-      // Break the line where readings are missing for more than an hour.
+      // Break the line where readings are missing for more than an hour, or
+      // over all time, for more than two of the server's buckets.
+      const gap = all ? 2 * data.bucket : 3600;
       let d = '';
       let prev = null;
       for (const [t, v] of points) {
-        d += `${prev === null || t - prev > 3600 ? 'M' : 'L'}${x(t).toFixed(1)},${y(v).toFixed(1)}`;
+        d += `${prev === null || t - prev > gap ? 'M' : 'L'}${x(t).toFixed(1)},${y(v).toFixed(1)}`;
         prev = t;
       }
       el('path', { d, class: `stn-line stn-line-${s.kind}` }, svg);
@@ -200,7 +228,7 @@ const StationPopup = (() => {
 
     // Hover readout
     const cursor = el('line', { y1: M.t, y2: H - M.b, class: 'stn-cursor', visibility: 'hidden' }, svg);
-    const caption = s.kind === 'rain' ? rainBucketText(days) : '';
+    const caption = s.kind === 'rain' ? rainBucketText(days, data.bucket) : all ? `(highest ${bucketText(data.bucket)})` : '';
     readout.textContent = '';
     svg.addEventListener('mousemove', e => {
       const box = svg.getBoundingClientRect();
@@ -219,16 +247,26 @@ const StationPopup = (() => {
     });
   }
 
-  const rainBucketText = days => (days <= 1 ? 'per 15 minutes' : days <= 7 ? 'per hour' : 'per day');
+  const bucketText = size => ({ 3600: 'each hour', 10800: 'every 3 hours', 21600: 'every 6 hours',
+    43200: 'every 12 hours', 86400: 'each day', 604800: 'each week' }[size] || '');
+  const rainBucketText = (days, size) => (days === ALL
+    ? { 3600: 'per hour', 10800: 'per 3 hours', 21600: 'per 6 hours', 43200: 'per 12 hours', 86400: 'per day', 604800: 'per week' }[size] || ''
+    : days <= 1 ? 'per 15 minutes' : days <= 7 ? 'per hour' : 'per day');
+
+  function fmtDate(ts) {
+    return new Date(ts * 1000).toLocaleDateString('en-GB', { timeZone: TZ, day: 'numeric', month: 'short', year: 'numeric' });
+  }
 
   // The line under each chart that says what it shows.
   function chartKey(s, data, days) {
-    if (s.kind === 'rain') return `Rainfall ${rainBucketText(days)}`;
-    if (s.kind === 'tidal') return s.unit === 'mAOD' ? 'Height above Ordnance Datum' : 'Height at the gauge';
+    const since = days === ALL && data.first ? `Since ${fmtDate(data.first)}. ` : '';
+    if (s.kind === 'rain') return `${since}Rainfall ${rainBucketText(days, data.bucket)}`;
+    const highest = days === ALL ? `The highest reading ${bucketText(data.bucket)}. ` : '';
+    if (s.kind === 'tidal') return `${since}${highest}${s.unit === 'mAOD' ? 'Height above Ordnance Datum' : 'Height at the gauge'}`;
     const high = data.typical ? data.typical[1] : null;
-    if (high == null) return 'No typical range published for this gauge';
+    if (high == null) return `${since}${highest}No typical range published for this gauge`;
     const record = data.record != null ? ` · record ${fmtValue(s, data.record)}` : '';
-    return `Dashed line: top of typical range, ${fmtValue(s, high)}${record}`;
+    return `${since}${highest}Dashed line: top of typical range, ${fmtValue(s, high)}${record}`;
   }
 
   // Rain forecast ----------------------------------------------------------------
@@ -485,7 +523,12 @@ const StationPopup = (() => {
     const key = node('div', 'stn-pop-key');
     const readout = node('div', 'stn-pop-readout');
     box.append(tabs, chartHost, key, readout);
-    box.appendChild(node('div', 'stn-pop-source', `Environment Agency station ${s.id}`));
+    const source = node('div', 'stn-pop-source', `Environment Agency station ${s.id} · `);
+    const download = node('a', 'stn-pop-link', 'Download as CSV');
+    download.href = `/api/stations/${encodeURIComponent(s.id)}/readings.csv`;
+    download.setAttribute('download', '');
+    source.appendChild(download);
+    box.appendChild(source);
 
     let current = 7;
     const render = () => {
@@ -502,7 +545,7 @@ const StationPopup = (() => {
         });
         return;
       }
-      load(s.id).then(data => {
+      load(s.id, current === ALL).then(data => {
         chartHost.classList.remove('loading');
         drawChart(chartHost, readout, key, s, data, current);
       }).catch(() => {
@@ -526,13 +569,16 @@ const StationPopup = (() => {
     return box;
   }
 
-  function load(id) {
-    if (!history.has(id)) {
-      const p = getJSON(`/api/stations/${encodeURIComponent(id)}/readings?days=${HISTORY_DAYS}`);
-      p.catch(() => history.delete(id));
-      history.set(id, p);
+  // The last four weeks serve the 24-hour, 7-day and 28-day charts; all time
+  // is a separate, bucketed request.
+  function load(id, all = false) {
+    const k = `${id}|${all ? ALL : HISTORY_DAYS}`;
+    if (!history.has(k)) {
+      const p = getJSON(`/api/stations/${encodeURIComponent(id)}/readings?days=${all ? ALL : HISTORY_DAYS}`);
+      p.catch(() => history.delete(k));
+      history.set(k, p);
     }
-    return history.get(id);
+    return history.get(k);
   }
 
   // Forget cached history when new readings arrive.
@@ -666,7 +712,7 @@ const StationPopup = (() => {
   return {
     open, summary, invalidate, openOverflow, overflowSummary,
     // The chart arithmetic and formatting, for tests/js.
-    _internals: { niceTicks, niceScale, levelAxis, timeTicks, tickLabel, rainBuckets, fmtValue, fmtFlow,
+    _internals: { niceTicks, niceScale, levelAxis, timeTicks, monthTicks, tickLabel, rainBuckets, fmtValue, fmtFlow,
       dailyMeans, scaleForecast },
   };
 })();

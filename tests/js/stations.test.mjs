@@ -117,3 +117,14 @@ test("the forecast's falling flow is scaled, and a rise from rain added at the m
   const wet = [[d(0), 2, 2, 2], [d(1), 3, 2, 40]];
   assert.deepEqual(plain(scaleForecast(wet, 6, now)), [[d(0), 2, 2, 2], [d(1), 13, 12, 50]]);
 });
+
+test('all-time charts tick on the first of the month, more sparsely on a long record', () => {
+  const { monthTicks, tickLabel } = StationPopup._internals;
+  const t = (y, m, d = 1) => Date.UTC(y, m, d) / 1000;
+  assert.deepEqual(plain(monthTicks(t(2026, 0, 13), t(2026, 4, 20))), [t(2026, 1), t(2026, 2), t(2026, 3), t(2026, 4)]);
+  // Ten months: every other month, on even months (Jan, Mar, May...)
+  assert.deepEqual(plain(monthTicks(t(2026, 0, 13), t(2026, 10, 23))),
+    [t(2026, 2), t(2026, 4), t(2026, 6), t(2026, 8), t(2026, 10)]);
+  assert.equal(tickLabel(t(2026, 2), 'all'), 'Mar');
+  assert.equal(tickLabel(t(2027, 0), 'all'), 'Jan 2027');
+});

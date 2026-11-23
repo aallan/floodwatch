@@ -81,6 +81,25 @@ class Readings(Server):
         self.assertEqual(self.get_json("/api/stations/A/readings?days=-3")[1]["days"], 1)
         self.assertEqual(self.get_json("/api/stations/A/readings?days=lots")[1]["days"], 7)
 
+    def test_all_time(self):
+        status, d = self.get_json("/api/stations/A/readings?days=all")
+        self.assertEqual(status, 200)
+        self.assertEqual(d["days"], "all")
+        self.assertEqual(len(d["readings"]), 3)          # the reading 40 days ago is included
+        self.assertEqual(d["bucket"], 3600)
+        self.assertEqual(d["first"] // 3600 * 3600, d["readings"][0][0])   # the first reading starts the chart
+
+    def test_csv_download(self):
+        status, r, body = self.request("/api/stations/A/readings.csv")
+        self.assertEqual(status, 200)
+        self.assertTrue(r.getheader("Content-Type").startswith("text/csv"))
+        self.assertIn('attachment; filename="level_a_somewhere.csv"', r.getheader("Content-Disposition"))
+        lines = body.decode().splitlines()
+        self.assertEqual(lines[0], "dateTime,value,unit,station_id,station_label")
+        self.assertEqual(len(lines), 4)
+        self.assertTrue(lines[1].endswith(",0.5,m,A,Somewhere"))
+        self.assertEqual(self.request("/api/stations/NOPE/readings.csv")[0], 404)
+
     def test_unknown_and_malformed_ids(self):
         self.assertEqual(self.request("/api/stations/NOPE/readings")[0], 404)
         self.assertEqual(self.request("/api/stations/a%27%20OR%201=1/readings")[0], 404)

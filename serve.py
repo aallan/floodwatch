@@ -15,17 +15,17 @@ import argparse
 import json
 import re
 import socket
-import time
 import urllib.parse
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from monitor import db, forecast, overflows, poll
+from monitor import db, forecast, history, overflows, poll
 
 SITE = Path(__file__).resolve().parent / "site"
 DEFAULT_PORT = 8090
-MAX_HISTORY_DAYS = 28
+# A chart can ask for up to ten years by number of days, or for all time.
+MAX_HISTORY_DAYS = 3650
 STATION_ID = re.compile(r"^[A-Za-z0-9_-]{1,24}$")
 
 # Basemap tiles are the only third-party origin the page may load.
@@ -110,31 +110,53 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.send_json(forecast.flow(parts[3]))
             except Exception:  # noqa: BLE001 - the popup says the forecast is unavailable
                 return self.send_json({"error": "forecast unavailable"}, 502)
-        # /api/stations/<id>/readings?days=N
+        # /api/stations/<id>/readings.csv: every reading, for download
+        if len(parts) == 4 and parts[:2] == ["api", "stations"] and parts[3] == "readings.csv" \
+                and STATION_ID.match(parts[2]):
+            return self.send_csv(parts[2])
+        # /api/stations/<id>/readings?days=N, or days=all
         if len(parts) != 4 or parts[:2] != ["api", "stations"] or parts[3] != "readings" \
                 or not STATION_ID.match(parts[2]):
             return self.send_json({"error": "not found"}, 404)
-        try:
-            days = int(urllib.parse.parse_qs(url.query).get("days", ["7"])[0])
-        except ValueError:
-            days = 7
-        days = max(1, min(MAX_HISTORY_DAYS, days))
+        asked = urllib.parse.parse_qs(url.query).get("days", ["7"])[0]
+        if asked == "all":
+            days = None
+        else:
+            try:
+                days = max(1, min(MAX_HISTORY_DAYS, int(asked)))
+            except ValueError:
+                days = 7
         con = db.connect(read_only=True)
         try:
             s = con.execute("SELECT * FROM stations WHERE id = ?", (parts[2],)).fetchone()
             if s is None:
                 return self.send_json({"error": "no such station"}, 404)
-            rows = con.execute("SELECT ts, value FROM readings WHERE measure = ? AND ts > ? ORDER BY ts",
-                               (s["measure"], int(time.time()) - days * 86400)).fetchall()
+            found = history.readings(con, s, days)
         finally:
             con.close()
         self.send_json({
             "id": s["id"], "kind": s["kind"], "name": s["name"], "unit": s["unit"],
             "typical": [s["typical_low"], s["typical_high"]] if s["kind"] == "level" else None,
             "record": s["max_on_record"] if s["kind"] == "level" else None,
-            "days": days,
-            "readings": [[r["ts"], r["value"]] for r in rows],
+            "days": days if days else "all",
+            **found,
         })
+
+    def send_csv(self, station_id):
+        con = db.connect(read_only=True)
+        try:
+            s = con.execute("SELECT * FROM stations WHERE id = ?", (station_id,)).fetchone()
+            if s is None:
+                return self.send_json({"error": "no such station"}, 404)
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv; charset=utf-8")
+            self.send_header("Content-Disposition", f'attachment; filename="{history.csv_filename(s)}"')
+            self.end_headers()
+            for piece in history.csv_rows(con, s):
+                if piece:
+                    self.wfile.write(piece.encode())
+        finally:
+            con.close()
 
     def list_directory(self, path):
         self.send_error(404)
