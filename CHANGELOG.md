@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Changed
+- The MCP server's design moves to `docs/mcp-server-design.md`, rewritten as a record of how the server is built and why, and linked from the README. The build plan that sat beside it is gone; it served the build, not readers.
+
 ## [2.1.0] - 2026-11-27
 
 AI assistants can now answer questions about the Taw from the same data as the map, through Floodwatch's read-only MCP server.
