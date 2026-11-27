@@ -76,6 +76,25 @@ class ToolTests(unittest.TestCase):
             },
         )
 
+    def test_schemas_outside_the_subset_fail_at_construction(self):
+        def tool(schema):
+            return Tool("get_x", "Get X", "Gets X.", schema, lambda **kw: {})
+
+        for schema in [
+            {"type": "array"},
+            {"properties": {}},
+            {"type": "object", "properties": []},
+            {"type": "object", "properties": {"a": {}}},
+            {"type": "object", "properties": {"a": {"type": "number"}}},
+            {"type": "object", "properties": {"a": {"type": "array"}}},
+            {"type": "object", "properties": {"a": {"type": ["string", "null"]}}},
+            {"type": "object", "properties": {"a": "string"}},
+        ]:
+            with self.assertRaises(ValueError, msg=repr(schema)):
+                tool(schema)
+        tool(SCHEMA)
+        tool({"type": "object"})
+
     def test_tool_error_is_an_exception(self):
         self.assertTrue(issubclass(ToolError, Exception))
 

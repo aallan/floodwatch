@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from typing import Callable
 
 
+TYPES = ("string", "integer", "boolean")  # the property types validate() checks
+
+
 class ToolError(Exception):
     """A message for the agent; becomes an ``isError`` tool result."""
 
@@ -16,6 +19,19 @@ class Tool:
     description: str
     input_schema: dict
     handler: Callable[..., dict]
+
+    def __post_init__(self) -> None:
+        # validate() checks only what it knows, so a schema outside its subset
+        # would let arguments through unchecked; refuse it at start instead.
+        schema = self.input_schema
+        if not isinstance(schema, dict) or schema.get("type") != "object":
+            raise ValueError(f"{self.name}: the input schema must be an object schema")
+        properties = schema.get("properties", {})
+        if not isinstance(properties, dict):
+            raise ValueError(f"{self.name}: properties must be an object")
+        for name, sub in properties.items():
+            if not isinstance(sub, dict) or sub.get("type") not in TYPES:
+                raise ValueError(f"{self.name}: argument {name} needs a type, one of {', '.join(TYPES)}")
 
     def annotations(self) -> dict:
         return {

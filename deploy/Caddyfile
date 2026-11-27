@@ -9,9 +9,12 @@ tawriver.watch {
 	@agents path /mcp /mcp/* /.well-known/ai-catalog.json
 	handle @agents {
 		request_body {
-			max_size 64KB
+			max_size 64KiB
 		}
+		# Buffer the whole body here, so a slow client holds a Caddy
+		# goroutine rather than one of the MCP server's threads.
 		reverse_proxy 127.0.0.1:8091 {
+			request_buffers 64KiB
 			header_down -Server
 		}
 	}

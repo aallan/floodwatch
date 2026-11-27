@@ -1,7 +1,8 @@
 """Streamable HTTP for ``dispatch``: one JSON response per POST, never a stream or a session.
 
-Also serves the server card and the AI Catalog, and applies the limits: request
-body size, requests in progress, and per-client and overall rate limits. Every
+Also serves the server card and the AI Catalog, and applies the limits: open
+connections, request body size, requests in progress, and per-client and
+overall rate limits. Every
 request gets exactly one log line on stderr.
 """
 
@@ -47,6 +48,7 @@ DOCUMENT_HEADERS = {
 class Limits:
     max_body: int = 65_536
     max_in_flight: int = 8
+    max_connections: int = 24
     per_client: tuple = (300, 60)
     overall: tuple = (600, 120)
 
@@ -114,6 +116,7 @@ class Server(ThreadingHTTPServer):
         self.app, self.limits, self.origin_ok, self.trust_forwarded = app, limits, origin_ok, trust_forwarded
         self.limiter = Limiter(limits.per_client, limits.overall)
         self.slots = threading.BoundedSemaphore(limits.max_in_flight)
+        self.connections = threading.BoundedSemaphore(limits.max_connections)
         self.endpoint = urlsplit(app.url).path
         self.documents = {
             urlsplit(card_url(app)).path: _document(server_card(app), CARD_TYPE),
@@ -121,6 +124,26 @@ class Server(ThreadingHTTPServer):
         }
         # A subclass per server, so each can set its own timeout.
         super().__init__(address, type("Handler", (Handler,), {}))
+
+    def process_request(self, request, client_address):
+        # A thread per connection, but only so many: beyond the cap the
+        # connection is closed before a thread starts, so a flood of slow
+        # clients cannot exhaust the process's threads.
+        if not self.connections.acquire(blocking=False):
+            log.warning("connection refused: %d already open", self.limits.max_connections)
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self.connections.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.connections.release()
 
 
 class Handler(BaseHTTPRequestHandler):

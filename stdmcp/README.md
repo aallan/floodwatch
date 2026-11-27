@@ -8,9 +8,9 @@ It was written for Floodwatch, but it imports nothing from it. Copy the `stdmcp/
 
 - Tools only. Every tool is advertised as read-only, idempotent and closed-world.
 - One JSON response per POST. A request never opens a stream or a session, and no session ID is issued.
-- A small JSON Schema subset for tool arguments: `type` (string, integer, boolean), `pattern`, `minimum`, `maximum`, `enum`, `required`, `default` and `additionalProperties: false`.
+- A small JSON Schema subset for tool arguments: `type` (string, integer, boolean), `pattern`, `minimum`, `maximum`, `enum`, `required`, `default` and `additionalProperties: false`. The schema must be an object, and every property must have one of those three types; a `Tool` whose schema doesn't raises `ValueError` when it is made, so a mistake shows at start rather than letting arguments through unchecked.
 - A server card at `<endpoint>/server-card` and an AI Catalog at `/.well-known/ai-catalog.json`.
-- Origin checking, request size and concurrency limits, token bucket rate limiting, and one log line per request on stderr.
+- Origin checking, connection, request size and concurrency limits, token bucket rate limiting, and one log line per request on stderr.
 
 ## What it leaves out
 
@@ -62,6 +62,7 @@ curl -s http://127.0.0.1:8080/mcp \
 
 | Field | Default | Meaning |
 | --- | --- | --- |
+| `max_connections` | 24 | Connections open at once, each with its own thread; beyond this a connection is closed before a thread starts. Keep it above `max_in_flight` and below any limit on the process's threads |
 | `max_body` | 65,536 | Largest request body in bytes; a `Content-Length` is required (413 otherwise) |
 | `max_in_flight` | 8 | Requests being dispatched at once; more get 503 |
 | `per_client` | `(300, 60)` | Per client address: requests per minute, burst size |

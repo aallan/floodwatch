@@ -365,6 +365,49 @@ class Concurrency(ServerTest):
         self.assertEqual(self.post(_call())[0], 200)
 
 
+class Connections(ServerTest):
+    limits = Limits(max_in_flight=1, max_connections=2)
+
+    def test_defaults_sit_between_in_flight_and_the_units_task_limit(self):
+        self.assertGreater(Limits().max_connections, Limits().max_in_flight)
+        self.assertLess(Limits().max_connections, 32)
+
+    def test_connections_beyond_the_cap_are_closed_without_a_thread(self):
+        started = threading.Semaphore(0)
+        thread = stdmcp.http.Server.process_request_thread
+
+        def spy(server, request, address):
+            started.release()
+            return thread(server, request, address)
+
+        with mock.patch.object(stdmcp.http.Server, "process_request_thread", spy), \
+                mock.patch.object(stdmcp.http.log, "warning") as warned:
+            idle = [socket.create_connection(("127.0.0.1", self.port), timeout=5) for _ in range(2)]
+            for _ in idle:
+                self.assertTrue(started.acquire(timeout=5))
+            with socket.create_connection(("127.0.0.1", self.port), timeout=5) as extra:
+                try:
+                    self.assertEqual(extra.recv(1), b"")
+                except ConnectionResetError:
+                    pass
+            self.assertFalse(started.acquire(timeout=0.2))
+            warned.assert_called_once()
+            for s in idle:
+                s.close()
+            # The idle connections' threads see the close and give their places back.
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                try:
+                    if self.post(_call())[0] == 200:
+                        break
+                except (ConnectionError, http.client.HTTPException):
+                    time.sleep(0.05)
+            else:
+                self.fail("the connection count never recovered")
+            self.assertEqual(self.post(_call())[0], 200)
+            self.assertEqual(self.post(_call())[0], 200)
+
+
 class RateLimits(ServerTest):
     limits = Limits(per_client=(60, 2), overall=(600, 100))
 
