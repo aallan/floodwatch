@@ -43,6 +43,7 @@ test: test-py test-js
 
 test-py:
 	$(PYTHON) -m unittest discover -s tests -t .
+	$(PYTHON) -m unittest discover -s stdmcp/tests -t .
 
 test-js:
 	node --test 'tests/js/*.test.mjs'
