@@ -1,16 +1,18 @@
 # Floodwatch. Standard library Python, no build step.
 PYTHON  := $(shell which python3)
 PORT    := 8090
+MCP_PORT := 8091
 LEAFLET := 1.9.4
 MARKERCLUSTER := 1.5.3
 
-.PHONY: help libs data poll serve test test-py test-js og figures screenshot clean
+.PHONY: help libs data poll serve mcp test test-py test-js og figures screenshot clean
 
 help:
 	@echo "make libs    download Leaflet $(LEAFLET) and Leaflet.markercluster $(MARKERCLUSTER) into site/lib and verify them"
 	@echo "make data    build the map overlays in site/data from OpenStreetMap"
 	@echo "make poll    run one poll of every feed, without the server"
 	@echo "make serve   run the server, which also polls every 5 minutes"
+	@echo "make mcp     run the MCP server on http://localhost:$(MCP_PORT)/mcp, reading from make serve"
 	@echo "make test    run the Python and JavaScript tests (needs Node 22 or later)"
 	@echo "make og      redraw the link preview image (needs Google Chrome and make data)"
 	@echo "make figures redraw the README's figures in docs/ (needs make data)"
@@ -39,10 +41,14 @@ poll:
 serve:
 	$(PYTHON) serve.py $(PORT)
 
+mcp:
+	$(PYTHON) -m floodwatch_mcp --port $(MCP_PORT) --site http://127.0.0.1:$(PORT) --url http://localhost:$(MCP_PORT)/mcp
+
 test: test-py test-js
 
 test-py:
 	$(PYTHON) -m unittest discover -s tests -t .
+	$(PYTHON) -m unittest discover -s stdmcp/tests -t .
 
 test-js:
 	node --test 'tests/js/*.test.mjs'

@@ -1,0 +1,19 @@
+{
+ "generated": 1795464500,
+ "warnings": [
+  {
+   "level": "Yellow",
+   "weather": "rain",
+   "title": "Yellow warning of rain affecting South West England",
+   "description": "Yellow warning of rain affecting South West England: Devon valid from 0600 Fri 27 Nov to 2359 Fri 27 Nov",
+   "link": "https://weather.metoffice.gov.uk/warnings-and-advice/uk-warnings",
+   "areas": [
+    "Devon"
+   ],
+   "from": 1795759200,
+   "to": 1795823940,
+   "published": 1795700000,
+   "image": "https://example.invalid/warning.png"
+  }
+ ]
+}

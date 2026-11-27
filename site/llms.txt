@@ -1,0 +1,60 @@
+# Floodwatch
+
+> Floodwatch (https://tawriver.watch) shows which of the River Taw's gauges are high and rising, which storm overflows are spilling, what flood and weather warnings are in force, where the power is off and what the rain and the river are forecast to do, across the Taw's catchment in north Devon. It is built on public data and is not an official warning service: for flood warnings you can rely on, go to the Environment Agency (https://www.gov.uk/check-flood-risk).
+
+## MCP server
+
+Read-only, free, no sign-in. Streamable HTTP endpoint: https://tawriver.watch/mcp
+
+- Claude: in Customize, then Connectors, choose Add, then Add custom connector, and paste the URL.
+- Claude Code: `claude mcp add --transport http floodwatch https://tawriver.watch/mcp`
+- Other clients: `{"mcpServers": {"floodwatch": {"type": "http", "url": "https://tawriver.watch/mcp"}}}`
+- Limits: 300 requests a minute per address (bursts of 60), 600 a minute overall, 8 at once. Over the rate limits you get HTTP 429, and over 8 at once a 503, each with a Retry-After header.
+- Server card: https://tawriver.watch/mcp/server-card
+- Catalogue: https://tawriver.watch/.well-known/ai-catalog.json
+
+Tools:
+
+- list_stations: every river level, tidal and rain gauge, with its ID, kind, river and location. Use it first to find a station ID.
+- conditions: the latest reading, trend and state at each gauge.
+- flood_warnings: Environment Agency flood warnings and alerts, and Met Office weather warnings for Devon.
+- station_history: one gauge's readings over the past days, with its typical range and record high.
+- rain_forecast: forecast rain, hour by hour, for the next 48 hours at a rain gauge.
+- flow_forecast: modelled river flow for the past week and the fortnight ahead, at gauges that have one.
+- storm_overflows: which storm overflows are spilling, and one overflow's spills over the past 30 days.
+- drought: the latest drought report for the area and any hosepipe bans.
+- power_cuts: live power cuts, with customers off and the estimated time back on.
+
+## Data
+
+Files, updated about every five minutes:
+
+- https://tawriver.watch/data/live.json: the latest reading at every gauge
+- https://tawriver.watch/data/stations.geojson: the gauges
+- https://tawriver.watch/data/warnings.json: Environment Agency flood warnings and alerts
+- https://tawriver.watch/data/weather.json: Met Office weather warnings
+- https://tawriver.watch/data/overflows.json: storm overflows
+- https://tawriver.watch/data/powercuts.json: power cuts
+- https://tawriver.watch/data/drought.json: drought status and hosepipe bans
+- https://tawriver.watch/data/meta.json: when the map data was generated
+
+Routes:
+
+- /api/stations/{id}/readings?days=N: a gauge's readings (days=all for every one)
+- /api/stations/{id}/readings.csv: every reading, as CSV
+- /api/overflows/{id}: one storm overflow's spills
+- /api/forecast/rain/{id}: 48-hour rain forecast at a rain gauge
+- /api/forecast/flow/{id}: river flow forecast at a gauge
+- /api/version: the version running
+
+## Licences
+
+- Environment Agency flood, river level and rain data, drought reports and overflow annual returns: Open Government Licence v3.0
+- Met Office weather warnings: Contains public sector information licensed under the Open Government Licence v3.0
+- National Grid Electricity Distribution power cuts: NGED Open Data Licence
+- South West Water storm overflow activity: CC BY 4.0
+- Open-Meteo forecasts: CC BY 4.0
+- OpenStreetMap rivers, railways, roads and places: ODbL
+- Code: MIT, at https://github.com/aallan/floodwatch
+
+The full table of sources is on https://tawriver.watch/#/about

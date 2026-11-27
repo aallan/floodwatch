@@ -1,0 +1,126 @@
+{
+ "generated": 1795463700,
+ "stations": [
+  {
+   "id": "50140",
+   "kind": "level",
+   "name": "Umberleigh",
+   "lat": 50.99542,
+   "lon": -3.98509,
+   "unit": "m",
+   "river": "River Taw",
+   "ts": 1795463100,
+   "value": 1.201,
+   "trend": "rising",
+   "typical": [
+    0.181,
+    2.8
+   ],
+   "flow": true,
+   "state": "normal"
+  },
+  {
+   "id": "50132",
+   "kind": "level",
+   "name": "Newnham Bridge",
+   "lat": 50.9399,
+   "lon": -3.90758,
+   "unit": "m",
+   "river": "River Taw",
+   "ts": 1795463100,
+   "value": 2.71,
+   "trend": "rising",
+   "typical": [
+    0.207,
+    2.5
+   ],
+   "state": "high"
+  },
+  {
+   "id": "50189",
+   "kind": "level",
+   "name": "Braunton Butts Bridge",
+   "lat": 51.11129,
+   "lon": -4.16179,
+   "unit": "m",
+   "river": "River Caen",
+   "ts": 1795463100,
+   "value": 0.843,
+   "trend": "steady",
+   "typical": [
+    0.444,
+    1.2
+   ],
+   "state": "approach"
+  },
+  {
+   "id": "50125",
+   "kind": "level",
+   "name": "Chulmleigh",
+   "lat": 50.90777,
+   "lon": -3.86365,
+   "unit": "m",
+   "river": "Little Dart River",
+   "ts": 1795449600,
+   "value": 0.837,
+   "typical": [
+    0.172,
+    1.5
+   ],
+   "state": "stale"
+  },
+  {
+   "id": "50104",
+   "kind": "level",
+   "name": "Bradiford",
+   "lat": 51.09042,
+   "lon": -4.0695,
+   "unit": "mAOD",
+   "ts": 1795463100,
+   "value": 6.093,
+   "trend": "steady",
+   "typical": [
+    null,
+    null
+   ],
+   "state": "unknown"
+  },
+  {
+   "id": "50198",
+   "kind": "tidal",
+   "name": "Barnstaple",
+   "lat": 51.08005,
+   "lon": -4.06454,
+   "unit": "mAOD",
+   "river": "River Taw",
+   "ts": 1795463100,
+   "value": 1.989,
+   "trend": "falling",
+   "state": "tidal"
+  },
+  {
+   "id": "50106",
+   "kind": "rain",
+   "name": "South Tawton",
+   "lat": 50.73747,
+   "lon": -3.91805,
+   "unit": "mm",
+   "ts": 1795463100,
+   "h1": 0.3,
+   "h24": 6.0,
+   "state": "raining"
+  },
+  {
+   "id": "E82120",
+   "kind": "rain",
+   "name": "Bratton Fleming Haxton",
+   "lat": 51.11661,
+   "lon": -3.94086,
+   "unit": "mm",
+   "ts": 1795463100,
+   "h1": 0.0,
+   "h24": 1.8,
+   "state": "dry"
+  }
+ ]
+}

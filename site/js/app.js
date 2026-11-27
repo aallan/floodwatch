@@ -1,7 +1,7 @@
 'use strict';
 
-// Hash router: #/map (default) and #/about.
-const VIEWS = ['map', 'about'];
+// Hash router: #/map (default), #/agents and #/about.
+const VIEWS = ['map', 'agents', 'about'];
 let mapStarted = false;
 
 function route() {
@@ -49,7 +49,19 @@ function showLiveStatus(live) {
   $('#status').textContent = `Latest readings ${when}${delayed}`;
 }
 
+// The Copy button on the Agents tab. navigator.clipboard needs https or localhost.
+function initCopyButtons() {
+  $$('.copy-btn').forEach(btn => btn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText($(`#${btn.dataset.copy}`).textContent);
+      btn.textContent = 'Copied';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+    } catch (e) { /* no clipboard here; the address can still be selected */ }
+  }));
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  initCopyButtons();
   initTheme();
   window.onThemeChange = () => FloodMap.restyle();
   window.onLiveUpdate = showLiveStatus;

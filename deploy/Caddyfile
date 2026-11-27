@@ -4,8 +4,24 @@
 
 tawriver.watch {
 	encode zstd gzip
-	reverse_proxy 127.0.0.1:8090 {
-		header_down -Server
+	# The MCP server, its server card and the AI Catalog; everything else is
+	# the site.
+	@agents path /mcp /mcp/* /.well-known/ai-catalog.json
+	handle @agents {
+		request_body {
+			max_size 64KiB
+		}
+		# Buffer the whole body here, so a slow client holds a Caddy
+		# goroutine rather than one of the MCP server's threads.
+		reverse_proxy 127.0.0.1:8091 {
+			request_buffers 64KiB
+			header_down -Server
+		}
+	}
+	handle {
+		reverse_proxy 127.0.0.1:8090 {
+			header_down -Server
+		}
 	}
 	header Strict-Transport-Security "max-age=31536000"
 }
