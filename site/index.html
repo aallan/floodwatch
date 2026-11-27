@@ -75,9 +75,9 @@
       <h2>Agents</h2>
       <div class="panel">
         <p>Floodwatch has an MCP server. MCP is a standard way for AI assistants, such as Claude, to look things up
-          from a website instead of guessing. Point an assistant at Floodwatch's and it can answer questions about
-          the Taw's rivers, rain, storm overflows, warnings, drought and power cuts from the same data as the map.
-          It is read-only, free and needs no sign-in.</p>
+          from a website instead of guessing. An assistant connected to Floodwatch's server can answer questions
+          about the Taw's rivers, rain, storm overflows, warnings, drought, and power cuts from the same data as the
+          map. It is read-only and free, and needs no sign-in.</p>
         <div class="endpoint">
           <code id="mcp-url">https://tawriver.watch/mcp</code>
           <button type="button" class="copy-btn" data-copy="mcp-url">Copy</button>
@@ -108,7 +108,7 @@
         <table class="data-table tools">
           <thead><tr><th>Tool</th><th>What it gives</th></tr></thead>
           <tbody>
-            <tr><td><code>list_stations</code></td><td>Every river level, tidal and rain gauge, with its ID, kind, river and location.</td></tr>
+            <tr><td><code>list_stations</code></td><td>Every river level, tidal, and rain gauge, with its ID, kind, river, and location.</td></tr>
             <tr><td><code>conditions</code></td><td>The latest reading, trend and state at each gauge, as the map shows them.</td></tr>
             <tr><td><code>flood_warnings</code></td><td>Environment Agency flood warnings and alerts, and Met Office weather warnings for Devon.</td></tr>
             <tr><td><code>station_history</code></td><td>One gauge's readings over the past days, with its typical range and record high.</td></tr>
@@ -143,7 +143,7 @@
         <p>Floodwatch shows which of the River Taw's gauges are high and rising, which storm overflows are spilling,
           what flood and weather warnings are in force, where the power is off, and what the rain and the river
           are forecast to do next, across the Taw's catchment in north Devon, from Dartmoor to Barnstaple. All of it
-          is public data, published by the Environment Agency, South West Water, the Met Office and others on their
+          is public data, published by the Environment Agency, South West Water, the Met Office, and others on their
           own sites; here it's on one map, and most of it is checked every five minutes. Those sites keep only the
           latest weeks, or the latest spill, so Floodwatch keeps its own copy of every river and rain reading since
           January 2026, and every storm overflow spill since June.</p>
@@ -171,10 +171,10 @@
           <dd>National Grid Electricity Distribution's power cuts in the catchment, each with the customers off, the
             postcodes affected and when power is expected back on. To report a power cut, call 105.</dd>
           <dt>Rivers and rain</dt>
-          <dd>The Environment Agency's river level, tidal and rain gauges in the catchment, and the rain gauges just
+          <dd>The Environment Agency's river level, tidal, and rain gauges in the catchment, and the rain gauges just
             over its watershed, reporting every 15 minutes, each with its latest reading on it. River gauges are teal
-            within their typical range, amber near the top of it and red above it, with an arrow showing whether the
-            level is rising, falling or steady, and grey once they've sent nothing for three hours. Gauges close
+            within their typical range, amber near the top of it, and red above it, with an arrow showing whether the
+            level is rising, falling, or steady, and grey once they've sent nothing for three hours. Gauges close
             together are grouped until you zoom in. Each gauge's chart goes back to January 2026, and every reading
             it has can be downloaded as a CSV file. Rain gauges have a 48-hour rain forecast, and the gauge at
             Umberleigh a fortnight's river flow forecast for the Taw, scaled to start from the flow measured
@@ -202,7 +202,7 @@
             <tr><td>Weather warnings</td><td>Met Office <a href="https://weather.metoffice.gov.uk/warnings-and-advice/uk-warnings" rel="noopener">weather warnings</a> for South West England, from its RSS feed, checked every 5 minutes. Contains public sector information licensed under the Open Government Licence v3.0.</td><td><a href="https://www.metoffice.gov.uk/policies/tandc" rel="noopener">Met Office terms</a></td></tr>
             <tr><td>Drought status and hosepipe bans</td><td>The Environment Agency's weekly <a href="https://www.gov.uk/government/publications/dry-weather-and-drought-in-england-2026-summary-reports" rel="noopener">Dry weather and drought in England</a> report, read through GOV.UK's content API every 6 hours</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
             <tr><td>Power cuts</td><td>National Grid Electricity Distribution's <a href="https://connecteddata.nationalgrid.co.uk/dataset/live-power-cuts" rel="noopener">live power cuts</a>, checked every 5 minutes. Supported by NGED Open Data.</td><td><a href="https://www.nationalgrid.co.uk/open-data-licence" rel="noopener">NGED Open Data Licence</a></td></tr>
-            <tr><td>River, tidal and rain gauges</td><td>Environment Agency real-time flood-monitoring API, checked every 5 minutes. This uses Environment Agency flood and river level data from the real-time data API (Beta).</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
+            <tr><td>River, tidal, and rain gauges</td><td>Environment Agency real-time flood-monitoring API, checked every 5 minutes. This uses Environment Agency flood and river level data from the real-time data API (Beta).</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>
             <tr><td>Rain forecast</td><td><a href="https://open-meteo.com/" rel="noopener">Open-Meteo</a> weather forecast API, hourly rainfall for the next 48 hours at each rain gauge, fetched when a forecast is opened and kept for 15 minutes</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a></td></tr>
             <tr><td>River flow forecast</td><td>GloFAS river discharge from the Copernicus Emergency Management Service, through <a href="https://open-meteo.com/en/docs/flood-api" rel="noopener">Open-Meteo's flood API</a>, for the Taw at Umberleigh. GloFAS models rivers on a grid about 5 km across, so its flows are scaled to match the river's long-run mean flow and to start from the flow measured at Umberleigh. Its forecasts are a guide to the days ahead rather than a measurement.</td><td><a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a></td></tr>
             <tr><td>Measured river flow</td><td>Environment Agency <a href="https://environment.data.gov.uk/hydrology/doc/reference" rel="noopener">Hydrology API</a>, a reading every 15 minutes at Umberleigh, fetched when the flow forecast is opened and kept for 15 minutes; recent readings are provisional.</td><td><a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/" rel="noopener">Open Government Licence</a></td></tr>

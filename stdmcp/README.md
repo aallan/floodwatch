@@ -6,7 +6,7 @@ It was written for Floodwatch, but it imports nothing from it. Copy the `stdmcp/
 
 ## What it does
 
-- Tools only. Every tool is advertised as read-only, idempotent and closed-world.
+- Tools only. Every tool is advertised as read-only, idempotent, and closed-world.
 - One JSON response per POST. A request never opens a stream or a session, and no session ID is issued.
 - A small JSON Schema subset for tool arguments: `type` (string, integer, boolean), `pattern`, `minimum`, `maximum`, `enum`, `required`, `default` and `additionalProperties: false`. The schema must be an object, and every property must have one of those three types; a `Tool` whose schema doesn't raises `ValueError` when it is made, so a mistake shows at start rather than letting arguments through unchecked.
 - A server card at `<endpoint>/server-card` and an AI Catalog at `/.well-known/ai-catalog.json`.
@@ -36,7 +36,7 @@ flowchart TD
 
 ## What it leaves out
 
-Sessions, server-sent events, resources, prompts, subscriptions, sampling, and authentication. If you need any of these, put them in front of it (a reverse proxy, for authentication) or use a fuller SDK.
+Sessions, server-sent events, resources, prompts, subscriptions, sampling, and authentication. For authentication, put a reverse proxy in front of it. For the rest, use a fuller SDK.
 
 ## Example
 
@@ -61,7 +61,7 @@ serve(app, "127.0.0.1", 8080, catalog_identifier="urn:example:adder")
 
 A handler is called with the validated arguments as keyword arguments and returns a dict, which becomes `structuredContent` and a JSON text block. Raise `ToolError(message)` to return an `isError` result to the model. Invalid arguments also give an `isError` result, as the 2025-11-25 and later specifications require. Any other exception is logged and answered with a generic message.
 
-The endpoint path comes from `App.url` (here `/mcp`; a trailing slash is a 404). `App.url` is the public URL, so it can differ from the host and port being listened on.
+The endpoint path comes from `App.url`, and here it is `/mcp`. A trailing slash gets a 404. `App.url` is the public URL, so it can differ from the host and port on which the server listens.
 
 Call `server/discover` with the stateless revision:
 

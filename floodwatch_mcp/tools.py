@@ -274,12 +274,12 @@ def make_tools(site: Site, clock=time.time) -> tuple:
 
     return (
         Tool("list_stations", "List gauges",
-             "Lists every river level, tidal and rain gauge with its ID, kind, river, location, unit and typical "
+             "Lists every river level, tidal, and rain gauge with its ID, kind, river, location, unit, and typical "
              "range. Use it first to find the station_id the other tools need.",
              _schema(), list_stations),
         Tool("conditions", "Current conditions",
              "Gives the latest reading, trend and state at each gauge, as the map shows them, with counts of how "
-             "many are high, near the top of their range, rising or stale. Use it to answer how the rivers and "
+             "many are high, near the top of their range, rising, or stale. Use it to answer how the rivers and "
              "rain are now. Counts cover the gauges returned.",
              _schema({"station_id": _id("Only this gauge, from list_stations."),
                       "kind": {"type": "string", "enum": ["level", "tidal", "rain"],
@@ -310,7 +310,7 @@ def make_tools(site: Site, clock=time.time) -> tuple:
              _schema({"station_id": _id("A gauge with a flow forecast, from list_stations.")}, ["station_id"]),
              flow_forecast),
         Tool("storm_overflows", "Storm overflows",
-             "Lists storm overflows and whether each is spilling, spilled in the last 48 hours, quiet or offline, "
+             "Lists storm overflows and whether each is spilling, spilled in the last 48 hours, quiet, or offline, "
              "or gives one overflow's spills over the past 30 days and its yearly totals. Use it for questions "
              "about sewage spills into rivers. Counts cover all overflows, whatever the filter.",
              _schema({"state": {"type": "string", "enum": OVERFLOW_STATES,
