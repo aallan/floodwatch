@@ -46,7 +46,7 @@ class LimiterTests(unittest.TestCase):
 
     def test_refusal_by_one_bucket_spends_nothing_from_the_other(self):
         clock = FakeClock()
-        limiter = Limiter(per_client=(60, 1), overall=(60, 2), clock=clock)
+        limiter = Limiter(per_client=(30, 1), overall=(60, 2), clock=clock)
         self.assertEqual(limiter.check("a"), 0)
         # "a" is refused by its own bucket, so the overall bucket keeps its second token.
         self.assertGreater(limiter.check("a"), 0)
