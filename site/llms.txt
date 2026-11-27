@@ -6,7 +6,7 @@
 
 Read-only, free, no sign-in. Streamable HTTP endpoint: https://tawriver.watch/mcp
 
-- Claude: in Customize, then Connectors, choose Add, then Add custom connector, and paste the URL.
+- Claude: in Customize, then Connectors, choose Add, then Add custom connector, and paste the URL. For Dispatch, set the connector's tools to Always allow; Dispatch leaves out a connector whose tools ask first. Every tool only reads.
 - Claude Code: `claude mcp add --transport http floodwatch https://tawriver.watch/mcp`
 - Other clients: `{"mcpServers": {"floodwatch": {"type": "http", "url": "https://tawriver.watch/mcp"}}}`
 - Limits: 300 requests a minute per address (bursts of 60), 600 a minute overall, 8 at once. Over the rate limits you get HTTP 429, and over 8 at once a 503, each with a Retry-After header.
