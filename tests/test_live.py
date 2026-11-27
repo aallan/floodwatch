@@ -44,6 +44,34 @@ class Build(DBTestCase):
         for sid in ("high", "normal", "low", "unknown", "stale"):
             self.assertEqual(self.state_of(sid)["state"], sid)
 
+    def state_after(self, value, **station):
+        sid = f"S{len(self.con.execute('SELECT id FROM stations').fetchall())}"
+        self.add_readings(self.add_station(sid, **station), [(NOW - 600, value)])
+        return self.state_of(sid)["state"]
+
+    def entry_for(self, newest_age, per_hour=0.2):
+        # Five readings a quarter of an hour apart, rising, the newest `newest_age` old.
+        m = self.add_station("T")
+        self.add_readings(m, [(NOW - newest_age - 900 * i, 1.0 - per_hour * i / 4) for i in range(5)])
+        return self.state_of("T")
+
+    def test_near_the_top_of_the_range_is_approach(self):
+        # typical [0.5, 2.0]: 70% of 2.0 is 1.4
+        self.assertEqual(self.state_after(1.39, typical=(0.5, 2.0)), "normal")
+        self.assertEqual(self.state_after(1.4, typical=(0.5, 2.0)), "approach")
+        self.assertEqual(self.state_after(2.3, typical=(0.5, 2.0)), "high")
+
+    def test_no_typical_range_is_unknown_not_approach(self):
+        self.assertEqual(self.state_after(5, typical=None), "unknown")
+
+    def test_a_stale_gauge_has_no_trend(self):
+        entry = self.entry_for(4 * 3600)
+        self.assertEqual(entry["state"], "stale")
+        self.assertNotIn("trend", entry)
+
+    def test_a_fresh_gauge_keeps_its_trend(self):
+        self.assertEqual(self.entry_for(60)["trend"], "rising")
+
     def test_a_station_with_no_readings_is_left_out(self):
         self.add_station("silent")
         self.assertEqual(live.build(self.con, NOW)["stations"], [])
