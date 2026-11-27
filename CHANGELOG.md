@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 ## [Unreleased]
 
 ### Added
+- An MCP server for AI assistants, at `https://tawriver.watch/mcp`: nine read-only tools over the site's own API (gauges and their readings, warnings, forecasts, storm overflows, drought and power cuts), run by its own systemd unit and limited to loopback, with rate limits of 300 requests a minute per address and 600 overall, and 8 at once.
+- `stdmcp/`, a standard-library MCP transport that imports nothing from Floodwatch, with its own tests and README.
+- An Agents tab that says how to connect an assistant and lists the tools, a server card at `/mcp/server-card`, an AI Catalog at `/.well-known/ai-catalog.json`, and `llms.txt` and `robots.txt`.
 - The River Bray in its own colour, raspberry, with its own entry in the legend.
 - Dartmoor and Exmoor national parks, shaded pale green and named on the map, with a legend entry to hide them.
 - The streams the Environment Agency gauges are drawn with the rivers, so their gauges no longer sit on nothing with the streams layer off: Landkey Brook at Swimbridge, Halford Stream at Landkey, Bradiford Water and Coney Gut.

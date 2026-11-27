@@ -12,6 +12,7 @@ The site is one page with no framework and no build step. The server, the poller
 - [Data sources](#data-sources)
 - [Running it](#running-it), locally and on a server
 - [The archive](#the-archive)
+- [The MCP server](#the-mcp-server), for AI assistants
 - [How it works](#how-it-works)
 - [Tests](#tests), [project layout](#project-layout), [contributing](#contributing) and [licence](#licence)
 
@@ -118,6 +119,7 @@ make test     # run the Python and JavaScript tests
 make og       # redraw the link preview card, site/img/og-image.png (needs Google Chrome and make data)
 make figures  # redraw the figures in docs/ (needs make data, and the live site for the flow forecast)
 make screenshot  # retake docs/screenshot.png, the map in a Safari window, from the running server (needs Google Chrome and Node)
+make mcp      # serve the MCP server at http://localhost:8091/mcp, reading from make serve
 make clean    # remove the libraries, overlays and download cache; the database stays
 ```
 
@@ -142,7 +144,8 @@ deploy/floodwatch-data.service      rebuilds the map overlays, giving up after a
 deploy/floodwatch-data.timer        runs that rebuild early every Sunday
 deploy/floodwatch-archive.service   exports the archive, commits it and pushes it, giving up after 30 minutes
 deploy/floodwatch-archive.timer     runs that at 02:30 every night
-deploy/Caddyfile                    HTTPS for tawriver.watch, and the redirect from www
+deploy/floodwatch-mcp.service       the MCP server, sandboxed
+deploy/Caddyfile                    HTTPS for tawriver.watch, the route to the MCP server, and the redirect from www
 ```
 
 As root on the new server, install Caddy and make the `floodwatch` user, whose home is the checkout, with an SSH key of its own:
@@ -184,7 +187,7 @@ ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443 && ufw --force enable
 
 Watch the first poll with `journalctl -u floodwatch -f`, where the archive restore reports how many readings and spills it loaded. Before anyone else sees it, look at the site through an SSH tunnel from your own machine, `ssh -L 8091:localhost:8090 root@<server>`, at http://localhost:8091.
 
-Then point the domain at the server: A and AAAA records for the bare name and for `www`, or for a `*` wildcard, which covers `www`. Caddy fetches its certificates once Let's Encrypt can reach the server by name; if it tried before the DNS changed, it waits longer after each failure, and `systemctl restart caddy` makes it try again straight away.
+Then point the domain at the server: A and AAAA records for the bare name and for `www`, or for a `*` wildcard, which covers `www`. Caddy fetches its certificates once Let's Encrypt can reach the server by name; if it tried before the DNS changed, it waits longer after each failure, and `systemctl restart caddy` makes it try again straight away. After any change to the Caddyfile, check it on the server before reloading: `caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`.
 
 The web service runs as the unprivileged `floodwatch` user and can write only to `data/`, `site/data/` and `.cache/`; the archive service writes only to `data/` and `.git`. Their logs are in the journal, `journalctl -u floodwatch` and `journalctl -u floodwatch-archive`. The archive keeps the data; a nightly backup from the hosting provider keeps the rest, Caddy's certificates and the deploy key among it.
 
@@ -214,6 +217,45 @@ Every night `scripts/archive.py push` writes the database out to `archive/`, and
 The first export rewrote the files v1 left, once, in v2's format. v2 records spill times to the second, where v1 kept fractions of one, rounds spill durations to the nearest minute, labels Barnstaple's tidal gauge "Barnstaple", and sorts `stations.csv` by ID. The readings and spills themselves didn't change.
 
 On a new server the first poll loads the archive's readings as soon as the gauges are listed, before it stores the latest, and its spill logs once the overflows are listed, however many cycles that takes. Readings and spills it already holds are kept, so the load is safe to repeat; `python3 scripts/archive.py restore` runs it by hand, and loads v1's own `data/` directory too. Station and overflow IDs are checked against a strict pattern before they become file names, when exporting and when restoring.
+
+## The MCP server
+
+Floodwatch has an MCP server, for AI assistants such as Claude. [MCP](https://modelcontextprotocol.io/) is a standard way for an assistant to look things up from a service instead of guessing. One connected to Floodwatch can answer questions about the Taw's gauges, rain, storm overflows, warnings, drought and power cuts from the same data as the map. It is read-only, free and needs no sign-in, and it's at `https://tawriver.watch/mcp`. The site's Agents tab (`#/agents`) says the same to visitors.
+
+It has nine tools:
+
+| Tool | What it gives |
+|---|---|
+| `list_stations` | Every river level, tidal and rain gauge, with its ID, kind, river and location |
+| `conditions` | The latest reading, trend and state at each gauge, as the map shows them |
+| `flood_warnings` | Environment Agency flood warnings and alerts, and Met Office weather warnings for Devon |
+| `station_history` | One gauge's readings over the past days, with its typical range and record high |
+| `rain_forecast` | Forecast rain, hour by hour, for the next 48 hours at a rain gauge |
+| `flow_forecast` | Modelled river flow for the past week and the fortnight ahead, at gauges that have one |
+| `storm_overflows` | Which storm overflows are spilling, and one overflow's spills over the past 30 days |
+| `drought` | The latest drought report for the area and any hosepipe bans |
+| `power_cuts` | Live power cuts, with customers off and the estimated time back on |
+
+In Claude, add it as a custom connector (Customize, then Connectors, then Add custom connector), pasting the address and choosing no sign-in. In Claude Code:
+
+```bash
+claude mcp add --transport http floodwatch https://tawriver.watch/mcp
+```
+
+Software can find it without being told: `/mcp/server-card` describes the server, `/.well-known/ai-catalog.json` lists it, and `/llms.txt` explains the site in plain text, with `/robots.txt` alongside.
+
+It runs as its own process, `floodwatch-mcp.service`, on 127.0.0.1:8091, with Caddy sending `/mcp` and the two discovery paths to it and everything else to the web server. It reads only the website's own API on 127.0.0.1:8090, so it holds no data of its own and polls no feed. systemd confines it: `IPAddressDeny=any` with `IPAddressAllow=localhost` leaves it able to reach nothing but the machine itself, it has no writable paths, and it is limited to 96 MB of memory, 30% of a CPU and 32 tasks.
+
+Each address can make 300 requests a minute, in bursts of up to 60, the server as a whole 600 a minute, and no more than 8 can run at once. Over the rate limits it answers 429; over 8 at once it answers 503. Both carry a `Retry-After` header.
+
+To run it locally, start the site, then the MCP server beside it. Point an assistant at `http://localhost:8091/mcp`:
+
+```bash
+make serve   # the site and its API, on port 8090
+make mcp     # the MCP server, on port 8091, reading from it
+```
+
+The transport is a separate package, `stdmcp/`, which uses only the standard library and imports nothing from Floodwatch. It can be copied into another project; its [README](stdmcp/README.md) says what it does and does not do. `floodwatch_mcp/` holds Floodwatch's side: the nine tools and how they read the site.
 
 ## How it works
 
@@ -296,7 +338,7 @@ On a day like this one, after a wet week the model missed, the measured flow was
 
 ## Tests
 
-`make test` runs both suites, which use only Python's `unittest` and Node's built-in test runner, so there's nothing to install beyond Python and Node. The 206 Python tests cover the poller, the gauges, the spill log, the archive's export, restore and nightly push, the history buckets and CSV download, which positions belong to the catchment, the overlay builder's outline tracing, river naming, gap filling, the Taw's mouth, the gauged streams and the national parks, the warnings, the drought report, power cuts, forecasts, and the server's endpoints and headers; each runs against a temporary database, with every outside service replaced by fixed responses, several of them trimmed copies of real ones in `tests/fixtures/`. The 26 JavaScript tests load the page's scripts into a sandbox and check the gauges' states and numbers, what a cluster shows, the chart arithmetic, the flow forecast's scaling, the spelt-out overflow names, the warning banner's wording and the power cut popups. GitHub Actions runs both on every pull request and every push to `main`, except the nightly archive's, which only touch `archive/`.
+`make test` runs both suites, `stdmcp/`'s among them, which use only Python's `unittest` and Node's built-in test runner, so there's nothing to install beyond Python and Node. The 358 Python tests (263 of Floodwatch's and 95 of `stdmcp/`'s) cover the poller, the gauges, the spill log, the archive's export, restore and nightly push, the history buckets and CSV download, which positions belong to the catchment, the overlay builder's outline tracing, river naming, gap filling, the Taw's mouth, the gauged streams and the national parks, the warnings, the drought report, power cuts, forecasts, the MCP server's tools, and the server's endpoints and headers; each runs against a temporary database, with every outside service replaced by fixed responses, several of them trimmed copies of real ones in `tests/fixtures/`. The 25 JavaScript tests load the page's scripts into a sandbox and check the gauges' states and numbers, what a cluster shows, the chart arithmetic, the flow forecast's scaling, the spelt-out overflow names, the warning banner's wording, the power cut popups and the Agents tab. GitHub Actions runs both on every pull request and every push to `main`, except the nightly archive's, which only touch `archive/`.
 
 ## Project layout
 
@@ -318,6 +360,8 @@ monitor/net.py             HTTP requests with a time limit on the whole answer
 monitor/cache.py           popup data fetched on demand, with an in-memory cache
 monitor/db.py              SQLite schema and connection
 monitor/geo.py             geometry shared with the overlay builder
+floodwatch_mcp/            the MCP server: its nine tools, reading the site's API
+stdmcp/                    the reusable standard-library MCP transport, with its own tests and README
 scripts/fetch_geodata.py   the catchment, its neighbours and the map's overlays
 scripts/archive.py         export, restore and push the archive
 scripts/calibrate_flow.py  finds the GloFAS cell that carries a river past a gauge
@@ -328,6 +372,8 @@ scripts/capture_page.mjs   captures the page for it at an exact size, through Ch
 archive/                   every reading and spill, in v1's CSV format
 docs/                      the README's screenshot and figures
 site/index.html            the page
+site/llms.txt              the site described in plain text, for assistants
+site/robots.txt            what crawlers may read
 site/css/style.css         layout and theme, light and dark
 site/js/map.js             basemap, overlays, markers, clusters, legend and the opening view
 site/js/stations.js        gauge and overflow popups and their charts
