@@ -277,7 +277,7 @@ make serve   # the site and its API, on port 8090
 make mcp     # the MCP server, on port 8091, reading from it
 ```
 
-The transport is a separate package, `stdmcp/`, which uses only the standard library and imports nothing from Floodwatch. It can be copied into another project; its [README](stdmcp/README.md) says what it does and does not do. `floodwatch_mcp/` holds Floodwatch's side: the nine tools and how they read the site.
+The transport is a separate package, `stdmcp/`, which uses only the standard library and imports nothing from Floodwatch. It can be copied into another project; its [README](stdmcp/README.md) says what it does and does not do. `floodwatch_mcp/` holds Floodwatch's side: the nine tools and how they read the site. Why it is built this way, from the approaches weighed to its limits and the specifications it follows, is in [docs/mcp-server-design.md](docs/mcp-server-design.md).
 
 ## How it works
 
@@ -398,7 +398,7 @@ scripts/figures.py         draws the figures in docs/: the catchment's outline, 
 scripts/screenshot.py      takes docs/screenshot.png, the map in a Safari window
 scripts/capture_page.mjs   captures the page for it at an exact size, through Chrome's DevTools protocol
 archive/                   every reading and spill, in v1's CSV format
-docs/                      the README's screenshot and figures, and the MCP server's design and plan
+docs/                      the README's screenshot and figures, and the MCP server's design
 site/index.html            the page
 site/llms.txt              the site described in plain text, for assistants
 site/robots.txt            what crawlers may read
