@@ -28,7 +28,7 @@ The Environment Agency's gauges are the map's main layer, each with its latest r
 | Diamond | Tidal level at Barnstaple, in metres above Ordnance Datum | Orange |
 | Drop | Rain in the last hour, in millimetres | Blue; a small pale drop with no number when it hasn't rained |
 
-![The River Mole at Woodleigh from 30 October to 23 November 2026. The level stayed between 0.4 and 0.8 m until 16 November, rose to 1.5 m on the 17th and to 2.06 m on the 20th, and fell back below 1.19 m on the 22nd. The band from 1.19 m, 70% of the 1.70 m top of the gauge's typical range, is shaded amber, and the band above 1.70 m red. A strip under the chart shows the marker teal, then amber for most of the 17th, then amber from the 19th, red from that evening to the evening of the 20th, and amber again until the 22nd](docs/gauge-states.svg)
+![The River Mole at Woodleigh from 30 October to 27 November 2026. The level stayed between 0.4 and 0.8 m until 16 November, rose to 1.5 m on the 17th and to 2.06 m on the 20th, and fell back below 1.19 m on the 22nd. The band from 1.19 m, 70% of the 1.70 m top of the gauge's typical range, is shaded amber, and the band above 1.70 m red. A strip under the chart shows the marker teal, then amber for most of the 17th, then amber from the 19th, red from that evening to the evening of the 20th, and amber again until the 22nd; the level then fell steadily, to 0.73 m by the 27th](docs/gauge-states.svg)
 
 The River Mole at Woodleigh in November 2026, with the marker's colour at each reading.
 

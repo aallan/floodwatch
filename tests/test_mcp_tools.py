@@ -140,7 +140,7 @@ class ToolTests(unittest.TestCase):
         for name in names:
             self.assertNotIn(name.lower(), INSTRUCTIONS.lower())
         self.assertIs(INSTRUCTIONS, text.INSTRUCTIONS)
-        for needed in ("North Devon", "not an official warning service", "Environment Agency", "flood_warnings",
+        for needed in ("north Devon", "not an official warning service", "Environment Agency", "flood_warnings",
                        "Europe/London", "15 minutes", "stale", "approach", "30%", "attribution", "level_m",
                        "rain_mm", "flow_m3s", "latest_reading", "generated", "raining", "dry", "tidal"):
             self.assertIn(needed, INSTRUCTIONS)
