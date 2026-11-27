@@ -1,0 +1,25 @@
+{
+ "generated": 1795464530,
+ "updated": 1795464300,
+ "source": "https://connecteddata.nationalgrid.co.uk/dataset/live-power-cuts",
+ "power_cuts": [
+  {
+   "id": "INCD-19736-u",
+   "lat": 51.23004,
+   "lon": -3.83487,
+   "off": 28,
+   "predicted": 0,
+   "restored": 0,
+   "planned": false,
+   "category": "LV UNDERGROUND",
+   "status": "In Progress",
+   "start": 1795455600,
+   "etr": 1795470000,
+   "postcodes": [
+    "EX35 6HW",
+    "EX35 6EQ"
+   ],
+   "place": "Parracombe"
+  }
+ ]
+}

@@ -1,0 +1,42 @@
+{
+ "generated": 1795464530,
+ "warnings": [
+  {
+   "id": "114WAFT1W30Umbr",
+   "severity": 2,
+   "label": "Flood warning",
+   "area": "River Taw at Umberleigh",
+   "description": "Riverside properties at Umberleigh",
+   "river": "River Taw",
+   "message": "River levels are rising at the Umberleigh gauge.",
+   "since": 1795450000,
+   "updated": 1795460000,
+   "tidal": false,
+   "geometry": {
+    "type": "MultiPolygon",
+    "coordinates": [
+     [
+      [
+       [
+        -3.98,
+        50.99
+       ],
+       [
+        -3.97,
+        50.99
+       ],
+       [
+        -3.97,
+        51.0
+       ],
+       [
+        -3.98,
+        50.99
+       ]
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

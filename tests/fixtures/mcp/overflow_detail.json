@@ -1,0 +1,50 @@
+{
+ "id": "SBB00054",
+ "name": "Ashreigny WWTW CSO",
+ "asset_type": "Inlet SO at WwTW",
+ "water": "Trib of Mully Brook",
+ "status": 1,
+ "status_start": 1794868650,
+ "last_seen": 1795462200,
+ "events": [
+  [
+   1794314280,
+   1794314420
+  ],
+  [
+   1794745790,
+   1794777550
+  ],
+  [
+   1794777550,
+   1794777700
+  ],
+  [
+   1794868650,
+   null
+  ]
+ ],
+ "annual": [
+  [
+   2021,
+   null,
+   null
+  ],
+  [
+   2022,
+   null,
+   null
+  ],
+  [
+   2024,
+   1317.4,
+   128
+  ],
+  [
+   2025,
+   1511.3,
+   167
+  ]
+ ],
+ "log_started": 1780444800
+}

@@ -1,0 +1,22 @@
+{
+ "generated": 1795464317,
+ "report": {
+  "title": "Dry weather and drought in England: 13 to 19 November 2026",
+  "url": "https://www.gov.uk/government/publications/dry-weather-and-drought-in-england-2026-summary-reports/dry-weather-and-drought-in-england-13-to-19-november-2026",
+  "period": "13 to 19 November 2026",
+  "published": "2026-11-20T15:24:16+00:00"
+ },
+ "stages": [
+  {
+   "stage": "Severe drought",
+   "text": "parts of Devon and Cornwall and Wessex Areas that are supplied by Wimbleball reservoir, Kenninck, Tottisford & Trenchford (KTT) and Venford reservoirs, and Stithians and Drift reservoirs"
+  },
+  {
+   "stage": "Drought",
+   "text": "remaining parts of Devon, Cornwall and Isles of Scilly that are not in severe drought"
+  }
+ ],
+ "bans": [
+  "South West Water – whole company area, excluding Bournemouth"
+ ]
+}
