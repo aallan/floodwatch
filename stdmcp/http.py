@@ -64,10 +64,13 @@ class _Refuse(Exception):
 
 def client_address(peer: str, forwarded: list[str], trust_forwarded: bool) -> str:
     """The address to rate limit and log: the last ``X-Forwarded-For`` entry when trusted
-    and the peer is a proxy on loopback, if that entry is a valid IP address; else the peer."""
+    and the peer is a proxy on loopback, if that entry is a plain IP address; else the peer."""
     try:
+        # ::ffff:127.0.0.1 is loopback only in some Python versions; peers are IPv4 (AF_INET) today.
         if trust_forwarded and forwarded and ipaddress.ip_address(peer).is_loopback:
-            return str(ipaddress.ip_address(forwarded[-1].rsplit(",", 1)[-1].strip()))
+            address = ipaddress.ip_address(forwarded[-1].rsplit(",", 1)[-1].strip())
+            if getattr(address, "scope_id", None) is None:  # a scope ID may hold anything, at any length
+                return str(address)
     except ValueError:
         pass
     return peer

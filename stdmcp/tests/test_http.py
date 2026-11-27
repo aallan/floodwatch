@@ -397,12 +397,14 @@ class ClientAddress(unittest.TestCase):
     def test_forwarded_only_from_a_loopback_peer_when_trusted(self):
         self.assertEqual(client_address("127.0.0.1", ["198.51.100.1, 203.0.113.9 "], True), "203.0.113.9")
         self.assertEqual(client_address("::1", ["2001:db8::1"], True), "2001:db8::1")
+        self.assertEqual(client_address("127.0.0.1", ["fe80::1"], True), "fe80::1")
         self.assertEqual(client_address("192.0.2.7", ["203.0.113.9"], True), "192.0.2.7")
         self.assertEqual(client_address("127.0.0.1", ["203.0.113.9"], False), "127.0.0.1")
         self.assertEqual(client_address("127.0.0.1", [], True), "127.0.0.1")
 
     def test_junk_forwarded_values_fall_back_to_the_peer(self):
-        for value in ("203.0.113.9\nfake log line", "not-an-ip", "", "203.0.113.9, ", "x" * 10_000):
+        for value in ("203.0.113.9\nfake log line", "not-an-ip", "", "203.0.113.9, ", "x" * 10_000, "fe80::1%\x0bforged",
+                      "fe80::1%" + "z" * 5_000, "fe80::1%x\ny"):
             with self.subTest(value=value[:20]):
                 self.assertEqual(client_address("127.0.0.1", [value], True), "127.0.0.1")
 
@@ -417,7 +419,10 @@ class JunkForwarded(ServerTest):
         self.raw(b"POST /mcp HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 2\r\n"
                  b"X-Forwarded-For: 203.0.113.9\x0bforged\r\n\r\n{}")
         self.post(_call(), {**JSON, "X-Forwarded-For": "not-an-ip"})
-        self.assertEqual([call.args[0].address_string() for call in self.log.call_args_list], ["127.0.0.1", "127.0.0.1"])
+        self.raw(b"POST /mcp HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 2\r\n"
+                 b"X-Forwarded-For: fe80::1%\x0bforged\r\n\r\n{}")
+        self.post(_call(), {**JSON, "X-Forwarded-For": "fe80::1%" + "z" * 5_000})
+        self.assertEqual([call.args[0].address_string() for call in self.log.call_args_list], ["127.0.0.1"] * 4)
         self.assertEqual(list(self.httpd.limiter._clients), ["127.0.0.1"])
 
 
