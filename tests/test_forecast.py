@@ -139,6 +139,38 @@ class Measured(QuietTestCase):
             self.assertRegex(o["hydrology"], r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", sid)
 
 
+class ScaleForecast(unittest.TestCase):
+    @staticmethod
+    def d(n):
+        return 1793491200 + n * 86400  # midnight UTC on 1 November 2026, plus n days
+
+    def test_falling_flow_is_scaled_and_a_rise_added_at_the_models_size(self):
+        d = self.d
+        days = [[d(0), 2, 2, 2], [d(1), 2, 2, 2], [d(2), 1.5, 1, 2], [d(3), 1, 0.5, 4], [d(4), 3, None, 9]]
+        now = d(1) + 3600  # early on the second day
+        self.assertEqual(forecast.scale_forecast(days, 6, now), [
+            [d(0), 2, 2, 2],           # the past is the model's
+            [d(1), 12, 12, 12],        # today, scaled in full
+            [d(2), 9, 6, 12],          # still falling, scaled in full
+            [d(3), 6, 3, 14],          # the top rises by 2 above its lowest, 2: 12 + 2
+            [d(4), 8, None, 19],       # the middle rises 2 above its lowest, 1: 6 + 2
+        ])
+
+    def test_no_scaling_returns_the_days_unchanged(self):
+        d = self.d
+        days = [[d(0), 2, 2, 2], [d(1), 3, 2, 4]]
+        self.assertIs(forecast.scale_forecast(days, 1, d(1) + 3600), days)
+
+    def test_rain_on_the_first_forecast_day_is_added_not_multiplied(self):
+        # The rise is added at the model's size, not multiplied, so a wet
+        # ensemble member can't send the top of the range to many times the
+        # river's highest flow.
+        d = self.d
+        wet = [[d(0), 2, 2, 2], [d(1), 3, 2, 40]]
+        self.assertEqual(forecast.scale_forecast(wet, 6, d(1) + 3600),
+                         [[d(0), 2, 2, 2], [d(1), 13, 12, 50]])
+
+
 class Anchor(unittest.TestCase):
     DAY = 1793404800  # Sat 31 Oct 2026, 00:00 UTC, which is UK midnight
 
@@ -186,6 +218,29 @@ class Anchor(unittest.TestCase):
         scale = 4.52 / forecast.FLOW_OUTLETS["50140"]["model_mean"]
         self.assertAlmostEqual(d["anchor"]["ratio"], 3.0 / round(2.0 * scale, 2), places=3)
         self.assertEqual(d["days"][0][1], round(2.0 * scale, 2))   # the days stay the model's
+
+    def flow_with(self, rows):
+        model = {"daily": {"time": [self.DAY, self.DAY + 86400], "river_discharge_mean": [2.0, 1.8],
+                           "river_discharge_min": [2.0, 1.5], "river_discharge_max": [2.0, 2.5]}}
+        with mock.patch.object(forecast, "gauged_mean", return_value=4.52), \
+                mock.patch.object(forecast, "measured", return_value=rows), \
+                mock.patch.object(forecast, "_get", return_value=model), \
+                mock.patch.object(forecast.time, "time", return_value=self.DAY + 86400 + 3600):
+            return forecast.flow("50140")
+
+    def test_flow_includes_the_scaled_days(self):
+        d = self.flow_with(self.readings(0, 3.0))
+        ratio = d["anchor"]["ratio"]
+        self.assertEqual(d["scaled"][0], d["days"][0])            # the past is the model's
+        today = d["days"][1]
+        self.assertNotEqual(d["scaled"][1], today)
+        self.assertEqual(d["scaled"][1][1], round(today[1] * ratio, 2))
+        self.assertEqual(d["scaled"], forecast.scale_forecast(d["days"], ratio, self.DAY + 86400 + 3600))
+
+    def test_scaled_is_the_days_without_an_anchor(self):
+        d = self.flow_with(None)
+        self.assertIsNone(d["anchor"])
+        self.assertEqual(d["scaled"], d["days"])
 
 
 if __name__ == "__main__":
