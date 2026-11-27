@@ -192,6 +192,15 @@ const FloodMap = (() => {
     return [y, x];
   }
 
+  // Railway and road names whose midpoint lands among the gauges in the
+  // opening view are pinned instead to a clear point on their own line.
+  // 'side' sets the name beside that point rather than on it, so the name
+  // stays next to its line at every zoom.
+  const LABEL_AT = {
+    'Tarka Line': { at: [51.0268, -4.0333], side: 'left' },
+    A30: { at: [50.7301, -3.6773] },
+  };
+
   function label(latlng, text, cls, colour = null) {
     const style = colour ? ` style="--label-colour: var(${colour})"` : '';
     return L.marker(latlng, {
@@ -378,6 +387,11 @@ const FloodMap = (() => {
 
       for (const f of feats.features) {
         if (!f.properties.line) continue;
+        const pinned = LABEL_AT[f.properties.line];
+        if (pinned) {
+          label(pinned.at, f.properties.line, `rail ${kind}${pinned.side ? ` beside-${pinned.side}` : ''}`).addTo(labels);
+          continue;
+        }
         const line = longestPart(f.geometry);
         if (line && line.length > 1) label(pointAlong(line, 0.5), f.properties.line, `rail ${kind}`).addTo(labels);
       }
@@ -433,6 +447,11 @@ const FloodMap = (() => {
     // each road is labelled every ROAD_LABEL_SPACING_KM or so.
     const labels = L.layerGroup();
     for (const f of fc.features) {
+      const pinned = LABEL_AT[f.properties.ref];
+      if (pinned) {
+        label(pinned.at, f.properties.ref, `road${pinned.side ? ` beside-${pinned.side}` : ''}`).addTo(labels);
+        continue;
+      }
       const placed = [];
       const stretches = f.geometry.coordinates
         .map(c => ({ c, km: partLength(c) }))
