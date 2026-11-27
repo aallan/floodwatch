@@ -37,7 +37,7 @@ class Handler(BaseHTTPRequestHandler):
             time.sleep(1)
             self.reply(200, b"{}")
         elif self.path == "/api/redirect":
-            self.reply(302, b"", [("Location", "http://example.invalid/")])
+            self.reply(302, b"", [("Location", "/data/ok.json")])
         elif self.path == "/api/garbage":
             self.reply(200, b"<html>")
         elif self.path == "/api/list":
@@ -98,6 +98,32 @@ class SiteTests(unittest.TestCase):
     def test_oversized_body_is_unavailable(self):
         with self.assertRaisesRegex(stdmcp.ToolError, "briefly unavailable"):
             Site(self.site.base, timeout=5).json("/api/huge")
+
+    def raw_server(self, response):
+        srv = socket.socket()
+        srv.bind(("127.0.0.1", 0))
+        srv.listen(1)
+        self.addCleanup(srv.close)
+
+        def serve_once():
+            conn, _ = srv.accept()
+            with conn:
+                conn.recv(4096)
+                conn.sendall(response)
+
+        threading.Thread(target=serve_once, daemon=True).start()
+        return Site("http://127.0.0.1:%d" % srv.getsockname()[1], timeout=1)
+
+    def test_truncated_chunked_body_is_unavailable(self):
+        head = b"HTTP/1.1 %s\r\nContent-Type: application/json\r\nTransfer-Encoding: chunked\r\n\r\n"
+        for status in (b"200 OK", b"404 Not Found"):
+            site = self.raw_server(head % status + b"20\r\n{\"error\": ")
+            with self.assertRaisesRegex(stdmcp.ToolError, "briefly unavailable|not found"):
+                site.json("/api/x")
+
+    def test_garbage_status_line_is_unavailable(self):
+        with self.assertRaisesRegex(stdmcp.ToolError, "briefly unavailable"):
+            self.raw_server(b"garbage\r\n\r\n").json("/api/x")
 
     def test_path_must_be_absolute(self):
         with self.assertRaises(AssertionError):

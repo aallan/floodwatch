@@ -1,5 +1,6 @@
 """A small client for the website's own JSON, served on the droplet's loopback."""
 
+import http.client
 import json
 import urllib.error
 import urllib.request
@@ -38,7 +39,7 @@ class Site:
                 raise ToolError(UNAVAILABLE) from None
             finally:
                 e.close()
-        except (OSError, ValueError):
+        except (OSError, ValueError, http.client.HTTPException):
             raise ToolError(UNAVAILABLE) from None
         if len(body) > MAX_BYTES:
             raise ToolError(UNAVAILABLE)
@@ -56,6 +57,6 @@ def _error_text(e):
         text = json.loads(e.read(65536))["error"]
         if isinstance(text, str) and text:
             return text
-    except (ValueError, KeyError, TypeError, OSError):
+    except (ValueError, KeyError, TypeError, OSError, http.client.HTTPException):
         pass
     return "not found"
