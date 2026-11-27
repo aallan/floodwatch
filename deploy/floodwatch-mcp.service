@@ -1,0 +1,40 @@
+# The read-only MCP server, run as the unprivileged 'floodwatch' user. It
+# listens on 127.0.0.1:8091 behind Caddy and reads only the web server's own
+# JSON on 127.0.0.1:8090, so it may talk to nothing but loopback.
+# Install with: sudo cp deploy/*.service deploy/*.timer /etc/systemd/system/
+
+[Unit]
+Description=Floodwatch MCP server
+After=floodwatch.service
+Wants=floodwatch.service
+
+[Service]
+Type=simple
+User=floodwatch
+Group=floodwatch
+WorkingDirectory=/srv/floodwatch
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 -m floodwatch_mcp --port 8091
+Restart=always
+RestartSec=5
+
+# The process can write nowhere, and reach only loopback.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+PrivateNetwork=no
+IPAddressDeny=any
+IPAddressAllow=localhost
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=96M
+CPUQuota=30%
+TasksMax=32
+
+[Install]
+WantedBy=multi-user.target
