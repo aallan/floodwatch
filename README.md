@@ -185,7 +185,7 @@ systemctl reload caddy
 ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443 && ufw --force enable
 ```
 
-Watch the first poll with `journalctl -u floodwatch -f`, where the archive restore reports how many readings and spills it loaded. Before anyone else sees it, look at the site through an SSH tunnel from your own machine, `ssh -L 8091:localhost:8090 root@<server>`, at http://localhost:8091.
+Watch the first poll with `journalctl -u floodwatch -f`, where the archive restore reports how many readings and spills it loaded. Before anyone else sees it, look at the site through an SSH tunnel from your own machine, `ssh -L 8092:localhost:8090 root@<server>`, at http://localhost:8092.
 
 Then point the domain at the server: A and AAAA records for the bare name and for `www`, or for a `*` wildcard, which covers `www`. Caddy fetches its certificates once Let's Encrypt can reach the server by name; if it tried before the DNS changed, it waits longer after each failure, and `systemctl restart caddy` makes it try again straight away. After any change to the Caddyfile, check it on the server before reloading: `caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`.
 
@@ -194,8 +194,10 @@ The web service runs as the unprivileged `floodwatch` user and can write only to
 To update, pull and restart. The header shows the version `git describe` gives when the server starts, and the first poll after a restart reads every feed straight away, whatever its schedule:
 
 ```bash
-cd /srv/floodwatch && runuser -u floodwatch -- git pull && systemctl restart floodwatch
+cd /srv/floodwatch && runuser -u floodwatch -- git pull && systemctl restart floodwatch floodwatch-mcp
 ```
+
+A server set up before the MCP server existed needs it added once, after the pull: `cp deploy/floodwatch-mcp.service /etc/systemd/system/`, `systemctl daemon-reload`, `systemctl enable --now floodwatch-mcp`, `cp deploy/Caddyfile /etc/caddy/Caddyfile`, `caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile` and `systemctl reload caddy`.
 
 ## The archive
 
@@ -338,7 +340,7 @@ On a day like this one, after a wet week the model missed, the measured flow was
 
 ## Tests
 
-`make test` runs both suites, `stdmcp/`'s among them, which use only Python's `unittest` and Node's built-in test runner, so there's nothing to install beyond Python and Node. The 358 Python tests (263 of Floodwatch's and 95 of `stdmcp/`'s) cover the poller, the gauges, the spill log, the archive's export, restore and nightly push, the history buckets and CSV download, which positions belong to the catchment, the overlay builder's outline tracing, river naming, gap filling, the Taw's mouth, the gauged streams and the national parks, the warnings, the drought report, power cuts, forecasts, the MCP server's tools, and the server's endpoints and headers; each runs against a temporary database, with every outside service replaced by fixed responses, several of them trimmed copies of real ones in `tests/fixtures/`. The 25 JavaScript tests load the page's scripts into a sandbox and check the gauges' states and numbers, what a cluster shows, the chart arithmetic, the flow forecast's scaling, the spelt-out overflow names, the warning banner's wording, the power cut popups and the Agents tab. GitHub Actions runs both on every pull request and every push to `main`, except the nightly archive's, which only touch `archive/`.
+`make test` runs both suites, `stdmcp/`'s among them, which use only Python's `unittest` and Node's built-in test runner, so there's nothing to install beyond Python and Node. The 367 Python tests (269 of Floodwatch's and 98 of `stdmcp/`'s) cover the poller, the gauges, the spill log, the archive's export, restore and nightly push, the history buckets and CSV download, which positions belong to the catchment, the overlay builder's outline tracing, river naming, gap filling, the Taw's mouth, the gauged streams and the national parks, the warnings, the drought report, power cuts, forecasts, the MCP server's tools, and the server's endpoints and headers; each runs against a temporary database, with every outside service replaced by fixed responses, several of them trimmed copies of real ones in `tests/fixtures/`. The 25 JavaScript tests load the page's scripts into a sandbox and check that a marker shows the state the server gives it, the number on a gauge, what a cluster shows, the chart arithmetic (axes, ticks, hourly rain, tooltips and daily measured flow), the spelt-out overflow names, the warning banner's and drought pill's wording, the power cut popups and the Agents tab; the gauges' states and the flow forecast's scaling are worked out on the server, and the Python tests check them. GitHub Actions runs both on every pull request and every push to `main`, except the nightly archive's, which only touch `archive/`.
 
 ## Project layout
 

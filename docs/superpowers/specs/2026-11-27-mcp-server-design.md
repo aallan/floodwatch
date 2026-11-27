@@ -1,6 +1,6 @@
 # Floodwatch MCP server: design
 
-Status: approved, 27 November 2026.
+Status: approved, 27 November 2026; updated after build.
 
 ## Intent
 
@@ -169,8 +169,9 @@ Common to both:
 - `tools/list` in a fixed order.
 - Tool errors (bad station ID, no forecast for that gauge, site unavailable)
   come back as tool results with `isError: true` and a sentence an agent can
-  act on; protocol errors (bad JSON, unknown method, bad arguments) as JSON-RPC
-  errors.
+  act on; protocol errors (bad JSON, unknown method, unknown tool and malformed
+  params) as JSON-RPC errors; argument validation failures as `isError` tool
+  results, as `server/tools.mdx` (Error Handling) and SEP-1303 direct.
 
 Note that the spec moved under us in July (the stateless revision). The test
 suite should pin each rule above to the spec section it comes from, so the next
@@ -208,12 +209,12 @@ sources and licences.
 | Tool | Arguments | Answers | Source |
 |---|---|---|---|
 | `list_stations` | none | Every gauge: ID, name, kind (river level, tidal, rain), river, location, unit, typical range, whether it has a flow forecast | `live.json`, `forecast.FLOW_OUTLETS` via the API |
-| `conditions` | optional `station_id`, optional `kind` | Latest reading at each gauge: value, time, trend, state (as the map shows it, `approach` included), and whether it's stale; plus counts (how many high, near the top, rising, stale) | `live.json` |
-| `flood_warnings` | none | Environment Agency flood warnings and alerts in force, and Met Office weather warnings for the area | `warnings.json`, `weather.json` |
-| `station_history` | `station_id`, `days` (1 to 30, default 7) | Readings over that period, with the typical range and record high | `/api/stations/<id>/readings` |
+| `conditions` | optional `station_id`, optional `kind` | Latest reading at each gauge: value, time, trend, state (as the map shows it, `approach` included), and whether it's stale, judged again at request time so a gauge goes stale even if the poller has stopped; plus counts (how many high, near the top, rising, stale), the newest reading's time (`latest_reading`) and whether it is over an hour old (`delayed`) | `live.json` |
+| `flood_warnings` | none | Environment Agency flood warnings and alerts in force, and Met Office weather warnings for the area that haven't ended, with only Met Office links, as the site shows them | `warnings.json`, `weather.json` |
+| `station_history` | `station_id`, `days` (1 to 30, default 7) | Readings over that period, with the typical range and record high; beyond 7 days one an hour, the hour's total for rain and its highest reading for a level | `/api/stations/<id>/readings` |
 | `rain_forecast` | `station_id` (a rain gauge) | Rain over the next 48 hours | `/api/forecast/rain/<id>` |
 | `flow_forecast` | `station_id` (a gauge with a forecast) | River flow for the days ahead, scaled to the measured flow as the chart shows it, with normal and high flow for comparison | `/api/forecast/flow/<id>` |
-| `storm_overflows` | optional `state` (`spilling`, `recent`, `quiet`), optional `overflow_id` | Overflows and their state, or one overflow's detail and spill history | `overflows.json`, `/api/overflows/<id>` |
+| `storm_overflows` | optional `state` (`spilling`, `recent`, `quiet`), optional `overflow_id` | Overflows and their state (the `state` enum also includes `offline`), or one overflow's detail and spill history | `overflows.json`, `/api/overflows/<id>` |
 | `drought` | none | The latest Environment Agency drought report and stage for the area | `drought.json` |
 | `power_cuts` | none | Live power cuts in the area | `powercuts.json` |
 
@@ -242,7 +243,11 @@ All in the reusable module unless noted, with Floodwatch's values:
   `IPAddressAllow=localhost`, so it cannot reach the internet even if
   compromised; `MemoryMax=96M`; `CPUQuota=30%`; `TasksMax=32`.
 - **Bounded work.** At most 8 requests in progress; beyond that `503` with
-  `Retry-After`. Upstream (local API) calls time out at 5 seconds.
+  `Retry-After`. At most 24 connections open at once, each with its own
+  thread, so a flood of slow clients cannot exhaust `TasksMax`; beyond that a
+  connection is closed before a thread starts, and Caddy buffers request
+  bodies (`request_buffers`) so a slow upload holds none of them. Upstream
+  (local API) calls time out at 5 seconds.
 - **Rate limits.** The main protection is the overall limit, 600 requests a
   minute, and the cap on requests in progress. Per client address the limit is
   deliberately loose, 300 a minute with bursts of 60, because hosted clients
@@ -251,8 +256,9 @@ All in the reusable module unless noted, with Floodwatch's values:
   runaway caller from taking the whole overall budget. Over either, `429` with
   `Retry-After`. The client address is the one Caddy puts in
   `X-Forwarded-For`, trusted only because the service listens on localhost
-  alone. (My call, after the builder check.)
-- **Input limits.** Body at most 64 KB (also enforced in Caddy with
+  alone; the reusable module's `trust_forwarded` defaults to false, and
+  Floodwatch sets it. (My call, after the builder check.)
+- **Input limits.** Body at most 64 KiB (also enforced in Caddy with
   `request_body max_size`); arguments validated against each tool's schema;
   station and overflow IDs match the site's existing pattern
   (`[A-Za-z0-9_-]{1,24}`) before any URL is built; unknown arguments rejected.
