@@ -10,6 +10,7 @@ from unittest import mock
 
 import stdmcp.http
 from stdmcp import App, Limits, Tool, ToolError, any_https_origin, make_server
+from stdmcp.http import client_address
 
 SCHEMA = {
     "type": "object",
@@ -104,7 +105,6 @@ class Post(ServerTest):
         # Review Focus 1: no Origin, Accept: */*.
         status, r, body = self.post(_call(), {"Content-Type": "application/json", "Accept": "*/*"})
         self.assertEqual(status, 200)
-        self.assertIsNone(r.getheader("Access-Control-Allow-Origin"))
         self.assertFalse(json.loads(body)["result"]["isError"])
 
     def test_no_accept_header_is_served(self):
@@ -117,6 +117,18 @@ class Post(ServerTest):
         status, _, body = self.post(_call(station="Pont-y-tŷ-pridd"))
         self.assertEqual(status, 200)
         self.assertIn("Pont-y-tŷ-pridd".encode(), body)
+
+    def test_lone_surrogates_are_answered_not_crashed(self):
+        bodies = (b'{"jsonrpc": "2.0", "id": "\\ud800", "method": "tools/list"}',
+                  b'{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "\\udcff"}}',
+                  b'{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "echo", "arguments": {"station": "\\ud800"}}}')
+        with mock.patch.object(stdmcp.http.log, "exception") as logged:
+            answers = [self.post(body) for body in bodies]
+        logged.assert_not_called()
+        self.assertEqual([status for status, _, _ in answers], [200, 200, 200])
+        self.assertEqual(json.loads(answers[0][2])["id"], "\ud800")
+        self.assertIn("\udcff", json.loads(answers[1][2])["error"]["message"])
+        self.assertEqual(json.loads(answers[2][2])["result"]["structuredContent"], {"station": "\ud800"})
 
     def test_content_type_parameters_are_allowed(self):
         self.assertEqual(self.post(_call(), {"Content-Type": "application/json; charset=utf-8"})[0], 200)
@@ -238,6 +250,25 @@ class Origins(ServerTest):
                 status, r, _ = self.post(_call(), {**JSON, "Origin": origin})
                 self.assertEqual(status, 403)
 
+    def test_errors_to_allowed_or_absent_origins_carry_cors(self):
+        origin = b"Origin: https://a.example\r\n"
+        start = b"POST /mcp HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\n"
+        requests = (start + origin + b"Transfer-Encoding: chunked\r\n\r\n0\r\n\r\n", start + b"Content-Length: 1\r\n" + origin + b"\r\n{",
+                    start + b"Content-Length: 1\r\n\r\n{", b"GET /x HTTP/1.1\r\n" + origin + b"\r\n")
+        for request in requests:
+            with self.subTest(request=request):
+                answer = self.raw(request)
+                self.assertRegex(answer, rb"^HTTP/1.0 4\d\d ")
+                self.assertIn(b"\r\nAccess-Control-Allow-Origin: *\r\n", answer)
+                self.assertIn(b"\r\nAccess-Control-Expose-Headers: Retry-After\r\n", answer)
+        with mock.patch.object(stdmcp.http, "dispatch", side_effect=RuntimeError), mock.patch.object(stdmcp.http.log, "exception"):
+            status, r, _ = self.post(_call(), {**JSON, "Origin": "https://a.example"})
+        self.assertEqual((status, r.getheader("Access-Control-Allow-Origin")), (500, "*"))
+
+    def test_refused_origin_gets_no_cors(self):
+        _, r, _ = self.post(_call(), {**JSON, "Origin": "null"})
+        self.assertIsNone(r.getheader("Access-Control-Allow-Origin"))
+
     def test_preflight(self):
         status, r, body = self.request("OPTIONS", "/mcp", headers={"Origin": "https://claude.ai", "Access-Control-Request-Method": "POST"})
         self.assertEqual(status, 204)
@@ -286,14 +317,33 @@ class Concurrency(ServerTest):
             t.start()
         for _ in threads:
             self.assertTrue(self.gate.entered.acquire(timeout=5))
-        status, r, _ = self.post(_call())
+        status, r, _ = self.post(_call(), {**JSON, "Origin": "https://a.example"})
         self.assertEqual(status, 503)
         self.assertEqual(r.getheader("Retry-After"), "1")
+        self.assertEqual(r.getheader("Access-Control-Allow-Origin"), "*")
+        self.assertEqual(r.getheader("Access-Control-Expose-Headers"), "Retry-After")
         self.gate.open.set()
         for t in threads:
             t.join(5)
         self.assertEqual(results, [200, 200])
         self.assertEqual(self.post(_call())[0], 200)
+
+    def test_a_stalled_upload_holds_no_slot(self):
+        reading = threading.Event()
+        read_body = stdmcp.http.Handler._read_body
+
+        def spy(handler):
+            reading.set()
+            return read_body(handler)
+
+        with mock.patch.object(stdmcp.http.Handler, "_read_body", spy):
+            stalled = [socket.create_connection(("127.0.0.1", self.port), timeout=5) for _ in range(3)]
+            for s in stalled:
+                self.addCleanup(s.close)
+                reading.clear()
+                s.sendall(b"POST /mcp HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\nContent-Length: 65536\r\n\r\n{")
+                self.assertTrue(reading.wait(5))
+            self.assertEqual(self.post(_call())[0], 200)
 
     def test_slots_are_released_on_every_path(self):
         bad = [
@@ -328,8 +378,10 @@ class RateLimits(ServerTest):
         headers = {**JSON, "X-Forwarded-For": "203.0.113.9"}
         self.assertEqual(self.post(_call(), headers)[0], 200)
         self.assertEqual(self.request("GET", "/.well-known/ai-catalog.json", headers=headers)[0], 200)
-        status, r, _ = self.post(_call(), headers)
+        status, r, _ = self.post(_call(), {**headers, "Origin": "https://a.example"})
         self.assertEqual(status, 429)
+        self.assertEqual(r.getheader("Access-Control-Allow-Origin"), "*")
+        self.assertEqual(r.getheader("Access-Control-Expose-Headers"), "Retry-After")
         self.assertRegex(r.getheader("Retry-After"), r"^[1-9]\d*$")
         # Another client is unaffected.
         self.assertEqual(self.post(_call(), {**JSON, "X-Forwarded-For": "198.51.100.1"})[0], 200)
@@ -339,6 +391,34 @@ class RateLimits(ServerTest):
         self.assertEqual(self.post(_call())[1].getheader("Retry-After"), "1")
         self.httpd.limiter = mock.Mock(check=mock.Mock(return_value=2.1))
         self.assertEqual(self.post(_call())[1].getheader("Retry-After"), "3")
+
+
+class ClientAddress(unittest.TestCase):
+    def test_forwarded_only_from_a_loopback_peer_when_trusted(self):
+        self.assertEqual(client_address("127.0.0.1", ["198.51.100.1, 203.0.113.9 "], True), "203.0.113.9")
+        self.assertEqual(client_address("::1", ["2001:db8::1"], True), "2001:db8::1")
+        self.assertEqual(client_address("192.0.2.7", ["203.0.113.9"], True), "192.0.2.7")
+        self.assertEqual(client_address("127.0.0.1", ["203.0.113.9"], False), "127.0.0.1")
+        self.assertEqual(client_address("127.0.0.1", [], True), "127.0.0.1")
+
+    def test_junk_forwarded_values_fall_back_to_the_peer(self):
+        for value in ("203.0.113.9\nfake log line", "not-an-ip", "", "203.0.113.9, ", "x" * 10_000):
+            with self.subTest(value=value[:20]):
+                self.assertEqual(client_address("127.0.0.1", [value], True), "127.0.0.1")
+
+    def test_make_server_does_not_trust_forwarded_by_default(self):
+        httpd = make_server(_app(), "127.0.0.1", 0, catalog_identifier="urn:air:example.org:mcp:test")
+        httpd.server_close()
+        self.assertFalse(httpd.trust_forwarded)
+
+
+class JunkForwarded(ServerTest):
+    def test_junk_forwarded_header_is_not_a_client(self):
+        self.raw(b"POST /mcp HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 2\r\n"
+                 b"X-Forwarded-For: 203.0.113.9\x0bforged\r\n\r\n{}")
+        self.post(_call(), {**JSON, "X-Forwarded-For": "not-an-ip"})
+        self.assertEqual([call.args[0].address_string() for call in self.log.call_args_list], ["127.0.0.1", "127.0.0.1"])
+        self.assertEqual(list(self.httpd.limiter._clients), ["127.0.0.1"])
 
 
 class Untrusted(ServerTest):

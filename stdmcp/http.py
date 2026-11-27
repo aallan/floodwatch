@@ -6,6 +6,7 @@ request gets exactly one log line on stderr.
 """
 
 import hashlib
+import ipaddress
 import json
 import logging
 import math
@@ -31,6 +32,7 @@ MCP_CORS = {
     "Access-Control-Allow-Headers": "Content-Type, Accept, MCP-Protocol-Version, Mcp-Method, Mcp-Name",
     "Access-Control-Max-Age": "600",
 }
+RESPONSE_CORS = {"Access-Control-Allow-Origin": "*", "Access-Control-Expose-Headers": "Retry-After"}
 # docs/discovery.md, "CORS Requirements" and "Caching".
 DOCUMENT_HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -58,6 +60,25 @@ class _Refuse(Exception):
     def __init__(self, status: int, message: str, code: int = INVALID_REQUEST, headers: dict | None = None):
         super().__init__(message)
         self.status, self.message, self.code, self.headers = status, message, code, headers or {}
+
+
+def client_address(peer: str, forwarded: list[str], trust_forwarded: bool) -> str:
+    """The address to rate limit and log: the last ``X-Forwarded-For`` entry when trusted
+    and the peer is a proxy on loopback, if that entry is a valid IP address; else the peer."""
+    try:
+        if trust_forwarded and forwarded and ipaddress.ip_address(peer).is_loopback:
+            return str(ipaddress.ip_address(forwarded[-1].rsplit(",", 1)[-1].strip()))
+    except ValueError:
+        pass
+    return peer
+
+
+def _encode(answer: dict) -> bytes:
+    """UTF-8 JSON; escaped ASCII if the answer echoes a lone surrogate, which UTF-8 cannot carry."""
+    try:
+        return json.dumps(answer, ensure_ascii=False).encode("utf-8")
+    except UnicodeEncodeError:
+        return json.dumps(answer).encode("ascii")
 
 
 def _reject_constant(name: str) -> None:
@@ -125,14 +146,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def _handle(self) -> None:
         started = time.monotonic()
-        self.client = self._client_address()
+        self.client = client_address(self.client_address[0], self.headers.get_all("X-Forwarded-For") or [], self.server.trust_forwarded)
         self.target = _path(self.path)
         self.rpc = self.tool = None
         self.status = 0
-        acquired = self.server.slots.acquire(blocking=False)
+        self.cors = {}
         try:
-            if not acquired:
-                raise _Refuse(503, "Too many requests in progress", SERVER_ERROR, {"Retry-After": "1"})
+            origin = self.headers.get("Origin")
+            self.origin_ok = origin is None or self.server.origin_ok(origin)
+            # Errors carry CORS too, so a browser client can read them and Retry-After.
+            if self.origin_ok or self.target in self.server.documents:
+                self.cors = RESPONSE_CORS
             delay = self.server.limiter.check(self.client)
             if delay > 0:
                 raise _Refuse(429, "Rate limited", SERVER_ERROR, {"Retry-After": str(max(1, math.ceil(delay)))})
@@ -148,20 +172,9 @@ class Handler(BaseHTTPRequestHandler):
             log.exception("request failed")
             self._send_error(_Refuse(500, "Internal error", SERVER_ERROR))
         finally:
-            if acquired:
-                self.server.slots.release()
             elapsed = round((time.monotonic() - started) * 1000)
             path = "?" if self.target is None else self.target[:100]
             self.log_message("%s %s %s %s %s %dms", self.command, path, self.rpc or "-", self.tool or "-", self.status, elapsed)
-
-    def _client_address(self) -> str:
-        if self.server.trust_forwarded:
-            forwarded = self.headers.get_all("X-Forwarded-For") or []
-            if forwarded:
-                last = forwarded[-1].rsplit(",", 1)[-1].strip()
-                if last:
-                    return last[:64]
-        return self.client_address[0]
 
     def _route(self) -> None:
         if self.target == self.server.endpoint:
@@ -172,32 +185,35 @@ class Handler(BaseHTTPRequestHandler):
             raise _Refuse(404, "Not found")
 
     def _endpoint(self) -> None:
-        origin = self.headers.get("Origin")
-        cors = {}
-        if origin is not None:
-            if not self.server.origin_ok(origin):
-                raise _Refuse(403, "Origin not allowed")
-            cors = {"Access-Control-Allow-Origin": "*"}
+        if not self.origin_ok:
+            raise _Refuse(403, "Origin not allowed")
         if self.command == "OPTIONS":
-            return self._send(204, {"Access-Control-Allow-Origin": "*", **MCP_CORS})
+            return self._send(204, {**self.cors, **MCP_CORS})
         if self.command != "POST":
-            raise _Refuse(405, "Method not allowed", headers={"Allow": "POST, OPTIONS", **cors})
+            raise _Refuse(405, "Method not allowed", headers={"Allow": "POST, OPTIONS"})
+        # Everything cheap, and the body, before taking a slot: a slow upload
+        # must not hold one.
         body = self._read_body()
         if self.headers.get_content_type() != "application/json":
-            raise _Refuse(415, "Content-Type must be application/json", headers=cors)
+            raise _Refuse(415, "Content-Type must be application/json")
         try:
             message = json.loads(body, parse_constant=_reject_constant)
         except (ValueError, RecursionError):
-            raise _Refuse(400, "Parse error", PARSE_ERROR, cors) from None
+            raise _Refuse(400, "Parse error", PARSE_ERROR) from None
         if isinstance(message, dict):
             self.rpc = str(message.get("method"))[:64] if isinstance(message.get("method"), str) else None
             params = message.get("params")
             if self.rpc == "tools/call" and isinstance(params, dict) and isinstance(params.get("name"), str):
                 self.tool = params["name"][:64]
-        status, answer = dispatch(self.server.app, self.headers, message)
-        if answer is None:
-            return self._send(202, cors)
-        self._send(status, cors, json.dumps(answer, ensure_ascii=False).encode("utf-8"), "application/json")
+        if not self.server.slots.acquire(blocking=False):
+            raise _Refuse(503, "Too many requests in progress", SERVER_ERROR, {"Retry-After": "1"})
+        try:
+            status, answer = dispatch(self.server.app, self.headers, message)
+            if answer is None:
+                return self._send(202, self.cors)
+            self._send(status, self.cors, _encode(answer), "application/json")
+        finally:
+            self.server.slots.release()
 
     def _read_body(self) -> bytes:
         """The request body, read only once its declared length is known to be within the limit."""
@@ -240,7 +256,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             # Reading the body may have left a short per-read timeout behind.
             self.connection.settimeout(self.timeout)
-            self._send(error.status, error.headers, json.dumps(body).encode("utf-8"), "application/json")
+            self._send(error.status, {**self.cors, **error.headers}, json.dumps(body).encode("utf-8"), "application/json")
         except OSError:
             self.close_connection = True
 
@@ -259,14 +275,20 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def make_server(app: App, host: str, port: int, *, catalog_identifier: str, limits: Limits = Limits(),
-                origin_ok=any_https_origin, trust_forwarded: bool = True) -> ThreadingHTTPServer:
-    """A server for ``app``, not yet running. ``trust_forwarded`` is safe only behind a proxy on localhost."""
+                origin_ok=any_https_origin, trust_forwarded: bool = False) -> ThreadingHTTPServer:
+    """A server for ``app``, not yet running.
+
+    With ``trust_forwarded``, a request from a loopback peer (a reverse proxy on
+    the same machine) is attributed to the last address in its ``X-Forwarded-For``.
+    """
     return Server((host, port), app, catalog_identifier, limits, origin_ok, trust_forwarded)
 
 
-def serve(app: App, host: str, port: int, **options) -> None:
-    """Run ``make_server(app, host, port, **options)`` until interrupted."""
-    server = make_server(app, host, port, **options)
+def serve(app: App, host: str, port: int, *, catalog_identifier: str, limits: Limits = Limits(),
+          origin_ok=any_https_origin, trust_forwarded: bool = False) -> None:
+    """Run ``make_server`` with the same arguments until interrupted."""
+    server = make_server(app, host, port, catalog_identifier=catalog_identifier, limits=limits, origin_ok=origin_ok,
+                         trust_forwarded=trust_forwarded)
     sys.stderr.write(f"stdmcp: {app.name} on http://{host}:{server.server_address[1]}{server.endpoint}\n")
     try:
         server.serve_forever()
