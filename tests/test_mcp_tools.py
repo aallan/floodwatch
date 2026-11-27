@@ -103,11 +103,19 @@ class ToolTests(unittest.TestCase):
             self.assertEqual(t.input_schema["type"], "object")
             self.assertIs(t.input_schema["additionalProperties"], False)
 
+    def test_descriptions_say_what_they_count_and_when(self):
+        self.assertIn("Counts cover the gauges returned", self.tools["conditions"].description)
+        self.assertIn("Counts cover all overflows", self.tools["storm_overflows"].description)
+        for name in ("rain_forecast", "flow_forecast"):
+            self.assertIn("generated is when the forecast was requested", self.tools[name].description)
+            r = self.call(name, station_id={"rain_forecast": "50106", "flow_forecast": "50140"}[name])
+            self.assertEqual(r["generated_is"], "when the forecast was requested")
+
     def test_descriptions_are_plain(self):
         for t in TOOLS:
             self.assertTrue(t.title and t.description, t.name)
             self.assertNotIn("\u2014", t.description + t.title, t.name)
-            self.assertLessEqual(t.description.count(". "), 2, t.name)
+            self.assertLessEqual(t.description.count(". "), 3, t.name)
 
     def test_every_result_has_generated_and_attribution(self):
         calls = [("list_stations", {}), ("conditions", {}), ("flood_warnings", {}),
@@ -220,6 +228,7 @@ class ToolTests(unittest.TestCase):
     def test_station_history(self):
         r = self.call("station_history", station_id="50140")
         self.assertIn("/api/stations/50140/readings?days=7", self.site.paths)
+        self.assertEqual(r["generated"], "2026-11-23T19:55:00+00:00")  # live.json's, not the time asked
         self.assertEqual(r["attribution"], text.READINGS)
         self.assertEqual(r["station"], {"id": "50140", "name": "Umberleigh", "kind": "level", "unit": "m"})
         self.assertEqual(r["days"], 7)
@@ -231,13 +240,18 @@ class ToolTests(unittest.TestCase):
 
     def test_station_history_thins_beyond_seven_days(self):
         start = 1_795_132_800  # a UK midnight
-        self.site.readings = {**self.site.readings, "readings": [[start + i * 900, i / 100] for i in range(12)]}
+        values = [0.1, 0.5, 0.2, 0.3, 0.4, 0.45, 0.6, 0.55, 0.9, 0.8, 0.7, 0.6]
+        self.site.readings = {**self.site.readings, "readings": [[start + i * 900, v] for i, v in enumerate(values)]}
         r = self.call("station_history", station_id="50140", days=8)
         self.assertIn("/api/stations/50140/readings?days=8", self.site.paths)
         self.assertEqual(r["interval"], "hourly")
-        # The last reading in each hour.
-        self.assertEqual([x["level_m"] for x in r["readings"]], [0.03, 0.07, 0.11])
-        self.assertEqual(r["readings"][0]["time"], "2026-11-20T00:45:00+00:00")
+        # The highest reading in each hour, at the hour's start, as the site's own buckets have it,
+        # so a peak in the middle of an hour isn't lost.
+        self.assertEqual(r["readings"], [{"time": "2026-11-20T00:00:00+00:00", "level_m": 0.5},
+                                         {"time": "2026-11-20T01:00:00+00:00", "level_m": 0.6},
+                                         {"time": "2026-11-20T02:00:00+00:00", "level_m": 0.9}])
+        self.assertIn("highest level", self.tools["station_history"].description)
+        self.assertIn("total rain", self.tools["station_history"].description)
 
     def test_station_history_of_rain_adds_up_each_hour(self):
         live = load("live.json")

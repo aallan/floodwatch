@@ -21,6 +21,7 @@ RAW_DAYS = 7          # beyond this, history is thinned to one reading an hour
 KIND_NAMES = {"level": "a river level gauge", "tidal": "a tidal gauge", "rain": "a rain gauge"}
 OVERFLOW_STATES = ["spilling", "recent", "quiet", "offline"]
 OVERFLOW_STATUS = {1: "spilling", 0: "quiet", -1: "offline"}
+REQUESTED = "when the forecast was requested"  # forecasts carry no fetch time of their own
 
 
 def iso(ts):
@@ -43,17 +44,19 @@ STATION_ID = _id("A gauge ID, from list_stations.")
 
 
 def _hourly(readings, rain):
-    """One reading an hour: a rain gauge's total for the hour, at its start,
-    and otherwise the last reading in the hour."""
+    """One value an hour, stamped at the hour's start as the site's own
+    buckets are: a rain gauge's total for the hour, and otherwise the
+    hour's highest reading, so a peak isn't lost."""
     hours = {}
     for ts, value in readings:
         hour = ts // 3600 * 3600
-        if rain:
-            t, total = hours.get(hour, (hour, 0))
-            hours[hour] = (t, total + value)
+        if hour not in hours:
+            hours[hour] = value
+        elif rain:
+            hours[hour] += value
         else:
-            hours[hour] = (ts, value)
-    return [[t, round(v, 3)] for t, v in hours.values()]
+            hours[hour] = max(hours[hour], value)
+    return [[t, round(v, 3)] for t, v in hours.items()]
 
 
 def make_tools(site: Site, clock=time.time) -> tuple:
@@ -114,7 +117,8 @@ def make_tools(site: Site, clock=time.time) -> tuple:
         return {"generated": iso(data["generated"]), "attribution": text.READINGS, "counts": counts, "stations": out}
 
     def station_history(station_id, days=7):
-        s = station(station_id)
+        data = live()
+        s = station(station_id, data)
         try:
             d = site.json(f"/api/stations/{station_id}/readings?days={days}")
         except NotFound:
@@ -128,7 +132,7 @@ def make_tools(site: Site, clock=time.time) -> tuple:
         else:
             interval = "15 minutes"
         field = "rain_mm" if rain else "level_m"
-        out = {"generated": now_iso(), "attribution": text.READINGS,
+        out = {"generated": iso(data["generated"]), "attribution": text.READINGS,
                "station": {"id": d["id"], "name": d["name"], "kind": d["kind"], "unit": d["unit"]},
                "days": days}
         if d["kind"] == "level":
@@ -166,7 +170,7 @@ def make_tools(site: Site, clock=time.time) -> tuple:
                             "a rain gauge. list_stations shows each gauge's kind.")
         d = site.json(f"/api/forecast/rain/{station_id}")
         hours = [{"time": iso(t), "rain_mm": mm, "probability_pct": p} for t, mm, p in d["hours"]]
-        return {"generated": now_iso(), "attribution": text.RAIN_FORECAST,
+        return {"generated": now_iso(), "generated_is": REQUESTED, "attribution": text.RAIN_FORECAST,
                 "station": {"id": s["id"], "name": s["name"]},
                 "total_rain_mm": round(sum(h["rain_mm"] for h in hours), 1), "hours": hours}
 
@@ -180,7 +184,7 @@ def make_tools(site: Site, clock=time.time) -> tuple:
         now = int(clock())
         measured = d.get("measured") or []
         return {
-            "generated": iso(now), "attribution": text.FLOW_FORECAST,
+            "generated": iso(now), "generated_is": REQUESTED, "attribution": text.FLOW_FORECAST,
             "station": {"id": s["id"], "name": s["name"]}, "river": d.get("river"),
             "normal_flow_m3s": d.get("normal"), "high_flow_m3s": d.get("high"),
             "measured": {"time": iso(measured[-1][0]), "flow_m3s": measured[-1][1]} if measured else None,
@@ -252,7 +256,7 @@ def make_tools(site: Site, clock=time.time) -> tuple:
         Tool("conditions", "Current conditions",
              "Gives the latest reading, trend and state at each gauge, as the map shows them, with counts of how "
              "many are high, near the top of their range, rising or stale. Use it to answer how the rivers and "
-             "rain are now.",
+             "rain are now. Counts cover the gauges returned.",
              _schema({"station_id": _id("Only this gauge, from list_stations."),
                       "kind": {"type": "string", "enum": ["level", "tidal", "rain"],
                                "description": "Only gauges of this kind."}}),
@@ -264,26 +268,27 @@ def make_tools(site: Site, clock=time.time) -> tuple:
              _schema(), flood_warnings),
         Tool("station_history", "Gauge history",
              "Gives one gauge's readings over the past days, with its typical range and record high for a river "
-             "level gauge. Readings are every 15 minutes up to a week, and hourly beyond.",
+             "level gauge. Readings are every 15 minutes up to a week; beyond that each is an hour's highest level, "
+             "or its total rain, at the start of the hour.",
              _schema({"station_id": STATION_ID,
                       "days": {"type": "integer", "minimum": 1, "maximum": 30, "default": 7,
                                "description": "How many days back, 1 to 30."}}, ["station_id"]),
              station_history),
         Tool("rain_forecast", "Rain forecast",
              "Gives the forecast rain, hour by hour, for the next 48 hours at a rain gauge. Use list_stations to "
-             "find a gauge whose kind is rain.",
+             "find a gauge whose kind is rain; generated is when the forecast was requested.",
              _schema({"station_id": _id("A rain gauge's ID, from list_stations.")}, ["station_id"]),
              rain_forecast),
         Tool("flow_forecast", "River flow forecast",
              "Gives modelled river flow for the past week and the fortnight ahead at a gauge that has a flow "
              "forecast, scaled to the measured flow as the site's chart shows it, with normal and high flow to "
-             "compare. list_stations shows which gauges have one.",
+             "compare. list_stations shows which gauges have one; generated is when the forecast was requested.",
              _schema({"station_id": _id("A gauge with a flow forecast, from list_stations.")}, ["station_id"]),
              flow_forecast),
         Tool("storm_overflows", "Storm overflows",
              "Lists storm overflows and whether each is spilling, spilled in the last 48 hours, quiet or offline, "
              "or gives one overflow's spills over the past 30 days and its yearly totals. Use it for questions "
-             "about sewage spills into rivers.",
+             "about sewage spills into rivers. Counts cover all overflows, whatever the filter.",
              _schema({"state": {"type": "string", "enum": OVERFLOW_STATES,
                                 "description": "Only overflows in this state."},
                       "overflow_id": _id("One overflow's ID, from the list, for its detail.")}),
