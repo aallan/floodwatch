@@ -91,7 +91,9 @@
           <dt>Claude</dt>
           <dd>In Claude, go to Customize, then Connectors. Choose Add, then Add custom connector, give it a
             name such as Floodwatch, paste the address above and click Continue. Choose "No sign in" if it asks, then
-            Add. On a Team or Enterprise plan, an owner adds it under Organization settings instead.</dd>
+            Add. On a Team or Enterprise plan, an owner adds it under Organization settings instead.
+            To use it from Dispatch, open the connector's settings and set its tools to Always allow: Dispatch
+            leaves out a connector whose tools ask first. Every tool here only reads, so that's safe.</dd>
           <dt>Claude Code</dt>
           <dd><pre class="snippet">claude mcp add --transport http floodwatch https://tawriver.watch/mcp</pre></dd>
           <dt>Other clients</dt>
