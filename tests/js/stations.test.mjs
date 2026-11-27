@@ -11,6 +11,13 @@ const utc = (...a) => Date.UTC(...a) / 1000;
 // Arrays made in the sandbox have its own Array prototype; compare plain copies.
 const plain = x => JSON.parse(JSON.stringify(x));
 
+test('every state the server gives a gauge has words in its popup', () => {
+  // The states monitor/live.py writes into live.json.
+  for (const state of ['high', 'approach', 'normal', 'low', 'unknown', 'stale', 'tidal', 'raining', 'dry']) {
+    assert.ok(StationPopup._internals.STATE_TEXT[state], state);
+  }
+});
+
 test('esc escapes markup', () => {
   assert.equal(esc(`<img src=x onerror="a('b')">&`), '&lt;img src=x onerror=&quot;a(&#39;b&#39;)&quot;&gt;&amp;');
   assert.equal(esc(null), '');

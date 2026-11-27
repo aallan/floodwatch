@@ -37,7 +37,8 @@ const StationPopup = (() => {
   }
 
   const STATE_TEXT = {
-    high: 'Above its typical range', normal: 'Within its typical range', low: 'Below its typical range',
+    high: 'Above its typical range', approach: 'Near the top of its typical range',
+    normal: 'Within its typical range', low: 'Below its typical range',
     unknown: 'No typical range published', stale: 'No recent reading', 'no-data': 'No readings yet',
     tidal: 'Tidal', raining: 'Raining', dry: 'Dry',
   };
@@ -709,7 +710,7 @@ const StationPopup = (() => {
   return {
     open, summary, invalidate, openOverflow, overflowSummary, overflowName,
     // The chart arithmetic and formatting, for tests/js.
-    _internals: { niceTicks, niceScale, levelAxis, timeTicks, monthTicks, tickLabel, rainBuckets, fmtValue, fmtFlow,
+    _internals: { STATE_TEXT, niceTicks, niceScale, levelAxis, timeTicks, monthTicks, tickLabel, rainBuckets, fmtValue, fmtFlow,
       dailyMeans, spellOut },
   };
 })();

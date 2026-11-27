@@ -28,9 +28,9 @@ The Environment Agency's gauges are the map's main layer, each with its latest r
 | Diamond | Tidal level at Barnstaple, in metres above Ordnance Datum | Orange |
 | Drop | Rain in the last hour, in millimetres | Blue; a small pale drop with no number when it hasn't rained |
 
-River and tidal gauges carry a badge with an arrow when the level is rising, falling or steady, from a straight line fitted to the last hour's readings; a change of less than 1 cm an hour counts as steady. A gauge that has sent nothing for three hours turns grey and smaller.
+River and tidal gauges carry a badge with an arrow when the level is rising, falling or steady, from a straight line fitted to the last hour's readings; a change of less than 1 cm an hour counts as steady. A gauge that has sent nothing for three hours turns grey and smaller, and loses its badge.
 
-Gauges that would overlap on screen are gathered into a white circle with a count until zoom 13. Its edge takes the most urgent level among them, amber or red, and it carries a rising badge if any river among them is rising. Hovering lists each gauge and its reading, and clicking zooms in.
+Gauges that would overlap on screen are gathered into a white circle with a count until zoom 13. Its edge takes the most urgent level among them, amber or red. It has a blue ring if any rain gauge among them has had rain in the last hour, and a rising badge if any river or tidal gauge among them is rising. Hovering lists each gauge and its reading, and clicking zooms in.
 
 Clicking a gauge opens its chart for the last 24 hours, 7 days or 28 days, or all time. Over all time each point is the highest level, or the total rain, in an hour or more, so a flood isn't averaged away. River charts mark the top of the typical range and the record high. Rain gauges add the next 48 hours of forecast rain. The gauge at Umberleigh adds a fortnight's river flow forecast for the Taw, set against the flow measured there. Every gauge's popup links to a CSV of every reading it has.
 
@@ -130,7 +130,9 @@ The public site runs as one process, with the MCP server beside it as another, o
 ```mermaid
 flowchart LR
   visitor(["Visitor"]) -- "https://tawriver.watch" --> caddy["Caddy, ports 80 and 443<br/>certificates, compression"]
-  caddy --> serve["floodwatch.service<br/>serve.py on port 8090, with the poller"]
+  caddy -- "/mcp" --> mcp["floodwatch-mcp.service<br/>the MCP server on port 8091"]
+  caddy -- "everything else" --> serve["floodwatch.service<br/>serve.py on port 8090, with the poller"]
+  mcp --> serve
   dtimer["floodwatch-data.timer<br/>Sundays, 04:30"] --> dsvc["floodwatch-data.service<br/>make data"]
   atimer["floodwatch-archive.timer<br/>every night, 02:30"] --> asvc["floodwatch-archive.service<br/>scripts/archive.py push"]
   asvc -- "deploy key" --> github[("GitHub, main")]
@@ -238,15 +240,15 @@ It has nine tools:
 | `drought` | The latest drought report for the area and any hosepipe bans |
 | `power_cuts` | Live power cuts, with customers off and the estimated time back on |
 
-In Claude, add it as a custom connector (Customize, then Connectors, then Add custom connector), pasting the address and choosing no sign-in. In Claude Code:
+In Claude, add it as a custom connector: Customize, then Connectors, then Add, then Add custom connector, paste the address, and choose no sign-in. To use it from Dispatch, set the connector's tools to Always allow, because Dispatch leaves out a connector whose tools ask first. In Claude Code:
 
 ```bash
 claude mcp add --transport http floodwatch https://tawriver.watch/mcp
 ```
 
-Software can find it without being told: `/mcp/server-card` describes the server, `/.well-known/ai-catalog.json` lists it, and `/llms.txt` explains the site in plain text, with `/robots.txt` alongside.
+Software can find it without being told. `/.well-known/ai-catalog.json` points to the server card at `/mcp/server-card`, which describes the server and gives the endpoint's address. `/llms.txt` explains the site in plain text, and `/robots.txt` lets crawlers read all of it.
 
-It runs as its own process, `floodwatch-mcp.service`, on 127.0.0.1:8091, with Caddy sending `/mcp` and the two discovery paths to it and everything else to the web server. It reads only the website's own API on 127.0.0.1:8090, so it holds no data of its own and polls no feed. systemd confines it: `IPAddressDeny=any` with `IPAddressAllow=localhost` leaves it able to reach nothing but the machine itself, it has no writable paths, and it is limited to 96 MB of memory, 30% of a CPU and 32 tasks.
+It runs as its own process, `floodwatch-mcp.service`, on 127.0.0.1:8091, with Caddy sending `/mcp` and the two discovery paths to it and everything else to the web server. It reads only the website's own JSON files and API on 127.0.0.1:8090, so it holds no data of its own and polls no feed. systemd confines it: `IPAddressDeny=any` with `IPAddressAllow=localhost` leaves it able to reach nothing but the machine itself, it has no writable paths, and it is limited to 96 MB of memory, 30% of a CPU and 32 tasks.
 
 Each address can make 300 requests a minute, in bursts of up to 60, the server as a whole 600 a minute, and no more than 8 can run at once. Over the rate limits it answers 429; over 8 at once it answers 503. Both carry a `Retry-After` header.
 
@@ -340,7 +342,7 @@ On a day like this one, after a wet week the model missed, the measured flow was
 
 ## Tests
 
-`make test` runs both suites, `stdmcp/`'s among them, which use only Python's `unittest` and Node's built-in test runner, so there's nothing to install beyond Python and Node. The 367 Python tests (269 of Floodwatch's and 98 of `stdmcp/`'s) cover the poller, the gauges, the spill log, the archive's export, restore and nightly push, the history buckets and CSV download, which positions belong to the catchment, the overlay builder's outline tracing, river naming, gap filling, the Taw's mouth, the gauged streams and the national parks, the warnings, the drought report, power cuts, forecasts, the MCP server's tools, and the server's endpoints and headers; each runs against a temporary database, with every outside service replaced by fixed responses, several of them trimmed copies of real ones in `tests/fixtures/`. The 25 JavaScript tests load the page's scripts into a sandbox and check that a marker shows the state the server gives it, the number on a gauge, what a cluster shows, the chart arithmetic (axes, ticks, hourly rain, tooltips and daily measured flow), the spelt-out overflow names, the warning banner's and drought pill's wording, the power cut popups and the Agents tab; the gauges' states and the flow forecast's scaling are worked out on the server, and the Python tests check them. GitHub Actions runs both on every pull request and every push to `main`, except the nightly archive's, which only touch `archive/`.
+`make test` runs both suites, `stdmcp/`'s among them, which use only Python's `unittest` and Node's built-in test runner, so there's nothing to install beyond Python and Node. The 368 Python tests (270 of Floodwatch's and 98 of `stdmcp/`'s) cover the poller, the gauges, the spill log, the archive's export, restore and nightly push, the history buckets and CSV download, which positions belong to the catchment, the overlay builder's outline tracing, river naming, gap filling, the Taw's mouth, the gauged streams and the national parks, the warnings, the drought report, power cuts, forecasts, the MCP server's tools, and the server's endpoints and headers; each runs against a temporary database, with every outside service replaced by fixed responses, several of them trimmed copies of real ones in `tests/fixtures/`. The 26 JavaScript tests load the page's scripts into a sandbox and check that a marker shows the state the server gives it and its popup has words for it, the number on a gauge, what a cluster shows, the chart arithmetic (axes, ticks, hourly rain, tooltips and daily measured flow), the spelt-out overflow names, the warning banner's and drought pill's wording, the power cut popups and the Agents tab; the gauges' states and the flow forecast's scaling are worked out on the server, and the Python tests check them. GitHub Actions runs both on every pull request and every push to `main`, except the nightly archive's, which only touch `archive/`.
 
 ## Project layout
 
@@ -368,11 +370,11 @@ scripts/fetch_geodata.py   the catchment, its neighbours and the map's overlays
 scripts/archive.py         export, restore and push the archive
 scripts/calibrate_flow.py  finds the GloFAS cell that carries a river past a gauge
 scripts/og_image.py        draws site/img/og-image.png, the link preview card
-scripts/figures.py         draws the figures in docs/: the catchment's outline and the flow forecast
+scripts/figures.py         draws the figures in docs/: the catchment's outline, the flow forecast and the gauge states
 scripts/screenshot.py      takes docs/screenshot.png, the map in a Safari window
 scripts/capture_page.mjs   captures the page for it at an exact size, through Chrome's DevTools protocol
 archive/                   every reading and spill, in v1's CSV format
-docs/                      the README's screenshot and figures
+docs/                      the README's screenshot and figures, and the MCP server's design and plan
 site/index.html            the page
 site/llms.txt              the site described in plain text, for assistants
 site/robots.txt            what crawlers may read
