@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from monitor import cache, db, ea, floods, overflows
+from monitor import cache, db, ea, floods, live, overflows
 
 NOW = 1_793_361_600  # Fri 30 Oct 2026 12:00 UTC
 
@@ -21,14 +21,16 @@ class QuietTestCase(unittest.TestCase):
 
 
 class DBTestCase(QuietTestCase):
-    """Points the monitor's database at a temporary file for each test."""
+    """Points the monitor's database, and the live.json written from it, at
+    temporary files for each test, so a test never replaces the map's data."""
 
     def setUp(self):
         super().setUp()
         self._dir = tempfile.TemporaryDirectory()
-        patcher = mock.patch.object(db, "DB_PATH", Path(self._dir.name) / "monitor.db")
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        for module, name, path in ((db, "DB_PATH", "monitor.db"), (live, "LIVE", "live.json")):
+            patcher = mock.patch.object(module, name, Path(self._dir.name) / path)
+            patcher.start()
+            self.addCleanup(patcher.stop)
         self.addCleanup(self._dir.cleanup)
         self.con = db.connect()
         self.addCleanup(self.con.close)

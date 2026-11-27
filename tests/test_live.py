@@ -101,3 +101,15 @@ class Build(DBTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Write(DBTestCase):
+    def test_tests_write_live_json_somewhere_temporary(self):
+        # Writing live.json from a test database must never replace the
+        # map's real file in site/data, which the local server serves.
+        real = live.ROOT / "site" / "data" / "live.json"
+        before = real.read_bytes() if real.exists() else None
+        live.write(self.con, now=NOW)
+        self.assertNotEqual(live.LIVE, real)
+        self.assertTrue(live.LIVE.exists())
+        self.assertEqual(real.read_bytes() if real.exists() else None, before)
