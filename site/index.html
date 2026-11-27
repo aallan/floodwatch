@@ -23,7 +23,7 @@
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg?v=2">
   <link rel="stylesheet" href="lib/leaflet/leaflet.css?v=1.9.4">
   <link rel="stylesheet" href="lib/markercluster/MarkerCluster.css?v=1.5.3">
-  <link rel="stylesheet" href="css/style.css?v=45">
+  <link rel="stylesheet" href="css/style.css?v=46">
   <script src="js/utils.js?v=3"></script>
 </head>
 <body>
@@ -103,7 +103,7 @@
     <div class="section">
       <h2>Tools</h2>
       <div class="panel">
-        <table class="data-table">
+        <table class="data-table tools">
           <thead><tr><th>Tool</th><th>What it gives</th></tr></thead>
           <tbody>
             <tr><td><code>list_stations</code></td><td>Every river level, tidal and rain gauge, with its ID, kind, river and location.</td></tr>
@@ -123,8 +123,8 @@
       <h2>Fair use</h2>
       <div class="panel">
         <p>Please be kind to it. Each address can make 300 requests a minute, in bursts of up to 60, the server as a
-          whole 600 a minute, and no more than 8 can run at once. Requests over the limit get an HTTP 429 reply with
-          a Retry-After header saying when to try again.</p>
+          whole 600 a minute, and no more than 8 can run at once. Over the rate limits you get an HTTP 429 reply, and
+          over 8 at once a 503, each with a Retry-After header saying when to try again.</p>
         <p>Floodwatch is not an official warning service, and an assistant can get things wrong. For flood warnings
           you can rely on, go to the <a href="https://www.gov.uk/check-flood-risk" rel="noopener">Environment Agency</a>.
           The data keep their publishers' licences, listed on the <a href="#/about">About</a> page.</p>

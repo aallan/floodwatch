@@ -9,7 +9,7 @@ Read-only, free, no sign-in. Streamable HTTP endpoint: https://tawriver.watch/mc
 - Claude: in Customize, then Connectors, choose Add, then Add custom connector, and paste the URL.
 - Claude Code: `claude mcp add --transport http floodwatch https://tawriver.watch/mcp`
 - Other clients: `{"mcpServers": {"floodwatch": {"type": "http", "url": "https://tawriver.watch/mcp"}}}`
-- Limits: 300 requests a minute per address (bursts of 60), 600 a minute overall, 8 at once. Over the limit you get HTTP 429 with a Retry-After header.
+- Limits: 300 requests a minute per address (bursts of 60), 600 a minute overall, 8 at once. Over the rate limits you get HTTP 429, and over 8 at once a 503, each with a Retry-After header.
 - Server card: https://tawriver.watch/mcp/server-card
 - Catalogue: https://tawriver.watch/.well-known/ai-catalog.json
 

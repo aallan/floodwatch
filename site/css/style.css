@@ -350,6 +350,7 @@ body.map-mode footer { display: none; }
    the source column takes the rest. */
 .data-table.sources td { overflow-wrap: normal; }
 .data-table.sources td:first-child { width: 12rem; }
+.data-table.tools td:first-child { white-space: nowrap; }
 .data-table.sources td:last-child { white-space: nowrap; }
 
 /* About: what's on the map, as labelled paragraphs. */
