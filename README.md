@@ -125,7 +125,7 @@ make clean    # remove the libraries, overlays and download cache; the database 
 
 ### On a server
 
-The public site runs as one process on a small Ubuntu 24.04 droplet, with [Caddy](https://caddyserver.com/) in front for HTTPS, and pushes the archive back to this repository every night.
+The public site runs as one process, with the MCP server beside it as another, on a small Ubuntu 24.04 droplet, with [Caddy](https://caddyserver.com/) in front for HTTPS, and pushes the archive back to this repository every night.
 
 ```mermaid
 flowchart LR
@@ -178,7 +178,7 @@ runuser -u floodwatch -- make data
 
 cp deploy/*.service deploy/*.timer /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable --now floodwatch floodwatch-data.timer floodwatch-archive.timer
+systemctl enable --now floodwatch floodwatch-mcp floodwatch-data.timer floodwatch-archive.timer
 cp deploy/Caddyfile /etc/caddy/Caddyfile
 systemctl reload caddy
 
@@ -189,7 +189,7 @@ Watch the first poll with `journalctl -u floodwatch -f`, where the archive resto
 
 Then point the domain at the server: A and AAAA records for the bare name and for `www`, or for a `*` wildcard, which covers `www`. Caddy fetches its certificates once Let's Encrypt can reach the server by name; if it tried before the DNS changed, it waits longer after each failure, and `systemctl restart caddy` makes it try again straight away. After any change to the Caddyfile, check it on the server before reloading: `caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile`.
 
-The web service runs as the unprivileged `floodwatch` user and can write only to `data/`, `site/data/` and `.cache/`; the archive service writes only to `data/` and `.git`. Their logs are in the journal, `journalctl -u floodwatch` and `journalctl -u floodwatch-archive`. The archive keeps the data; a nightly backup from the hosting provider keeps the rest, Caddy's certificates and the deploy key among it.
+The web service runs as the unprivileged `floodwatch` user and can write only to `data/`, `site/data/` and `.cache/`; the archive service writes only to `data/` and `.git`; the MCP server writes nowhere. Their logs are in the journal, `journalctl -u floodwatch`, `journalctl -u floodwatch-mcp` and `journalctl -u floodwatch-archive`. The archive keeps the data; a nightly backup from the hosting provider keeps the rest, Caddy's certificates and the deploy key among it.
 
 To update, pull and restart. The header shows the version `git describe` gives when the server starts, and the first poll after a restart reads every feed straight away, whatever its schedule:
 
