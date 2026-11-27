@@ -19,10 +19,11 @@
   <meta name="twitter:title" content="Floodwatch: the River Taw">
   <meta name="twitter:description" content="Which of the River Taw's gauges are high and rising, which storm overflows are spilling, what flood warnings are in force, and what the rain and the rivers are doing now and are forecast to do next.">
   <meta name="twitter:image" content="https://tawriver.watch/img/og-image.png">
+  <link rel="alternate" type="text/markdown" href="/llms.txt">
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg?v=2">
   <link rel="stylesheet" href="lib/leaflet/leaflet.css?v=1.9.4">
   <link rel="stylesheet" href="lib/markercluster/MarkerCluster.css?v=1.5.3">
-  <link rel="stylesheet" href="css/style.css?v=44">
+  <link rel="stylesheet" href="css/style.css?v=45">
   <script src="js/utils.js?v=3"></script>
 </head>
 <body>
@@ -34,6 +35,7 @@
     </div>
     <nav id="nav">
       <a class="nav-btn" href="#/map">Map</a>
+      <a class="nav-btn" href="#/agents">Agents</a>
       <a class="nav-btn" href="#/about">About</a>
     </nav>
     <div id="status" class="status-line"></div>
@@ -66,6 +68,70 @@
 <main>
   <section id="view-map" class="view">
     <div class="map-box"><div id="map" role="region" aria-label="Map of the River Taw catchment"></div></div>
+  </section>
+
+  <section id="view-agents" class="view">
+    <div class="section">
+      <h2>Agents</h2>
+      <div class="panel">
+        <p>Floodwatch has an MCP server. MCP is a standard way for AI assistants, such as Claude, to look things up
+          from a website instead of guessing. Point an assistant at Floodwatch's and it can answer questions about
+          the Taw's rivers, rain, storm overflows, warnings, drought and power cuts from the same data as the map.
+          It is read-only, free and needs no sign-in.</p>
+        <div class="endpoint">
+          <code id="mcp-url">https://tawriver.watch/mcp</code>
+          <button type="button" class="copy-btn" data-copy="mcp-url">Copy</button>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Connecting</h2>
+      <div class="panel">
+        <dl class="about-list">
+          <dt>Claude</dt>
+          <dd>In Claude, go to Customize, then Connectors. Choose Add, then Add custom connector, give it a
+            name such as Floodwatch, paste the address above and click Continue. Choose "No sign in" if it asks, then
+            Add. On a Team or Enterprise plan, an owner adds it under Organization settings instead.</dd>
+          <dt>Claude Code</dt>
+          <dd><pre class="snippet">claude mcp add --transport http floodwatch https://tawriver.watch/mcp</pre></dd>
+          <dt>Other clients</dt>
+          <dd>Most assistants that support remote MCP servers take a snippet like this in their settings.
+            <pre class="snippet">{"mcpServers": {"floodwatch": {"type": "http", "url": "https://tawriver.watch/mcp"}}}</pre></dd>
+        </dl>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Tools</h2>
+      <div class="panel">
+        <table class="data-table">
+          <thead><tr><th>Tool</th><th>What it gives</th></tr></thead>
+          <tbody>
+            <tr><td><code>list_stations</code></td><td>Every river level, tidal and rain gauge, with its ID, kind, river and location.</td></tr>
+            <tr><td><code>conditions</code></td><td>The latest reading, trend and state at each gauge, as the map shows them.</td></tr>
+            <tr><td><code>flood_warnings</code></td><td>Environment Agency flood warnings and alerts, and Met Office weather warnings for Devon.</td></tr>
+            <tr><td><code>station_history</code></td><td>One gauge's readings over the past days, with its typical range and record high.</td></tr>
+            <tr><td><code>rain_forecast</code></td><td>Forecast rain, hour by hour, for the next 48 hours at a rain gauge.</td></tr>
+            <tr><td><code>flow_forecast</code></td><td>Modelled river flow for the past week and the fortnight ahead, at gauges that have one.</td></tr>
+            <tr><td><code>storm_overflows</code></td><td>Which storm overflows are spilling, and one overflow's spills over the past 30 days.</td></tr>
+            <tr><td><code>drought</code></td><td>The latest drought report for the area and any hosepipe bans.</td></tr>
+            <tr><td><code>power_cuts</code></td><td>Live power cuts, with customers off and the estimated time back on.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="section">
+      <h2>Fair use</h2>
+      <div class="panel">
+        <p>Please be kind to it. Each address can make 300 requests a minute, in bursts of up to 60, the server as a
+          whole 600 a minute, and no more than 8 can run at once. Requests over the limit get an HTTP 429 reply with
+          a Retry-After header saying when to try again.</p>
+        <p>Floodwatch is not an official warning service, and an assistant can get things wrong. For flood warnings
+          you can rely on, go to the <a href="https://www.gov.uk/check-flood-risk" rel="noopener">Environment Agency</a>.
+          The data keep their publishers' licences, listed on the <a href="#/about">About</a> page.</p>
+        <p>For software to read: the <a href="/mcp/server-card">server card</a>,
+          the <a href="/.well-known/ai-catalog.json">AI catalogue</a> and <a href="/llms.txt">llms.txt</a>.</p>
+      </div>
+    </div>
   </section>
 
   <section id="view-about" class="view">
@@ -182,6 +248,6 @@
 <script src="js/floods.js?v=3"></script>
 <script src="js/weather.js?v=1"></script>
 <script src="js/drought.js?v=3"></script>
-<script src="js/app.js?v=10"></script>
+<script src="js/app.js?v=11"></script>
 </body>
 </html>

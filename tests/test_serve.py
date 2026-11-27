@@ -60,6 +60,32 @@ class Static(Server):
             status, _, body = self.request(path)
             self.assertNotIn(b"ThreadingHTTPServer", body, path)
 
+    def test_llms_txt_and_robots_are_served(self):
+        for path, start in (("/llms.txt", b"# Floodwatch"), ("/robots.txt", b"User-agent: *")):
+            status, r, body = self.request(path)
+            self.assertEqual(status, 200, path)
+            self.assertTrue(r.getheader("Content-Type").startswith("text/plain"), path)
+            self.assertTrue(body.startswith(start), path)
+        self.assertIn(b"Allow: /", self.request("/robots.txt")[2])
+        self.assertIn(b"https://tawriver.watch/mcp", self.request("/llms.txt")[2])
+
+    def test_agents_tab_lists_every_tool(self):
+        import re
+
+        from floodwatch_mcp.tools import TOOLS
+        html = self.request("/")[2].decode()
+        view = re.search(r'<section id="view-agents" class="view">(.*?)</section>', html, re.S).group(1)
+        names = {t.name if hasattr(t, "name") else t for t in TOOLS}
+        for name in names:
+            self.assertIn(f"<code>{name}</code>", view)
+        text = re.sub(r"<[^>]*>", " ", view)
+        self.assertEqual(set(re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", text)) - names, set())
+        self.assertIn('href="#/agents"', html)
+
+    def test_head_links_llms_txt(self):
+        html = self.request("/")[2].decode()
+        self.assertIn('<link rel="alternate" type="text/markdown" href="/llms.txt">', html)
+
     def test_head_on_the_api_is_refused(self):
         self.assertEqual(self.request("/api/stations/A/readings", "HEAD")[0], 405)
 
