@@ -1,21 +1,21 @@
 # Floodwatch
 
-> Floodwatch (https://tawriver.watch) shows which of the River Taw's gauges are high and rising, which storm overflows are spilling, what flood and weather warnings are in force, where the power is off and what the rain and the river are forecast to do, across the Taw's catchment in north Devon. It is built on public data and is not an official warning service: for flood warnings you can rely on, go to the Environment Agency (https://www.gov.uk/check-flood-risk).
+> Floodwatch (https://tawriver.watch) shows which of the River Taw's gauges are high and rising, which storm overflows are spilling, what flood and weather warnings are in force, where the power is off, and what the rain and the river are forecast to do, across the Taw's catchment in north Devon. It is built on public data and is not an official warning service: for flood warnings you can rely on, go to the Environment Agency (https://www.gov.uk/check-flood-risk).
 
 ## MCP server
 
-Read-only, free, no sign-in. Streamable HTTP endpoint: https://tawriver.watch/mcp
+It is read-only and free, and needs no sign-in. Streamable HTTP endpoint: https://tawriver.watch/mcp
 
 - Claude: in Customize, then Connectors, choose Add, then Add custom connector, and paste the URL. For Dispatch, set the connector's tools to Always allow; Dispatch leaves out a connector whose tools ask first. Every tool only reads.
 - Claude Code: `claude mcp add --transport http floodwatch https://tawriver.watch/mcp`
 - Other clients: `{"mcpServers": {"floodwatch": {"type": "http", "url": "https://tawriver.watch/mcp"}}}`
 - Limits: 300 requests a minute per address (bursts of 60), 600 a minute overall, 8 at once. Over the rate limits you get HTTP 429, and over 8 at once a 503, each with a Retry-After header.
 - Server card: https://tawriver.watch/mcp/server-card
-- Catalogue: https://tawriver.watch/.well-known/ai-catalog.json
+- AI Catalog: https://tawriver.watch/.well-known/ai-catalog.json
 
 Tools:
 
-- list_stations: every river level, tidal and rain gauge, with its ID, kind, river and location. Use it first to find a station ID.
+- list_stations: every river level, tidal, and rain gauge, with its ID, kind, river, and location. Use it first to find a station ID.
 - conditions: the latest reading, trend and state at each gauge.
 - flood_warnings: Environment Agency flood warnings and alerts, and Met Office weather warnings for Devon.
 - station_history: one gauge's readings over the past days, with its typical range and record high.
@@ -29,14 +29,19 @@ Tools:
 
 Files, updated about every five minutes:
 
-- https://tawriver.watch/data/live.json: the latest reading at every gauge
-- https://tawriver.watch/data/stations.geojson: the gauges
+- https://tawriver.watch/data/live.json: the latest reading, trend and state at every gauge
 - https://tawriver.watch/data/warnings.json: Environment Agency flood warnings and alerts
 - https://tawriver.watch/data/weather.json: Met Office weather warnings
 - https://tawriver.watch/data/overflows.json: storm overflows
 - https://tawriver.watch/data/powercuts.json: power cuts
-- https://tawriver.watch/data/drought.json: drought status and hosepipe bans
-- https://tawriver.watch/data/meta.json: when the map data was generated
+- https://tawriver.watch/data/drought.json: drought status and hosepipe bans, read every six hours
+
+The map's overlays, rebuilt from OpenStreetMap and the Environment Agency every week:
+
+- https://tawriver.watch/data/catchment.geojson: the catchment's outline
+- https://tawriver.watch/data/rivers.geojson and streams.geojson: the rivers and streams
+- https://tawriver.watch/data/railways.geojson and stations.geojson: the railways and their stations
+- https://tawriver.watch/data/meta.json: when the overlays were built
 
 Routes:
 
@@ -49,7 +54,7 @@ Routes:
 
 ## Licences
 
-- Environment Agency flood, river level and rain data, drought reports and overflow annual returns: Open Government Licence v3.0
+- Environment Agency flood, river level, and rain data, drought reports, and overflow annual returns: Open Government Licence v3.0
 - Met Office weather warnings: Contains public sector information licensed under the Open Government Licence v3.0
 - National Grid Electricity Distribution power cuts: NGED Open Data Licence
 - South West Water storm overflow activity: CC BY 4.0

@@ -15,7 +15,7 @@ help:
 	@echo "make mcp     run the MCP server on http://localhost:$(MCP_PORT)/mcp, reading from make serve"
 	@echo "make test    run the Python and JavaScript tests (needs Node 22 or later)"
 	@echo "make og      redraw the link preview image (needs Google Chrome and make data)"
-	@echo "make figures redraw the README's figures in docs/ (needs make data)"
+	@echo "make figures redraw the README's figures in docs/ (needs make data, and reads the live site)"
 	@echo "make screenshot  retake the README's screenshot (needs Google Chrome, Node and make serve)"
 	@echo "make clean   remove downloaded libraries, overlays and the download cache"
 	@echo "             (the readings database in data/ is kept)"

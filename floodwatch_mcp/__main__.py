@@ -14,7 +14,7 @@ from stdmcp import App, serve
 HOST = "127.0.0.1"
 CATALOG_IDENTIFIER = "urn:air:tawriver.watch:mcp:floodwatch"
 DESCRIPTION = ("Floodwatch shows what the River Taw in north Devon is doing: river levels, rainfall, flood and weather "
-               "warnings, storm overflows, drought and power cuts. This server is read-only.")
+               "warnings, storm overflows, drought, and power cuts. This server is read-only.")
 
 
 def version():

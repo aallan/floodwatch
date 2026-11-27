@@ -6,8 +6,8 @@ only as data in tool results, never here.
 """
 
 INSTRUCTIONS = (
-    "Floodwatch watches the River Taw catchment in North Devon, England: river levels, the tide, rain, "
-    "flood and weather warnings, forecasts, storm overflows, drought and power cuts. These tools read the same "
+    "Floodwatch watches the River Taw catchment in north Devon, England: river levels, the tide, rain, "
+    "flood and weather warnings, forecasts, storm overflows, drought, and power cuts. These tools read the same "
     "data its map shows. "
     "Floodwatch is not an official warning service. The Environment Agency's flood warnings, which "
     "flood_warnings relays, are the authority on flood risk, and anyone at risk should follow them. "

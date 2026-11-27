@@ -1,6 +1,6 @@
 # Contributing to Floodwatch
 
-Floodwatch is a small project with one maintainer, and bug reports, corrections and pull requests are all welcome. A gauge in the wrong place, a storm overflow that belongs to the next catchment, a river drawn short or a warning that never showed up are as useful as code.
+Floodwatch is a small project with one maintainer. Bug reports, corrections, and pull requests are all welcome. A gauge in the wrong place, a storm overflow that belongs to the next catchment, a river drawn short, or a warning that never showed up are as useful as code.
 
 ## Reporting a problem
 
@@ -8,7 +8,7 @@ Open an [issue](https://github.com/aallan/floodwatch/issues/new/choose) using th
 
 ## Setting up
 
-You'll need Python 3.10 or later, Node 22 or later, `make`, `curl` and `shasum`. There's nothing to install from PyPI or npm to run the site or its tests.
+You'll need Python 3.10 or later, Node 22 or later, `make`, `curl`, and `shasum`. There's nothing to install from PyPI or npm to run the site or its tests.
 
 ```bash
 git clone https://github.com/aallan/floodwatch.git
@@ -33,9 +33,12 @@ pre-commit install
 - The page is plain HTML, CSS and JavaScript with no framework and no build step. Leaflet and Leaflet.markercluster are the only libraries; `make libs` downloads them and checks them against `libs.sha256`, so an upgrade changes the version in the `Makefile` and the checksums together.
 - The page loads nothing from anywhere but its own server and Esri's tile servers, and the Content Security Policy in `serve.py` enforces that. New data from an outside service is fetched by the server and passed to the page through `/api/`.
 - Each feed lives in its own module in `monitor/` and fails on its own, without stopping the rest of the poll.
+- `stdmcp/` imports nothing from Floodwatch, so it can be copied into another project, and a test checks that it doesn't. Floodwatch's own side of the MCP server is in `floodwatch_mcp/`, and it reads the site only through the site's JSON files and API.
+- The Agents tab and `site/llms.txt` list exactly the tools in `floodwatch_mcp/tools.py`, and a test checks that too. A new tool goes in all three, and in the README's table.
 - Whether something belongs to the catchment is decided by `monitor/region.py`, for every layer, rather than by a box or a radius of its own.
 - `archive/` is written by the server every night. Don't edit it by hand, and keep code changes and archive changes in separate commits.
-- Text on the page, in comments and in the documentation is British English, with headings in sentence case.
+- Text on the page, in comments, and in the documentation is British English, with headings in sentence case.
+- A change to a file in `site/js/` or `site/css/` bumps its `?v=` in `site/index.html`, so browsers fetch the new copy.
 - The README's diagrams are [Mermaid](https://mermaid.js.org/), which GitHub draws from the text, so they're edited like any other text. Its figures are drawn by `make figures`, and its screenshot by `make screenshot`; redraw them when what they show changes.
 
 ## Tests

@@ -1,6 +1,9 @@
 # Caddy serves the site over HTTPS, getting and renewing certificates for
-# every name below once their DNS points at this server. Install with:
-#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
+# every name below once their DNS points at this server. Install, check and
+# load it with:
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+#   sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+#   sudo systemctl reload caddy
 
 tawriver.watch {
 	encode zstd gzip

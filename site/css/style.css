@@ -655,6 +655,7 @@ footer { width: 100%; padding: 0 2rem 1.5rem; }
 .stn-pop-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-tertiary); flex: none; }
 .is-normal .stn-pop-dot { background: var(--level-normal); }
 .is-high .stn-pop-dot { background: var(--level-high); }
+.is-approach .stn-pop-dot { background: var(--gauge-approach); }
 .is-low .stn-pop-dot { background: var(--level-low); }
 .is-tidal .stn-pop-dot { background: var(--tidal); }
 .is-raining .stn-pop-dot { background: var(--rain); }
