@@ -6,24 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-27
+
+AI assistants can now answer questions about the Taw from the same data as the map, through Floodwatch's read-only MCP server.
+
 ### Added
-- An MCP server for AI assistants, at `https://tawriver.watch/mcp`: nine read-only tools over the site's own API (gauges and their readings, warnings, forecasts, storm overflows, drought and power cuts), run by its own systemd unit and limited to loopback, with rate limits of 300 requests a minute per address and 600 overall, 8 requests at once and 24 connections open.
+- An MCP server at `https://tawriver.watch/mcp`, with nine read-only tools reading the site's own data.
+- Limits on the MCP server: 300 requests a minute per address, 600 overall, 8 at once, and 24 connections open.
+- A systemd unit that confines the MCP server to loopback, with Caddy routes to it.
 - `stdmcp/`, a standard-library MCP transport that imports nothing from Floodwatch, with its own tests and README.
-- An Agents tab that says how to connect an assistant and lists the tools, a server card at `/mcp/server-card`, an AI Catalog at `/.well-known/ai-catalog.json`, and `llms.txt` and `robots.txt`.
+- An Agents tab that says how to connect an assistant, including from Dispatch, and lists the tools.
+- A server card at `/mcp/server-card`, an AI Catalog at `/.well-known/ai-catalog.json`, `llms.txt`, and `robots.txt`.
 - The River Bray in its own colour, raspberry, with its own entry in the legend.
 - Dartmoor and Exmoor national parks, shaded pale green and named on the map, with a legend entry to hide them.
-- The streams the Environment Agency gauges are drawn with the rivers, so their gauges no longer sit on nothing with the streams layer off: Landkey Brook at Swimbridge, Halford Stream at Landkey, Bradiford Water and Coney Gut.
-- Diagrams in the README of how the site is put together, the poll cycle, the spill log, the archive and the server, and figures of how the catchment's outline is made and of the flow forecast's scaling, drawn by `make figures`.
+- The four streams the Environment Agency gauges, such as Landkey Brook, drawn with the rivers.
+- Diagrams in the READMEs of how the site, the server, and the MCP server work.
+- Figures drawn by `make figures`: the catchment's outline, the flow forecast's scaling, and what turns a gauge amber or red.
 
 ### Changed
-- The map's amber 'near top of range' state, and the scaled river flow forecast, are now worked out by the server, so every consumer of its data sees the same.
-- The Taw runs on through its tidal reach to Barnstaple's Long Bridge, rather than stopping at Bishops Tawton, where OpenStreetMap marks it tidal.
-- The README's screenshot is captured with Chrome's viewport fixed before the page loads, so no basemap tiles go missing.
-- The documentation and the About page are brought up to date with the server as deployed: the setup steps in the order they work, the ruleset that lets the nightly archive push, and what the first export did to v1's files.
-- The first nightly export rewrote v1's archive files once, to v2's format: spill times to the second, spill durations rounded to the nearest minute, Barnstaple's tidal gauge labelled "Barnstaple", and `stations.csv` sorted by ID. No readings or spills changed. Each night since only adds lines.
+- The server works out each gauge's state and the scaled flow forecast, so the map and the MCP server agree.
+- A stale gauge loses its trend on the server as well as on the map.
+- A gauge's popup says when its level is near the top of its typical range.
+- The A30 and Tarka Line names sit clear of the gauges at the opening zoom.
+- The Taw runs on through its tidal reach to Barnstaple's Long Bridge instead of stopping at Bishops Tawton.
+- A new README screenshot, with the Agents tab, captured with no basemap tiles missing.
+- The documentation and the About page match the server as deployed, MCP server included.
+- The first nightly export rewrote v1's archive files once, in v2's format, without changing any reading or spill.
 
 ### Fixed
-- `.ssh/` is ignored, since on the server the checkout is the `floodwatch` user's home, and the deploy key sits inside it.
+- `.ssh/` is ignored because on the server the checkout is the `floodwatch` user's home, with the deploy key in it.
+- The tests no longer overwrite the map's `site/data/live.json`.
 
 ## [2.0.0] — 2026-11-23
 
@@ -251,7 +263,8 @@ Floodwatch is rewritten from scratch, keeping only v1's data. The site moves fro
 - Text overflow in popup boxes
 - GitHub Actions deprecation warning
 
-[Unreleased]: https://github.com/aallan/floodwatch/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/aallan/floodwatch/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/aallan/floodwatch/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/aallan/floodwatch/compare/v1.5.1...v2.0.0
 [1.5.1]: https://github.com/aallan/floodwatch/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/aallan/floodwatch/compare/v1.4.1...v1.5.0
