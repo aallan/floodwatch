@@ -12,6 +12,28 @@ It was written for Floodwatch, but it imports nothing from it. Copy the `stdmcp/
 - A server card at `<endpoint>/server-card` and an AI Catalog at `/.well-known/ai-catalog.json`.
 - Origin checking, connection, request size and concurrency limits, token bucket rate limiting, and one log line per request on stderr.
 
+A request goes through the limits before the protocol, and the protocol before a tool:
+
+```mermaid
+flowchart TD
+  conn{"A connection free?<br/>24 at most"} -- "no" --> closed["Closed before a thread starts"]
+  conn -- "yes" --> rate{"Within the rate limits?"}
+  rate -- "no" --> r429["429, with Retry-After"]
+  rate -- "yes" --> path{"Which path?"}
+  path -- "the server card or the AI Catalog" --> doc["The document, with an ETag"]
+  path -- "any other" --> r404["404"]
+  path -- "the endpoint" --> checks{"Origin, method, body,<br/>Content-Type and JSON all good?"}
+  checks -- "no" --> r4xx["403, 405, 408, 413, 415 or 400"]
+  checks -- "yes" --> slot{"A dispatch slot free?<br/>8 at most"}
+  slot -- "no" --> r503["503, with Retry-After"]
+  slot -- "yes" --> dispatch["dispatch: protocol version,<br/>headers and method"]
+  dispatch -- "tools/call" --> args{"Arguments match<br/>the schema?"}
+  args -- "no" --> iserr["An isError result"]
+  args -- "yes" --> handler["The handler"]
+  handler -- "ToolError, or too large" --> iserr
+  handler -- "a dict" --> ok["structuredContent<br/>and a JSON text block"]
+```
+
 ## What it leaves out
 
 Sessions, server-sent events, resources, prompts, subscriptions, sampling, and authentication. If you need any of these, put them in front of it (a reverse proxy, for authentication) or use a fuller SDK.

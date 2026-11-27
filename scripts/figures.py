@@ -7,9 +7,13 @@
     docs/flow-forecast.svg   the Taw's flow forecast at Umberleigh before and
                              after it's scaled to the measured flow, from a
                              running server's /api/forecast/flow/50140
+    docs/gauge-states.svg    a river gauge's last 28 days against the levels
+                             that turn its marker amber and red, from a
+                             running server's readings for Woodleigh
 
     python3 scripts/figures.py
-    python3 scripts/figures.py --url http://localhost:8090   # forecast from a local server
+    python3 scripts/figures.py --url http://localhost:8090   # read from a local server
+    python3 scripts/figures.py gauge-states                  # draw only the named figures
 
 Each figure carries its own light background, so it reads the same on
 GitHub's light and dark pages. Standard library only.
@@ -29,6 +33,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 from fetch_geodata import ESTUARY_LAND, TAW_WATER_BODIES  # noqa: E402
 from monitor.geo import simplify  # noqa: E402
+from monitor.live import APPROACH, STALE_AFTER  # noqa: E402
 
 DOCS = ROOT / "docs"
 CACHE = ROOT / ".cache" / "overpass"
@@ -53,6 +58,9 @@ def load(path):
         return json.loads(path.read_text())
     except FileNotFoundError:
         sys.exit(f"{path.relative_to(ROOT)} is missing; run `make data` first")
+
+
+FIGURES = ("catchment", "flow-forecast", "gauge-states")
 
 
 # ---------------------------------------------------------------- catchment
@@ -147,8 +155,8 @@ def wrap(text, width):
 # ---------------------------------------------------------------- flow forecast
 
 def scaled(days, ratio, now):
-    """The forecast's mean flow as the popup draws it (site/js/stations.js,
-    scaleForecast): the lowest flow so far multiplied by the ratio, and any
+    """The forecast's mean flow as the server scales it (monitor/forecast.py,
+    scale_forecast): the lowest flow so far multiplied by the ratio, and any
     rise from rain added at the model's own size."""
     out, base, last = [], None, None
     for t, mean, *_ in days:
@@ -223,25 +231,137 @@ def flow_svg(data, now):
                f"own flow, and its forecast scaled by {ratio:.3g} to start from the measured flow")
 
 
+# ---------------------------------------------------------------- gauge states
+
+STATE_GAUGE = "50115"  # Woodleigh, on the River Mole
+STATE_COLOURS = {"normal": TEAL, "approach": "#e0892b", "high": "#d94a4a", "stale": "#8a90a2"}
+
+
+def gauge_state(value, top, gap):
+    """A river level gauge's marker colour, as monitor/live.py decides it."""
+    if gap > STALE_AFTER:
+        return "stale"
+    if value > top:
+        return "high"
+    if value >= APPROACH * top:
+        return "approach"
+    return "normal"  # below the range, a gauge is teal too
+
+
+def gauge_states_svg(data):
+    readings, (low, top) = data["readings"], data["typical"]
+    width, height, left, right, top_y, bottom = 1000, 404, 62, 214, 78, 64
+    t0, t1 = readings[0][0], readings[-1][0]
+    peak = max(max(v for _, v in readings), top)
+    step = 0.25 if peak <= 2.5 else 0.5
+    hi = math.ceil(peak * 1.1 / step) * step
+    plot_bottom = height - bottom
+    x = lambda t: left + (t - t0) / (t1 - t0) * (width - left - right)  # noqa: E731
+    y = lambda v: top_y + (1 - v / hi) * (plot_bottom - top_y)  # noqa: E731
+    amber = APPROACH * top
+
+    parts = []
+    # The bands a reading falls in, under the grid.
+    for lo_v, hi_v, colour in ((amber, top, STATE_COLOURS["approach"]), (top, hi, STATE_COLOURS["high"])):
+        parts.append(f'<rect x="{left}" y="{y(hi_v):.1f}" width="{width - left - right}" height="{y(lo_v) - y(hi_v):.1f}" '
+                     f'fill="{colour}" fill-opacity="0.12"/>')
+    v = 0.0
+    while v <= hi + 1e-9:
+        parts.append(f'<line x1="{left}" x2="{width - right}" y1="{y(v):.1f}" y2="{y(v):.1f}" stroke="{GRID}"/>'
+                     f'<text x="{left - 8}" y="{y(v) + 4:.1f}" text-anchor="end" font-size="11" fill="{SECONDARY}">{v:g}</text>')
+        v += step
+    parts.append(f'<text x="18" y="{(top_y + plot_bottom) / 2:.0f}" font-size="11" fill="{SECONDARY}" '
+                 f'transform="rotate(-90 18 {(top_y + plot_bottom) / 2:.0f})" text-anchor="middle">level, m</text>')
+    for level, colour, dash in ((top, STATE_COLOURS["high"], "6 4"), (amber, STATE_COLOURS["approach"], "2 3"),
+                                (low, GREY, "2 3")):
+        parts.append(f'<line x1="{left}" x2="{width - right}" y1="{y(level):.1f}" y2="{y(level):.1f}" '
+                     f'stroke="{colour}" stroke-width="1.4" stroke-dasharray="{dash}"/>')
+    day = 86400
+    first_day = (t0 // day + 1) * day
+    for t in range(first_day, t1, 4 * day):
+        parts.append(f'<text x="{x(t):.1f}" y="{height - 18}" text-anchor="middle" font-size="11" '
+                     f'fill="{SECONDARY}">{time.strftime("%-d %b", time.gmtime(t))}</text>')
+
+    # The level, and under it the marker's colour at each reading.
+    d = "M" + "L".join(f"{x(t):.1f},{y(v):.1f}" for t, v in readings)
+    parts.append(f'<path d="{d}" fill="none" stroke="{TEXT}" stroke-width="1.6" stroke-linejoin="round"/>')
+    strip_y, strip_h = plot_bottom + 8, 10
+    runs, prev = [], None  # (state, start, end), one rectangle for each run of the same colour
+    for t, value in readings:
+        state = gauge_state(value, top, t - prev if prev else 0)
+        if runs and runs[-1][0] == state:
+            runs[-1][2] = t
+        else:
+            if runs:
+                runs[-1][2] = t
+            runs.append([state, t, t])
+        prev = t
+    for state, start, end in runs:
+        parts.append(f'<rect x="{x(start):.1f}" y="{strip_y}" width="{max(x(end) - x(start), 1):.1f}" height="{strip_h}" '
+                     f'fill="{STATE_COLOURS[state]}"/>')
+
+    keys = [(STATE_COLOURS["high"], "6 4", f"Top of typical range, {top:.2f} m"),
+            (STATE_COLOURS["approach"], "2 3", f"70% of the top, {amber:.2f} m"),
+            (GREY, "2 3", f"Bottom of the range, {low:.2f} m")]
+    for i, (colour, dash, text) in enumerate(keys):
+        ky, kx = top_y + 20 + i * 24, width - right + 16
+        parts.append(f'<line x1="{kx}" x2="{kx + 22}" y1="{ky}" y2="{ky}" stroke="{colour}" stroke-width="2" '
+                     f'stroke-dasharray="{dash}"/><text x="{kx + 28}" y="{ky + 4}" font-size="11" fill="{TEXT}">{escape(text)}</text>')
+    swatches = (("normal", "Teal"), ("approach", "Amber"), ("high", "Red"), ("stale", "Grey, no reading for 3 hours"))
+    for i, (state, text) in enumerate(swatches):
+        ky, kx = top_y + 122 + i * 22, width - right + 16
+        parts.append(f'<rect x="{kx}" y="{ky - 6}" width="22" height="10" fill="{STATE_COLOURS[state]}"/>'
+                     f'<text x="{kx + 28}" y="{ky + 3}" font-size="11" fill="{TEXT}">{escape(text)}</text>')
+    parts.append(f'<text x="{width - right + 16}" y="{top_y + 100}" font-size="11" fill="{SECONDARY}">The marker’s colour:</text>')
+
+    span = f'{time.strftime("%-d %B", time.gmtime(t0))} to {time.strftime("%-d %B %Y", time.gmtime(t1))}'
+    river = f"{data['river']} at {data['name']}"
+    parts.append(f'<text x="{left}" y="26" font-size="14" font-weight="600" fill="{TEXT}">{escape(river)}, {escape(span)}</text>'
+                 f'<text x="{left}" y="46" font-size="11.5" fill="{SECONDARY}">'
+                 f'<tspan x="{left}">A river gauge’s marker is teal, amber once its level reaches 70% of the top of its typical '
+                 f'range, and red above the top.</tspan>'
+                 f'<tspan x="{left}" dy="15">The strip under the chart shows the marker’s colour at each reading.</tspan></text>')
+    return svg(width, height, "".join(parts),
+               f"The level of the {river} from {span}, against the bands that turn its marker amber and red, "
+               "with the marker’s colour at each reading in a strip underneath")
+
+
 def svg(width, height, body, title):
     return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width:.0f}" height="{height:.0f}" '
             f'viewBox="0 0 {width:.0f} {height:.0f}" font-family="{FONT}" role="img">'
             f'<title>{escape(title)}</title><rect width="100%" height="100%" rx="12" fill="{BG}"/>{body}</svg>\n')
 
 
+def fetch(url, path):
+    with urllib.request.urlopen(f"{url.rstrip('/')}{path}", timeout=60) as r:
+        return json.loads(r.read())
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--url", default="https://tawriver.watch", help="the server to read the forecast from")
+    ap.add_argument("--url", default="https://tawriver.watch", help="the server to read the forecast and readings from")
+    ap.add_argument("figures", nargs="*", metavar="figure",
+                    help=f"which figures to draw, of {', '.join(FIGURES)} (default: all of them)")
     args = ap.parse_args()
+    for name in args.figures:
+        if name not in FIGURES:
+            ap.error(f"no figure called {name}; the figures are {', '.join(FIGURES)}")
     DOCS.mkdir(exist_ok=True)
-    (DOCS / "catchment.svg").write_text(catchment_svg())
-    print("wrote docs/catchment.svg")
-    with urllib.request.urlopen(f"{args.url.rstrip('/')}/api/forecast/flow/50140", timeout=60) as r:
-        data = json.loads(r.read())
-    if not data.get("anchor"):
-        sys.exit("the forecast has no anchor to scale by today; try again later")
-    (DOCS / "flow-forecast.svg").write_text(flow_svg(data, time.time()))
-    print("wrote docs/flow-forecast.svg")
+    for name in args.figures or FIGURES:
+        if name == "catchment":
+            body = catchment_svg()
+        elif name == "flow-forecast":
+            data = fetch(args.url, "/api/forecast/flow/50140")
+            if not data.get("anchor"):
+                sys.exit("the forecast has no anchor to scale by today; try again later")
+            body = flow_svg(data, time.time())
+        else:
+            data = fetch(args.url, f"/api/stations/{STATE_GAUGE}/readings?days=28")
+            live = fetch(args.url, "/data/live.json")
+            data["river"] = next(s.get("river") for s in live["stations"] if s["id"] == STATE_GAUGE)
+            body = gauge_states_svg(data)
+        (DOCS / f"{name}.svg").write_text(body)
+        print(f"wrote docs/{name}.svg")
 
 
 if __name__ == "__main__":

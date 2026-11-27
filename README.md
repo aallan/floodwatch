@@ -28,6 +28,10 @@ The Environment Agency's gauges are the map's main layer, each with its latest r
 | Diamond | Tidal level at Barnstaple, in metres above Ordnance Datum | Orange |
 | Drop | Rain in the last hour, in millimetres | Blue; a small pale drop with no number when it hasn't rained |
 
+![The River Mole at Woodleigh from 30 October to 23 November 2026. The level stayed between 0.4 and 0.8 m until 16 November, rose to 1.5 m on the 17th and to 2.06 m on the 20th, and fell back below 1.19 m on the 22nd. The band from 1.19 m, 70% of the 1.70 m top of the gauge's typical range, is shaded amber, and the band above 1.70 m red. A strip under the chart shows the marker teal, then amber for most of the 17th, then amber from the 19th, red from that evening to the evening of the 20th, and amber again until the 22nd](docs/gauge-states.svg)
+
+The River Mole at Woodleigh in November 2026, with the marker's colour at each reading.
+
 River and tidal gauges carry a badge with an arrow when the level is rising, falling or steady, from a straight line fitted to the last hour's readings; a change of less than 1 cm an hour counts as steady. A gauge that has sent nothing for three hours turns grey and smaller, and loses its badge.
 
 Gauges that would overlap on screen are gathered into a white circle with a count until zoom 13. Its edge takes the most urgent level among them, amber or red. It has a blue ring if any rain gauge among them has had rain in the last hour, and a rising badge if any river or tidal gauge among them is rising. Hovering lists each gauge and its reading, and clicking zooms in.
@@ -117,7 +121,7 @@ The other targets:
 make poll     # run one poll of every feed, without the server
 make test     # run the Python and JavaScript tests
 make og       # redraw the link preview card, site/img/og-image.png (needs Google Chrome and make data)
-make figures  # redraw the figures in docs/ (needs make data, and the live site for the flow forecast)
+make figures  # redraw the figures in docs/ (needs make data, and reads the live site for the flow forecast and the gauge states)
 make screenshot  # retake docs/screenshot.png, the map in a Safari window, from the running server (needs Google Chrome and Node)
 make mcp      # serve the MCP server at http://localhost:8091/mcp, reading from make serve
 make clean    # remove the libraries, overlays and download cache; the database stays
@@ -249,6 +253,20 @@ claude mcp add --transport http floodwatch https://tawriver.watch/mcp
 Software can find it without being told. `/.well-known/ai-catalog.json` points to the server card at `/mcp/server-card`, which describes the server and gives the endpoint's address. `/llms.txt` explains the site in plain text, and `/robots.txt` lets crawlers read all of it.
 
 It runs as its own process, `floodwatch-mcp.service`, on 127.0.0.1:8091, with Caddy sending `/mcp` and the two discovery paths to it and everything else to the web server. It reads only the website's own JSON files and API on 127.0.0.1:8090, so it holds no data of its own and polls no feed. systemd confines it: `IPAddressDeny=any` with `IPAddressAllow=localhost` leaves it able to reach nothing but the machine itself, it has no writable paths, and it is limited to 96 MB of memory, 30% of a CPU and 32 tasks.
+
+```mermaid
+flowchart TD
+  agent(["An assistant"]) -- "https://tawriver.watch/mcp" --> caddy["Caddy<br/>request bodies up to 64 KiB, buffered"]
+  subgraph mcp["floodwatch-mcp.service, on 127.0.0.1:8091"]
+    stdmcp["stdmcp<br/>limits, protocol, arguments"] --> tools["floodwatch_mcp<br/>the nine tools"]
+  end
+  caddy -- "/mcp, the server card<br/>and the AI Catalog" --> stdmcp
+  tools -- "/data/*.json and /api/" --> site["floodwatch.service<br/>serve.py on 127.0.0.1:8090"]
+  site --> db[("SQLite and<br/>site/data/")]
+  site --> cache["The forecast cache"]
+  cache -. "on a miss" .-> ext["Open-Meteo, the Hydrology API, the NRFA"]
+  mcp -- "refused by systemd" --x outside["Anywhere off the machine,<br/>and writing to disk"]
+```
 
 Each address can make 300 requests a minute, in bursts of up to 60, the server as a whole 600 a minute, and no more than 8 can run at once. Over the rate limits it answers 429; over 8 at once it answers 503. Both carry a `Retry-After` header.
 
