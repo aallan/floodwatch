@@ -81,6 +81,9 @@ class Static(Server):
         text = re.sub(r"<[^>]*>", " ", view)
         self.assertEqual(set(re.findall(r"\b[a-z]+(?:_[a-z]+)+\b", text)) - names, set())
         self.assertIn('href="#/agents"', html)
+        llms = (serve.SITE / "llms.txt").read_text()
+        listed = re.search(r"^Tools:\n(.*?)^## ", llms, re.S | re.M).group(1)
+        self.assertEqual(re.findall(r"^- ([a-z_]+): ", listed, re.M), [t.name for t in TOOLS])
 
     def test_head_links_llms_txt(self):
         html = self.request("/")[2].decode()

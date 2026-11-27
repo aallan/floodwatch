@@ -12,7 +12,7 @@ MAX_BYTES = 5 * 1024 * 1024
 
 
 class NotFound(ToolError):
-    """The site has no such resource; the message is the API's own."""
+    """The API has no such resource; the message is the API's own."""
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -34,7 +34,9 @@ class Site:
                 body = r.read(MAX_BYTES + 1)
         except urllib.error.HTTPError as e:
             try:
-                if e.code == 404:
+                # Only the API's 404s mean "no such thing"; a missing data
+                # file (before the first poll writes it) is an outage.
+                if e.code == 404 and path.startswith("/api/"):
                     raise NotFound(_error_text(e)) from None
                 raise ToolError(UNAVAILABLE) from None
             finally:

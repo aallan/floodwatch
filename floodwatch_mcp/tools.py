@@ -5,6 +5,7 @@ ISO 8601 in UK time, units go into field names, and each result says when
 Floodwatch refreshed the data and whose it is.
 """
 
+import re
 import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -22,6 +23,9 @@ KIND_NAMES = {"level": "a river level gauge", "tidal": "a tidal gauge", "rain": 
 OVERFLOW_STATES = ["spilling", "recent", "quiet", "offline"]
 OVERFLOW_STATUS = {1: "spilling", 0: "quiet", -1: "offline"}
 REQUESTED = "when the forecast was requested"  # forecasts carry no fetch time of their own
+STALE_AFTER = 3 * 3600  # as monitor/live.py: a gauge whose last reading is older is stale
+DELAYED_AFTER = 3600    # as the site's header: readings older than this are "(delayed)"
+MET_OFFICE_LINK = re.compile(r"^https://(www|weather)\.metoffice\.gov\.uk/")  # as site/js/weather.js
 
 
 def iso(ts):
@@ -75,6 +79,15 @@ def make_tools(site: Site, clock=time.time) -> tuple:
     def now_iso():
         return iso(int(clock()))
 
+    def current(s):
+        """A gauge's state and trend now. live.json's are as of when it was
+        written; if the poller has stopped, a gauge goes stale here as the
+        poller would have marked it."""
+        ts = s.get("ts")
+        if ts is not None and clock() - ts > STALE_AFTER:
+            return "stale", None
+        return s.get("state"), s.get("trend")
+
     # ---------------------------------------------------------------- gauges
 
     def list_stations():
@@ -102,11 +115,12 @@ def make_tools(site: Site, clock=time.time) -> tuple:
             if s.get("river"):
                 entry["river"] = s["river"]
             entry["time"] = iso(s.get("ts"))
+            state, trend = current(s)
             if s["kind"] == "rain":
                 entry.update(rain_mm_1h=s.get("h1"), rain_mm_24h=s.get("h24"))
             else:
-                entry.update(level_m=s.get("value"), unit=s.get("unit"), trend=s.get("trend"))
-            entry.update(state=s.get("state"), stale=s.get("state") == "stale")
+                entry.update(level_m=s.get("value"), unit=s.get("unit"), trend=trend)
+            entry.update(state=state, stale=state == "stale")
             out.append(entry)
         counts = {
             "high": sum(s["state"] == "high" for s in out),
@@ -114,7 +128,10 @@ def make_tools(site: Site, clock=time.time) -> tuple:
             "rising": sum(s.get("trend") == "rising" for s in out),
             "stale": sum(s["stale"] for s in out),
         }
-        return {"generated": iso(data["generated"]), "attribution": text.READINGS, "counts": counts, "stations": out}
+        newest = max((s.get("ts") or 0 for s in data["stations"]), default=0) or None
+        return {"generated": iso(data["generated"]), "latest_reading": iso(newest),
+                "delayed": newest is None or clock() - newest > DELAYED_AFTER,
+                "attribution": text.READINGS, "counts": counts, "stations": out}
 
     def station_history(station_id, days=7):
         data = live()
@@ -138,7 +155,7 @@ def make_tools(site: Site, clock=time.time) -> tuple:
         if d["kind"] == "level":
             out.update(typical_range_m=d.get("typical"), record_high_m=d.get("record"))
         out["interval"] = interval
-        out["latest_state"] = s.get("state")
+        out["latest_state"] = current(s)[0]
         out["readings"] = [{"time": iso(t), field: v} for t, v in readings]
         return out
 
@@ -146,6 +163,12 @@ def make_tools(site: Site, clock=time.time) -> tuple:
 
     def flood_warnings():
         floods, weather = site.json("/data/warnings.json"), site.json("/data/weather.json")
+        now = clock()
+
+        def link(w):
+            value = w.get("link")
+            return value if isinstance(value, str) and MET_OFFICE_LINK.match(value) else None
+
         return {
             "generated": iso(min(floods["generated"], weather["generated"])),
             "attribution": f"{text.FLOOD_WARNINGS} {text.WEATHER_WARNINGS}",
@@ -155,10 +178,11 @@ def make_tools(site: Site, clock=time.time) -> tuple:
                 "since": iso(w.get("since")), "updated": iso(w.get("updated")), "tidal": w.get("tidal"),
             } for w in floods["warnings"]],
             "weather_warnings": [{
-                "level": w["level"], "weather": w["weather"], "title": w.get("title"), "areas": w.get("areas"),
+                "level": w["level"], "weather": w["weather"], "title": w.get("title"),
+                "description": w.get("description"), "areas": w.get("areas"),
                 "from": iso(w.get("from")), "to": iso(w.get("to")), "published": iso(w.get("published")),
-                "link": w.get("link"),
-            } for w in weather["warnings"]],
+                "link": link(w),
+            } for w in weather["warnings"] if not w.get("to") or w["to"] > now],  # ended ones wait for the next poll
         }
 
     # ---------------------------------------------------------------- forecasts

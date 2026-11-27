@@ -66,6 +66,12 @@ class SiteTests(unittest.TestCase):
         self.assertEqual(str(cm.exception), "no such station")
         self.assertIsInstance(cm.exception, stdmcp.ToolError)
 
+    def test_a_missing_data_file_is_unavailable_not_not_found(self):
+        # Before the first poll writes live.json, say so as an outage, not as a missing gauge.
+        with self.assertRaisesRegex(stdmcp.ToolError, "briefly unavailable") as cm:
+            self.site.json("/data/live.json")
+        self.assertNotIsInstance(cm.exception, NotFound)
+
     def test_404_without_json_body(self):
         with self.assertRaises(NotFound):
             self.site.json("/api/plain404")

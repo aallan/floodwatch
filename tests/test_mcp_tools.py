@@ -14,6 +14,8 @@ from floodwatch_mcp.tools import INSTRUCTIONS, TOOLS, make_tools
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "mcp"
 NOW = 1_795_740_000  # Fri 27 Nov 2026 00:40 UTC
+NEWEST = 1_795_463_100  # the newest reading in live.json, Mon 23 Nov 2026 19:45 UTC
+FRESH = NEWEST + 900  # soon after that reading, as when live.json was written
 ISO = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d\d:\d\d$")
 
 
@@ -57,7 +59,8 @@ class FixtureSite:
 class ToolTests(unittest.TestCase):
     def setUp(self):
         self.site = FixtureSite()
-        self.tools = {t.name: t for t in make_tools(self.site, clock=lambda: NOW)}
+        self.now = NOW
+        self.tools = {t.name: t for t in make_tools(self.site, clock=lambda: self.now)}
 
     def call(self, name, **args):
         """Call a tool as the protocol layer does: validate, fill defaults, then call."""
@@ -139,7 +142,7 @@ class ToolTests(unittest.TestCase):
         self.assertIs(INSTRUCTIONS, text.INSTRUCTIONS)
         for needed in ("North Devon", "not an official warning service", "Environment Agency", "flood_warnings",
                        "Europe/London", "15 minutes", "stale", "approach", "30%", "attribution", "level_m",
-                       "rain_mm", "flow_m3s"):
+                       "rain_mm", "flow_m3s", "latest_reading", "generated", "raining", "dry", "tidal"):
             self.assertIn(needed, INSTRUCTIONS)
         self.assertNotIn("\u2014", INSTRUCTIONS)
 
@@ -162,7 +165,10 @@ class ToolTests(unittest.TestCase):
         self.assertNotIn("river", by["50106"])
 
     def test_conditions(self):
+        self.now = FRESH
         r = self.call("conditions")
+        self.assertEqual(r["latest_reading"], "2026-11-23T19:45:00+00:00")
+        self.assertFalse(r["delayed"])
         self.assertEqual(r["counts"], {"high": 1, "approach": 1, "rising": 2, "stale": 1})
         by = {s["id"]: s for s in r["stations"]}
         self.assertEqual(len(by), 8)
@@ -181,7 +187,37 @@ class ToolTests(unittest.TestCase):
         self.assertEqual(by["50106"]["state"], "raining")
         self.assertNotIn("level_m", by["50106"])
 
+    def test_conditions_after_an_hour_are_delayed_but_not_stale(self):
+        self.now = NEWEST + 3601
+        r = self.call("conditions")
+        self.assertTrue(r["delayed"])
+        self.assertEqual(r["counts"], {"high": 1, "approach": 1, "rising": 2, "stale": 1})
+
+    def test_a_frozen_live_file_goes_stale_at_request_time(self):
+        # If the poller stops, live.json stops changing; three hours after a
+        # gauge's last reading it is stale, as monitor/live.py would mark it.
+        self.now = NEWEST + 3 * 3600 + 1
+        r = self.call("conditions")
+        self.assertTrue(r["delayed"])
+        self.assertEqual(r["latest_reading"], "2026-11-23T19:45:00+00:00")
+        self.assertEqual(r["counts"], {"high": 0, "approach": 0, "rising": 0, "stale": 8})
+        for s in r["stations"]:
+            self.assertEqual(s["state"], "stale", s["id"])
+            self.assertTrue(s["stale"])
+            self.assertIsNone(s.get("trend"))
+        by = {s["id"]: s for s in r["stations"]}
+        self.assertEqual(by["50132"]["level_m"], 2.71)  # the last reading is still given
+        self.assertEqual(self.call("station_history", station_id="50140")["latest_state"], "stale")
+        self.now = NEWEST + 3 * 3600
+        self.assertEqual(self.call("conditions", station_id="50132")["stations"][0]["state"], "high")
+
+    def test_stale_after_matches_the_poller(self):
+        from floodwatch_mcp import tools
+        from monitor import live
+        self.assertEqual(tools.STALE_AFTER, live.STALE_AFTER)
+
     def test_conditions_filters(self):
+        self.now = FRESH
         r = self.call("conditions", kind="rain")
         self.assertEqual({s["id"] for s in r["stations"]}, {"50106", "E82120"})
         self.assertEqual(r["counts"], {"high": 0, "approach": 0, "rising": 0, "stale": 0})
@@ -221,12 +257,45 @@ class ToolTests(unittest.TestCase):
         self.assertEqual(m["level"], "Yellow")
         self.assertEqual(m["weather"], "rain")
         self.assertEqual(m["from"], "2026-11-27T06:00:00+00:00")
+        self.assertEqual(m["description"], "Yellow warning of rain affecting South West England: Devon valid from "
+                                           "0600 Fri 27 Nov to 2359 Fri 27 Nov")
+        self.assertEqual(m["link"], "https://weather.metoffice.gov.uk/warnings-and-advice/uk-warnings")
         self.assertNotIn("image", m)
+
+    def weather(self, *warnings):
+        real = self.site.json
+
+        def json(path):
+            return {"generated": 1795464500, "warnings": list(warnings)} if path == "/data/weather.json" else real(path)
+        self.site.json = json
+        return self.call("flood_warnings")["weather_warnings"]
+
+    def test_ended_weather_warnings_are_dropped_as_the_site_drops_them(self):
+        base = load("weather.json")["warnings"][0]
+        ended, open_ended = {**base, "title": "ended", "to": NOW - 1}, {**base, "title": "open"}
+        del open_ended["to"]
+        self.assertEqual([w["title"] for w in self.weather(ended, base, open_ended)],
+                         [base["title"], "open"])
+        self.assertEqual(self.weather({**base, "to": NOW}), [])
+
+    def test_weather_warning_links_only_to_the_met_office(self):
+        base = load("weather.json")["warnings"][0]
+        for link, kept in [("https://www.metoffice.gov.uk/weather/warnings", True),
+                           ("https://weather.metoffice.gov.uk/x", True),
+                           ("http://www.metoffice.gov.uk/x", False),
+                           ("https://metoffice.gov.uk/x", False),
+                           ("https://evil.example/https://www.metoffice.gov.uk/", False),
+                           ("https://www.metoffice.gov.uk.evil.example/", False),
+                           ("javascript:alert(1)", False), (None, False), (7, False)]:
+            [w] = self.weather({**base, "link": link})
+            self.assertEqual(w["link"], link if kept else None, link)
 
     # ------------------------------------------------------------ history
 
     def test_station_history(self):
+        self.now = FRESH
         r = self.call("station_history", station_id="50140")
+        self.assertEqual(r["latest_state"], "normal")
         self.assertIn("/api/stations/50140/readings?days=7", self.site.paths)
         self.assertEqual(r["generated"], "2026-11-23T19:55:00+00:00")  # live.json's, not the time asked
         self.assertEqual(r["attribution"], text.READINGS)
