@@ -154,13 +154,48 @@ def anchor(days, measured_rows, now=None):
     return None
 
 
+def scale_forecast(days, k, now):
+    """The forecast days, from today on, scaled to start from the measured
+    flow; past days stay as they are. The model's error is mostly in the
+    river's falling flow between storms, where measured over modelled flow
+    holds steady from day to day, while it gets the size of a rise from rain
+    about right. So each series' lowest point so far, from today, is
+    multiplied by k, and anything above it, a rise from rain, is added at the
+    model's size."""
+    if k == 1:
+        return days
+    base = [None] * 4
+    last = None  # the last day before the forecast
+    out = []
+    for r in days:
+        if r[0] + 86400 <= now:
+            last = r
+            out.append(r)
+            continue
+        row = [r[0]]
+        for i in (1, 2, 3):
+            if r[i] is None:
+                row.append(None)
+                continue
+            # The lowest point starts from the day before, so a rise on the
+            # first day of the forecast is added at the model's size like any
+            # other, rather than scaled in full.
+            start = base[i] if base[i] is not None else (
+                last[i] if last and last[i] is not None else r[i])
+            base[i] = min(start, r[i])
+            row.append(round(k * base[i] + (r[i] - base[i]), 2))
+        out.append(row)
+    return out
+
+
 def flow(station_id):
     """Daily river flow for the past week and the next fortnight, in m³/s:
     {"days": [[ts, mean, min, max], ...], "normal", "high", "measured", ...}.
     Days are UK days, each timestamp the UK midnight it starts at; min and max
     span the forecast ensemble. "measured" is the gauged flow, from measured(),
     and "anchor" what the forecast is scaled by to start from it, from anchor().
-    The days are the model's own, unscaled."""
+    The days are the model's own, unscaled; "scaled" is the same days as the
+    chart shows them, from scale_forecast(), and equals "days" with no anchor."""
     o = FLOW_OUTLETS[station_id]
 
     def fetch():
@@ -193,4 +228,6 @@ def flow(station_id):
         ea.log(f"measured flow for {station_id} unavailable: {e}")
         d["measured"] = None
     d["anchor"] = anchor(d["days"], d["measured"])
+    d["scaled"] = scale_forecast(d["days"], d["anchor"]["ratio"] if d["anchor"] else 1,
+                                 int(time.time()))
     return d

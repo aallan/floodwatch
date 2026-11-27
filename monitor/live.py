@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 LIVE = ROOT / "site" / "data" / "live.json"
 
 STALE_AFTER = 3 * 3600     # a reading older than this is shown as out of date
+APPROACH = 0.7             # a level at 70% of the top of its typical range is near it
 TREND_WINDOW = 3600        # the trend is fitted to the last hour of readings
 TREND_MIN_READINGS = 3
 TREND_THRESHOLD = 0.01     # metres per hour; a gentler slope counts as steady
@@ -67,7 +68,8 @@ def build(con, now=None):
             entry["state"] = "stale" if stale else ("raining" if entry["h1"] > 0 else "dry")
         else:
             entry["value"] = round(value, 3)
-            entry["trend"] = _trend(con, s["measure"], ts)
+            if not stale:
+                entry["trend"] = _trend(con, s["measure"], ts)
             if s["kind"] == "level":
                 entry["typical"] = [s["typical_low"], s["typical_high"]]
                 if s["id"] in FLOW_OUTLETS:
@@ -76,6 +78,8 @@ def build(con, now=None):
                     entry["state"] = "stale"
                 elif s["typical_high"] is not None and value > s["typical_high"]:
                     entry["state"] = "high"
+                elif s["typical_high"] is not None and value >= APPROACH * s["typical_high"]:
+                    entry["state"] = "approach"
                 elif s["typical_low"] is not None and value < s["typical_low"]:
                     entry["state"] = "low"
                 elif s["typical_high"] is None:

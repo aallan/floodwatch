@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - Diagrams in the README of how the site is put together, the poll cycle, the spill log, the archive and the server, and figures of how the catchment's outline is made and of the flow forecast's scaling, drawn by `make figures`.
 
 ### Changed
+- The map's amber 'near top of range' state, and the scaled river flow forecast, are now worked out by the server, so every consumer of its data sees the same.
 - The Taw runs on through its tidal reach to Barnstaple's Long Bridge, rather than stopping at Bishops Tawton, where OpenStreetMap marks it tidal.
 - The README's screenshot is captured with Chrome's viewport fixed before the page loads, so no basemap tiles go missing.
 - The documentation and the About page are brought up to date with the server as deployed: the setup steps in the order they work, the ruleset that lets the nightly archive push, and what the first export did to v1's files.

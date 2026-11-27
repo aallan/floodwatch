@@ -358,32 +358,6 @@ const StationPopup = (() => {
     return means;
   }
 
-  // The forecast days, from today on, scaled to start from the measured flow;
-  // past days stay as they are. The model's error is mostly in the river's
-  // falling flow between storms, where measured over modelled flow holds
-  // steady from day to day, while it gets the size of a rise from rain about
-  // right. So each series' lowest point so far, from today, is multiplied by
-  // k, and anything above it, a rise from rain, is added at the model's size.
-  function scaleForecast(days, k, now) {
-    if (k === 1) return days;
-    const base = [null, null, null, null];
-    let last = null;  // the last day before the forecast
-    return days.map(r => {
-      if (r[0] + 86400 <= now) { last = r; return r; }
-      const out = [r[0]];
-      for (let i = 1; i <= 3; i++) {
-        if (r[i] == null) { out.push(r[i]); continue; }
-        // The lowest point starts from the day before, so a rise on the first
-        // day of the forecast is added at the model's size like any other,
-        // rather than scaled in full.
-        const start = base[i] == null ? (last && last[i] != null ? last[i] : r[i]) : base[i];
-        base[i] = Math.min(start, r[i]);
-        out.push(k * base[i] + (r[i] - base[i]));
-      }
-      return out;
-    });
-  }
-
   // Daily modelled flow, the fortnight ahead in amber with the spread of the
   // forecast ensemble, against normal and high flow. The past week shows the
   // flow measured at the gauge, with the model's flow for the same days
@@ -412,7 +386,7 @@ const StationPopup = (() => {
         ? `Blue: flow measured at NRFA gauge ${d.nrfa}, provisional. Faint blue and amber: daily flow modelled by GloFAS, scaled to that gauge's mean. `
         : `Daily flow modelled by GloFAS, scaled to NRFA gauge ${d.nrfa}. `) +
       `Dashed line: high flow, ${fmtFlow(d.high)} · dotted: normal, ${fmtFlow(d.normal)}`;
-    const shown = scaleForecast(days, k, now);
+    const shown = d.scaled || days;
     const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, class: 'stn-chart', role: 'img',
       'aria-label': `${d.river}: ${hasMeasured ? 'measured and ' : ''}modelled flow for the past week, and the forecast for the next fortnight` });
     host.appendChild(svg);
@@ -736,6 +710,6 @@ const StationPopup = (() => {
     open, summary, invalidate, openOverflow, overflowSummary, overflowName,
     // The chart arithmetic and formatting, for tests/js.
     _internals: { niceTicks, niceScale, levelAxis, timeTicks, monthTicks, tickLabel, rainBuckets, fmtValue, fmtFlow,
-      dailyMeans, scaleForecast, spellOut },
+      dailyMeans, spellOut },
   };
 })();

@@ -552,15 +552,8 @@ const FloodMap = (() => {
     rain: new ClusterPart(() => gaugeCluster) };
   let liveRegistered = false;
 
-  // A river level within 30% of the top of its typical range is getting
-  // close, and its marker turns amber before it turns red.
-  const APPROACH = 0.7;
-  function gaugeState(s) {
-    if (s.kind === 'rain') return s.state === 'stale' ? 'stale' : s.h1 > 0 ? 'raining' : 'dry';
-    if (s.kind === 'level' && s.state !== 'high' && s.state !== 'stale' && s.typical && s.typical[1] != null
-        && s.value >= APPROACH * s.typical[1]) return 'approach';
-    return s.state;
-  }
+  // The server decides each gauge's state (monitor/live.py); the map only draws it.
+  function gaugeState(s) { return s.state; }
 
   function gaugeText(s) {
     if (s.kind === 'rain') return s.h1 == null ? '–' : s.h1.toFixed(1);
@@ -1000,6 +993,6 @@ const FloodMap = (() => {
   return {
     init, restyle, resize, setFloodWarnings, focusFlood, get map() { return map; },
     // The marker logic, for tests/js.
-    _internals: { gaugeState, gaugeText, clusterSummary, gaugeScale, APPROACH },
+    _internals: { gaugeState, gaugeText, clusterSummary, gaugeScale },
   };
 })();
