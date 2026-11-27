@@ -12,7 +12,6 @@ A request whose ``MCP-Protocol-Version`` header is the modern version, or whose
 """
 
 import base64
-import binascii
 import json
 import logging
 from dataclasses import dataclass
@@ -93,7 +92,8 @@ def _decode_header(value: str) -> str:
     if value.startswith("=?base64?") and value.endswith("?=") and len(value) >= len("=?base64??="):
         try:
             return base64.b64decode(value[len("=?base64?"):-len("?=")], validate=True).decode("utf-8")
-        except (binascii.Error, UnicodeDecodeError):
+        # ValueError covers binascii.Error, UnicodeDecodeError and non-ASCII input.
+        except ValueError:
             raise _mismatch("Mcp-Name is not valid Base64 UTF-8") from None
     return value
 
@@ -141,12 +141,12 @@ def _call_tool(app: App, params: dict) -> dict:
         return _text_result(str(e), True)
     try:
         result = tool.handler(**arguments)
+        text = json.dumps(result, ensure_ascii=False)
     except ToolError as e:
         return _text_result(str(e), True)
     except Exception:
         log.exception("tool %s failed", name)
         return _text_result(_CRASHED, True)
-    text = json.dumps(result, ensure_ascii=False)
     if len(text) > app.max_result_chars:
         return _text_result(_TOO_LARGE, True)
     return {"content": [{"type": "text", "text": text}], "structuredContent": result, "isError": False}

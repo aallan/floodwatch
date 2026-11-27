@@ -29,6 +29,10 @@ def _crash(station, days):
     raise RuntimeError("database at /secret/path is locked")
 
 
+def _unserialisable(station, days):
+    return {"stations": {station}}
+
+
 def _huge(station, days):
     return {"data": "x" * 500}
 
@@ -55,7 +59,8 @@ APP = App(
     description="A server for tests.",
     instructions="Ask about rivers.",
     url="https://example.org/mcp",
-    tools=(_tool("echo", _echo), _tool("refuse", _refuse), _tool("crash", _crash), _tool("huge", _huge), _tool("Afon Tâf", _echo)),
+    tools=(_tool("echo", _echo), _tool("refuse", _refuse), _tool("crash", _crash), _tool("huge", _huge), _tool("Afon Tâf", _echo),
+           _tool("odd", _unserialisable)),
     max_result_chars=200,
 )
 
@@ -242,7 +247,7 @@ class DiscoverTests(unittest.TestCase):
 class ToolsListTests(unittest.TestCase):
     # server/tools.mdx, "Listing Tools"; schema.ts CacheableResult for the modern extras.
     def test_tools_list(self):
-        names = ["echo", "refuse", "crash", "huge", "Afon Tâf"]
+        names = ["echo", "refuse", "crash", "huge", "Afon Tâf", "odd"]
         status, body = dispatch(APP, *legacy("tools/list"))
         self.assertEqual(status, 200)
         self.assertEqual([t["name"] for t in body["result"]["tools"]], names)
@@ -318,6 +323,15 @@ class ToolsCallTests(unittest.TestCase):
         self.assertNotIn("secret", json.dumps(body))
         self.assertIn("database at /secret/path is locked", "\n".join(logs.output))
 
+    # server/tools.mdx, "Error Handling": a result that cannot be sent is a server
+    # error, reported like any other crash rather than escaping dispatch.
+    def test_unserialisable_result_is_logged_not_raised(self):
+        with self.assertLogs("stdmcp", "ERROR"):
+            status, body = dispatch(APP, *legacy("tools/call", {"name": "odd", "arguments": {"station": "1"}}))
+        self.assertEqual(status, 200)
+        crashed = "The server couldn't answer that just now."
+        self.assertEqual(body["result"], {"content": [{"type": "text", "text": crashed}], "isError": True})
+
     # server/tools.mdx, "Security Considerations": servers should limit what they return.
     def test_result_over_the_limit(self):
         status, body = dispatch(APP, *legacy("tools/call", {"name": "huge", "arguments": {"station": "1"}}))
@@ -358,6 +372,10 @@ class ReviewFocusTests(unittest.TestCase):
         self.assertEqual((status, body["error"]["code"]), (400, -32020))
 
         status, body = dispatch(APP, *modern("tools/call", params, name="=?base64?not base64!?="))
+        self.assertEqual((status, body["error"]["code"]), (400, -32020))
+
+        # http.server decodes header bytes as Latin-1, so a sentinel can hold non-ASCII.
+        status, body = dispatch(APP, *modern("tools/call", params, name="=?base64?é?="))
         self.assertEqual((status, body["error"]["code"]), (400, -32020))
 
     # basic/versioning.mdx, "Backward Compatibility": a dual-era server may serve both
